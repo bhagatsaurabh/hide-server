@@ -1,8 +1,9 @@
-package me.saurabhagat.hide.auth_service;
+package me.saurabhagat.hide.auth_service.config;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,8 +14,12 @@ import java.io.IOException;
 import java.util.Base64;
 import java.util.Objects;
 
+@Slf4j
 @Configuration
 public class FirebaseConfig {
+    @Value("${firebase.auth.emulator.host:}")
+    String authEmulator;
+
     @Value("${firebase.admin.key:}")
     private Resource firebaseKeyPath;
 
@@ -23,6 +28,10 @@ public class FirebaseConfig {
 
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
+        if (authEmulator != null) {
+            System.setProperty("FIREBASE_AUTH_EMULATOR_HOST", authEmulator);
+            log.info("Using firebase auth emulator at {}", authEmulator);
+        }
         FirebaseOptions options;
         if (Objects.nonNull(firebaseKeyPath) && firebaseKeyPath.exists()) {
             try (var inputStream = firebaseKeyPath.getInputStream()) {
