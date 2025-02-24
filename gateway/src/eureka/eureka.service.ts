@@ -1,4 +1,5 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+
 import { hostname } from 'node:os';
 
 @Injectable()
@@ -8,15 +9,12 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
   private readonly SERVICE_NAME = 'API-GATEWAY';
   private readonly SERVICE_PORT = process.env.PORT ?? 3001;
   private readonly INSTANCE_ID = `${hostname()}:${this.SERVICE_NAME.toLowerCase()}`;
-  private readonly EUREKA_URL = `http://${this.EUREKA_HOST}:${this.EUREKA_PORT}/eureka/v2/apps/${this.SERVICE_NAME}`;
+  private readonly EUREKA_URL = `http://${this.EUREKA_HOST}:${this.EUREKA_PORT}/eureka/v2/apps`;
   private heartbeatInterval: NodeJS.Timeout;
 
   async onModuleInit() {
     await this.registerWithEureka();
-    this.heartbeatInterval = setInterval(
-      () => void this.sendHeartbeat(),
-      30 * 1000,
-    );
+    this.heartbeatInterval = setInterval(() => void this.sendHeartbeat(), 30 * 1000);
 
     process.on(
       'SIGINT',
@@ -46,22 +44,22 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
     const instance = {
       instanceId: this.INSTANCE_ID,
       hostName: 'localhost',
-      app: this.SERVICE_NAME.toUpperCase(), // Eureka requires uppercase service names
+      app: this.SERVICE_NAME.toUpperCase(),
       ipAddr: '127.0.0.1',
       vipAddress: this.SERVICE_NAME.toUpperCase(),
       secureVipAddress: this.SERVICE_NAME.toUpperCase(),
       status: 'UP',
-      port: { $: this.SERVICE_PORT, '@enabled': true },
+      port: { $: this.SERVICE_PORT },
       homePageUrl: `http://localhost:${this.SERVICE_PORT}/`,
-      healthCheckUrl: `http://localhost:${this.SERVICE_PORT}/health`,
+      healthCheckUrl: `http://localhost:${this.SERVICE_PORT}/api/health`,
       dataCenterInfo: {
         '@class': 'com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo',
-        name: 'MyOwn', // Required by Eureka
+        name: 'MyOwn',
       },
     };
 
     try {
-      const response = await fetch(this.EUREKA_URL, {
+      const response = await fetch(`${this.EUREKA_URL}/${this.SERVICE_NAME}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,8 +68,7 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
         body: JSON.stringify({ instance }),
       });
 
-      if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
-      console.log(`✅ Registered ${this.SERVICE_NAME} with Eureka`);
+      console.log(`${response.status} Registered ${this.SERVICE_NAME} with Eureka`);
     } catch (error) {
       console.error(`❌ Failed to register with Eureka:`, error);
     }
@@ -79,12 +76,9 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
 
   private async sendHeartbeat() {
     try {
-      const response = await fetch(`${this.EUREKA_URL}/${this.INSTANCE_ID}`, {
+      await fetch(`${this.EUREKA_URL}/${this.SERVICE_NAME}/${this.INSTANCE_ID}`, {
         method: 'PUT',
       });
-
-      if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
-      console.log(`💓 Sent heartbeat to Eureka`);
     } catch (error) {
       console.error(`❌ Failed to send heartbeat:`, error);
     }
@@ -93,14 +87,38 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
   private async deregisterFromEureka() {
     console.log('De-registering with Eureka server');
     try {
-      const response = await fetch(`${this.EUREKA_URL}/${this.INSTANCE_ID}`, {
+      const response = await fetch(`${this.EUREKA_URL}/${this.SERVICE_NAME}/${this.INSTANCE_ID}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
-      console.log(`🛑 Deregistered from Eureka`);
+      console.log(`${response.status} Deregistered from Eureka`);
     } catch (error) {
       console.error(`❌ Failed to deregister:`, error);
+    }
+  }
+
+  async getService(serviceName: string) {
+    try {
+      const response = await fetch(`${this.EUREKA_URL}/${serviceName}`, {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log(`${response.status}`);
+      const data = (await response.json()) as {
+        application: { instance: Array<{ ipAddr: string; port: { $: number } }> };
+      };
+      const instances = data.application.instance;
+      if (!instances || instances.length === 0) {
+        console.log(`${response.status} No instance found `);
+      }
+
+      const { ipAddr, port } = instances[0];
+      return `http://${ipAddr}:${port.$}`;
+    } catch (error) {
+      console.error(`Error fetching service instance: ${error}`);
     }
   }
 }
