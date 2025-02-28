@@ -29,7 +29,6 @@ public class FirebaseConfig {
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
         if (authEmulator != null) {
-            System.setProperty("FIREBASE_AUTH_EMULATOR_HOST", authEmulator);
             log.info("Using firebase auth emulator at {}", authEmulator);
         }
         FirebaseOptions options;

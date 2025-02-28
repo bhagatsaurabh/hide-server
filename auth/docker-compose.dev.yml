@@ -1,0 +1,17 @@
+services:
+  auth:
+    extends:
+      file: docker-compose.yml
+      service: auth
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+      SPRING_PROFILES_ACTIVE: local
+      FIREBASE_AUTH_EMULATOR_HOST: "host.docker.internal:9099"
+    build:
+      context: .
+      target: development
+    volumes:
+      - .:/app
+      - /app/build
+    command: ./gradlew bootRun --no-daemon
+    restart: unless-stopped
