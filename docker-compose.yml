@@ -1,0 +1,24 @@
+networks:
+  hide-network:
+    driver: bridge
+
+services:
+  service-registry:
+    container_name: service-registry
+    hostname: service-registry
+    extends:
+      file: ./service-registry/docker-compose.dev.yml
+      service: service-registry
+    networks:
+      - hide-network
+  gateway:
+    container_name: gateway
+    hostname: gateway
+    depends_on:
+      service-registry:
+        condition: service_healthy
+    extends:
+      file: ./gateway/docker-compose.dev.yml
+      service: gateway
+    networks:
+      - hide-network

@@ -1,0 +1,6 @@
+services:
+  service-registry:
+    build:
+      context: .
+    ports:
+      - "8761:8761"

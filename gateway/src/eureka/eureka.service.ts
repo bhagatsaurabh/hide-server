@@ -13,6 +13,7 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
   private heartbeatInterval: NodeJS.Timeout;
 
   async onModuleInit() {
+    console.log(`Eureka service: ${this.EUREKA_HOST}:${this.EUREKA_PORT}`);
     await this.registerWithEureka();
     this.heartbeatInterval = setInterval(() => void this.sendHeartbeat(), 30 * 1000);
 
