@@ -4,13 +4,16 @@ services:
       file: docker-compose.yml
       service: gateway
     build:
-      context: .
+      context: ../
+      dockerfile: gateway/dockerfile
       target: development
     volumes:
-      - .:/app
-      - /app/node_modules
+      - .:/app/gateway
+      - /app/gateway/node_modules
     environment:
       - NODE_ENV=development
       - EUREKA_HOST=service-registry
       - EUREKA_PORT=8761
-    command: npm run start:dev
+      - SERVICE_NAME=API-GATEWAY
+      - SERVICE_PORT=3001
+    command: [ "/bin/sh", "-c", "cd gateway && npm run start:dev" ]
