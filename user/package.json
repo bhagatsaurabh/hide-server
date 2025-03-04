@@ -1,16 +1,14 @@
 {
-  "name": "gateway",
+  "name": "user",
   "version": "0.0.1",
   "description": "",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "prebuild": "cd ../libs/eureka && npm run build",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "prestart:dev": "cd ../libs/eureka && npm run build",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
@@ -25,8 +23,8 @@
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",
+    "@nestjs/microservices": "^11.0.11",
     "@nestjs/platform-express": "^11.0.1",
-    "eureka": "file:../libs/eureka",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },

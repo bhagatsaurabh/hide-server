@@ -1,14 +1,17 @@
 FROM node:20-alpine AS base
 WORKDIR /app
-COPY package*.json ./
 
 FROM base AS development
-RUN npm install
-COPY . .
-CMD ["npm", "run", "start:dev"]
+COPY gateway ./gateway
+COPY libs/eureka ./libs/eureka
+RUN cd ./gateway && npm install
+RUN cd ./libs/eureka && npm install
+CMD ["cd", "gateway", "&&", "npm", "run", "start:dev"]
 
 FROM base AS production
 RUN npm install --omit=dev
-COPY . .
+COPY gateway .
+COPY libs/eureka ./libs/eureka
+RUN cd ./libs/eureka && npm install
 RUN npm run build
 CMD ["node", "dist/main.js"]

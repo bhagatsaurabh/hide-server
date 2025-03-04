@@ -17,6 +17,5 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
-  },
-  "references": [{ "path": "../libs/eureka" }]
+  }
 }
