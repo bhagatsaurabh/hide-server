@@ -1,7 +1,7 @@
 import { All, Controller, Param, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 
-import { EurekaService } from 'eureka';
+import { EurekaService } from 'hide-eureka';
 import { Authenticate } from 'src/common/decorator/auth.decorator';
 import { IUser } from 'src/common/models/user';
 import { AuthGuard } from 'src/common/guard/auth.guard';

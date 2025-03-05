@@ -6,9 +6,11 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "prebuild": "cd ../libs/eureka && npm run build && cd ../firebase && npm run build",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
+    "prestart:dev": "cd ../libs/eureka && npm run build && cd ../firebase && npm run build",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
@@ -25,6 +27,8 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/microservices": "^11.0.11",
     "@nestjs/platform-express": "^11.0.1",
+    "hide-eureka": "file:../libs/eureka",
+    "hide-firebase": "file:../libs/firebase",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },

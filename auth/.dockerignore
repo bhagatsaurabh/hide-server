@@ -1,0 +1,6 @@
+target
+build
+.git
+*.log
+.idea
+.gradle

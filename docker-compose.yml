@@ -22,6 +22,17 @@ services:
       service: gateway
     networks:
       - hide-network
+  user:
+    container_name: user
+    hostname: user
+    depends_on:
+      service-registry:
+        condition: service_healthy
+    extends:
+      file: ./user/docker-compose.dev.yml
+      service: user
+    networks:
+      - hide-network
   auth:
     container_name: auth
     hostname: auth
