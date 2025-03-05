@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EurekaModule } from 'hide-eureka';
 import { CoreModule } from './core/core.module';
-import { EurekaModule } from 'eureka';
 import { ProxyModule } from './proxy/proxy.module';
 
 @Module({

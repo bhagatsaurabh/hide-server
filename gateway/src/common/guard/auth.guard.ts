@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
-import { EurekaService } from 'eureka';
+import { EurekaService } from 'hide-eureka';
 import { IUser } from '../models/user';
 
 export interface AuthenticatedRequest extends Request {

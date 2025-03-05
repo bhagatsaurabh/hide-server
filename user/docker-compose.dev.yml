@@ -1,0 +1,23 @@
+services:
+  user:
+    extends:
+      file: docker-compose.yml
+      service: user
+    build:
+      context: ../
+      dockerfile: user/dockerfile
+      target: development
+    volumes:
+      - .:/app/user
+      - /app/user/node_modules
+    environment:
+      - NODE_ENV=development
+      - EUREKA_HOST=service-registry
+      - EUREKA_PORT=8761
+      - SERVICE_NAME=USER
+      - SERVICE_PORT=3002
+      - FIREBASE_EMULATION=true
+      - FIREBASE_AUTH_EMULATOR_HOST=host.docker.internal:9099
+      - FIRESTORE_EMULATOR_HOST=host.docker.internal:8085
+      - FIREBASE_STORAGE_EMULATOR_HOST=host.docker.internal:9199
+    command: [ "/bin/sh", "-c", "cd user && npm run start:dev" ]
