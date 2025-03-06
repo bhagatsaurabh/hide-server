@@ -23,11 +23,12 @@ export class AuthGuard implements CanActivate {
 
     try {
       const authServiceUrl = await this.eurekaService.getService('auth');
+      console.log(authServiceUrl);
       if (!authServiceUrl) {
         console.log('Auth service not found');
         throw new UnauthorizedException('Auth Service not found');
       }
-      const response = await fetch(`${authServiceUrl}/validate`, {
+      const response = await fetch(`${authServiceUrl}/api/validate`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

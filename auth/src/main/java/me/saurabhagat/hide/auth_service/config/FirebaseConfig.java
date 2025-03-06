@@ -1,5 +1,6 @@
 package me.saurabhagat.hide.auth_service.config;
 
+import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
@@ -21,15 +22,22 @@ public class FirebaseConfig {
     String authEmulator;
 
     @Value("${firebase.admin.key:}")
-    private Resource firebaseKeyPath;
+    Resource firebaseKeyPath;
 
     @Value("${firebase.admin.key.base64:}")
-    private String firebaseKeyBase64;
+    String firebaseKeyBase64;
+
+    @Value("${firebase.project.id}")
+    String projectId;
 
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
         if (authEmulator != null) {
             log.info("Using firebase auth emulator at {}", authEmulator);
+            return FirebaseApp.initializeApp(FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.create(AccessToken.newBuilder().build()))
+                    .setProjectId(projectId)
+                    .build());
         }
         FirebaseOptions options;
         if (Objects.nonNull(firebaseKeyPath) && firebaseKeyPath.exists()) {

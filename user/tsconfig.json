@@ -18,5 +18,8 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
   },
+  "watchOptions": {
+    "watchFile": "fixedPollingInterval"
+  },
   "references": [{ "path": "../libs/eureka" }, { "path": "../libs/firebase" }]
 }

@@ -3,15 +3,15 @@ WORKDIR /app
 
 FROM base AS development
 COPY gateway ./gateway
-COPY libs/eureka ./libs/eureka
-RUN cd ./gateway && npm install
-RUN cd ./libs/eureka && npm install
+COPY libs ./libs
+RUN cd ./gateway && npm ci
+RUN cd ./libs/eureka && npm ci
 CMD ["cd", "gateway", "&&", "npm", "run", "start:dev"]
 
 FROM base AS production
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 COPY gateway ./gateway
 COPY libs/eureka ./libs/eureka
-RUN cd ./gateway && npm install
-RUN cd ./libs/eureka && npm install
+RUN cd ./gateway && npm ci
+RUN cd ./libs/eureka && npm ci
 CMD ["node", "dist/main.js"]
