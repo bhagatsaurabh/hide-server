@@ -46,15 +46,15 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
   private async registerWithEureka() {
     const instance = {
       instanceId: this.INSTANCE_ID,
-      hostName: "localhost",
+      hostName: this.options.serviceName,
       app: this.options.serviceName.toUpperCase(),
-      ipAddr: "127.0.0.1",
+      ipAddr: this.options.serviceName,
       vipAddress: this.options.serviceName.toUpperCase(),
       secureVipAddress: this.options.serviceName.toUpperCase(),
       status: "UP",
       port: { $: this.options.servicePort },
-      homePageUrl: `http://localhost:${this.options.servicePort}/`,
-      healthCheckUrl: `http://localhost:${this.options.servicePort}/api/health`,
+      homePageUrl: `http://${this.options.serviceName}:${this.options.servicePort}/`,
+      healthCheckUrl: `http://${this.options.serviceName}:${this.options.servicePort}/api/health`,
       dataCenterInfo: {
         "@class": "com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo",
         name: "MyOwn",

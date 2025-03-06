@@ -4,16 +4,16 @@ WORKDIR /app
 FROM base AS development
 COPY user ./user
 COPY libs ./libs
-RUN cd ./user && npm install
-RUN cd ./libs/eureka && npm install
-RUN cd ./libs/firebase && npm install
+RUN cd ./user && npm ci
+RUN cd ./libs/eureka && npm ci
+RUN cd ./libs/firebase && npm ci
 CMD ["cd", "user", "&&", "npm", "run", "start:dev"]
 
 FROM base AS production
-RUN npm install --omit=dev
-COPY user .
-COPY libs/eureka ./libs/eureka
-RUN cd ./libs/eureka && npm install
-RUN cd ./libs/firebase && npm install
+RUN npm ci --omit=dev
+COPY user ./user
+COPY libs ./libs
+RUN cd ./libs/eureka && npm ci
+RUN cd ./libs/firebase && npm ci
 RUN npm run build
 CMD ["node", "dist/main.js"]

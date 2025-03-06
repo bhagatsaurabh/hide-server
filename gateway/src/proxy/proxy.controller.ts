@@ -23,6 +23,7 @@ export class ProxyController {
       console.log(user);
       console.log(service, action);
       const serviceUrl = await this.eurekaService.getService(service);
+      console.log('proxy start', serviceUrl);
       const response = await fetch(`${serviceUrl}/api/${action}`, {
         method: req.method,
         body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body),
@@ -31,6 +32,7 @@ export class ProxyController {
           'x-auth-user': Buffer.from(JSON.stringify(user)).toString('base64'),
         },
       });
+      console.log('proxy end');
 
       const responseData = await response.text();
       res.status(response.status).send(responseData);

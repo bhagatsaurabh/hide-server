@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { EurekaModule } from 'hide-eureka';
 import { FirebaseModule } from 'hide-firebase';
 import { CoreModule } from './core/core.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { CoreModule } from './core/core.module';
       emulate: !!process.env.FIREBASE_EMULATION,
     }),
     CoreModule,
+    ProfileModule,
   ],
 })
 export class AppModule {}

@@ -7,6 +7,7 @@ services:
       JAVA_OPTS: "-Xms256m -Xmx512m"
       SPRING_PROFILES_ACTIVE: local
       FIREBASE_AUTH_EMULATOR_HOST: "host.docker.internal:9099"
+      EUREKA_INSTANCE_HOSTNAME: "auth"
     build:
       context: .
       target: development
