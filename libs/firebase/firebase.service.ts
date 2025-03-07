@@ -12,14 +12,14 @@ export class FirebaseService implements OnModuleInit, OnModuleDestroy {
   readonly storage: Storage;
   constructor(private readonly options: FirebaseOptions) {
     if (this.options.emulate) {
-      this.app = initializeApp();
-      console.log('Using firebase emulators');
+      this.app = initializeApp({ projectId: process.env.FIREBASE_APP_ID });
+      console.log("Using firebase emulators");
     } else if (this.options.key) {
       this.app = initializeApp({
         credential: credential.cert(JSON.parse(this.options.key)),
       });
     } else {
-      console.log('Error: Either use firebase emulators or pass a key');
+      console.log("Error: Either use firebase emulators or pass a key");
     }
 
     this.firestore = getFirestore(this.app);

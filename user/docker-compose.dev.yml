@@ -20,4 +20,5 @@ services:
       - FIREBASE_AUTH_EMULATOR_HOST=host.docker.internal:9099
       - FIRESTORE_EMULATOR_HOST=host.docker.internal:8085
       - FIREBASE_STORAGE_EMULATOR_HOST=host.docker.internal:9199
+      - FIREBASE_APP_ID=hide-43a4b
     command: [ "/bin/sh", "-c", "cd user && npm run start:dev" ]
