@@ -26,8 +26,9 @@ services:
     container_name: user
     hostname: user
     depends_on:
-      service-registry:
-        condition: service_healthy
+      - redis
+      - service-registry:
+          condition: service_healthy
     extends:
       file: ./user/docker-compose.dev.yml
       service: user
@@ -53,5 +54,13 @@ services:
     volumes:
       - ./.typesense-data:/data
     command: '--data-dir /data --api-key=test --enable-cors'
+    networks:
+      - hide-network
+  redis:
+    image: redis:latest-alpine
+    container_name: redis
+    restart: on-failure
+    ports:
+      - "6379:6379"
     networks:
       - hide-network
