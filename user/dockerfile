@@ -6,8 +6,6 @@ FROM base AS development
 COPY user ./user
 COPY libs ./libs
 RUN cd ./user && npm ci
-# RUN cd ./libs/eureka && npm ci
-# RUN cd ./libs/firebase && npm ci
 RUN for dir in $(jq ".references[].path" ./user/tsconfig.json); do \
   (cd "${dir:2:-1}" && npm ci); \
   done
@@ -17,7 +15,8 @@ FROM base AS production
 RUN npm ci --omit=dev
 COPY user ./user
 COPY libs ./libs
-RUN cd ./libs/eureka && npm ci
-RUN cd ./libs/firebase && npm ci
-RUN npm run build
+RUN for dir in $(jq ".references[].path" ./user/tsconfig.json); do \
+  (cd "${dir:2:-1}" && npm ci); \
+  done
+RUN cd ./user && npm run build
 CMD ["node", "dist/main.js"]

@@ -5,6 +5,7 @@ import { EurekaModule } from 'hide-eureka';
 import { FirebaseModule } from 'hide-firebase';
 import { CoreModule } from './core/core.module';
 import { ProfileModule } from './profile/profile.module';
+import { SearchModule } from './search/search.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ProfileModule } from './profile/profile.module';
     }),
     CoreModule,
     ProfileModule,
+    SearchModule,
   ],
 })
 export class AppModule {}

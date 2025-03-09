@@ -1,10 +1,10 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
 import { EurekaService } from 'hide-eureka';
-import { IUser } from '../models/user';
+import { User } from 'hide-common/model/user';
 
 export interface AuthenticatedRequest extends Request {
-  user?: IUser;
+  user?: User;
 }
 
 @Injectable()
@@ -35,7 +35,7 @@ export class AuthGuard implements CanActivate {
       if (!response.ok) {
         throw new UnauthorizedException('Invalid token');
       }
-      const userData = (await response.json()) as IUser;
+      const userData = (await response.json()) as User;
       request.user = userData;
       return true;
     } catch (error) {
