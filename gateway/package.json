@@ -6,11 +6,11 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "prebuild": "cd ../libs/eureka && npm run build",
+    "prebuild": "tsc -b",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "prestart:dev": "cd ../libs/eureka && npm run build",
+    "prestart:dev": "tsc -b",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
@@ -26,6 +26,7 @@
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "hide-common": "file:../libs/common",
     "hide-eureka": "file:../libs/eureka",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

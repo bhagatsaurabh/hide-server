@@ -1,17 +1,22 @@
 FROM node:20-alpine AS base
+RUN apk add jq
 WORKDIR /app
 
 FROM base AS development
 COPY gateway ./gateway
 COPY libs ./libs
-RUN cd ./gateway && npm ci
-RUN cd ./libs/eureka && npm ci
+RUN cd ./gateway && rm -rf node_modules && npm ci
+RUN for dir in $(jq ".references[].path" ./gateway/tsconfig.json); do \
+  (cd "${dir:2:-1}" && npm ci); \
+  done
 CMD ["cd", "gateway", "&&", "npm", "run", "start:dev"]
 
 FROM base AS production
 RUN npm ci --omit=dev
 COPY gateway ./gateway
-COPY libs/eureka ./libs/eureka
-RUN cd ./gateway && npm ci
-RUN cd ./libs/eureka && npm ci
+COPY libs ./libs
+RUN for dir in $(jq ".references[].path" ./gateway/tsconfig.json); do \
+  (cd "${dir:2:-1}" && npm ci); \
+  done
+RUN cd ./gateway && npm run build
 CMD ["node", "dist/main.js"]
