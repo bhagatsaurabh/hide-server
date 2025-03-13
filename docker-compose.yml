@@ -26,9 +26,10 @@ services:
     container_name: user
     hostname: user
     depends_on:
-      - redis
-      - service-registry:
-          condition: service_healthy
+      service-registry:
+        condition: service_healthy
+      redis:
+        condition: service_started
     extends:
       file: ./user/docker-compose.dev.yml
       service: user
@@ -45,6 +46,30 @@ services:
       service: auth
     networks:
       - hide-network
+  postgres:
+    image: postgres:alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASS}
+      POSTGRES_DB: workspacedb
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./.env
+    volumes:
+      - ./.postgres-data:/var/lib/postgresql/data
+    networks:
+      - hide-network
+  adminer:
+    image: adminer
+    container_name: adminer
+    restart: unless-stopped
+    ports:
+      - 8087:8080
+    networks:
+      - hide-network
   typesense:
     container_name: typesense
     image: typesense/typesense:28.0
@@ -57,7 +82,7 @@ services:
     networks:
       - hide-network
   redis:
-    image: redis:latest-alpine
+    image: redis:alpine
     container_name: redis
     restart: on-failure
     ports:

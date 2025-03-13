@@ -1,1 +1,3 @@
 .typesense-data/
+.postgres-data/
+.env
