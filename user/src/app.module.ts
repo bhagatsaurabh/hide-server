@@ -3,9 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { readFileSync } from 'node:fs';
 import { EurekaModule } from 'hide-eureka';
 import { FirebaseModule } from 'hide-firebase';
-import { CoreModule } from './core/core.module';
 import { ProfileModule } from './profile/profile.module';
 import { SearchModule } from './search/search.module';
+import { RedisModule } from 'hide-redis';
 
 @Module({
   imports: [
@@ -24,7 +24,7 @@ import { SearchModule } from './search/search.module';
           : Buffer.from(process.env.FIREBASE_KEY_BASE64!, 'base64').toString(),
       emulate: !!process.env.FIREBASE_EMULATION,
     }),
-    CoreModule,
+    RedisModule.register({ host: process.env.REDIS_HOST!, port: process.env.REDIS_PORT! }),
     ProfileModule,
     SearchModule,
   ],

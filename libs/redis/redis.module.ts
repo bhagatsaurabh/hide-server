@@ -4,8 +4,8 @@ import { createKeyv } from "@keyv/redis";
 import { RedisService } from "./redis.service";
 
 export interface RedisOptions {
-  host?: string;
-  port?: boolean;
+  host: string;
+  port: string | number;
 }
 
 @Module({})

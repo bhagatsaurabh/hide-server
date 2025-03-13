@@ -5,6 +5,7 @@
 **/.git
 .git
 .typesense-data
+.postgres-data
 
 **/logs
 **/*.log
