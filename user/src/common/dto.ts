@@ -4,3 +4,8 @@ export type UserSearchDTO = {
   data: Partial<User>[];
   page: number;
 };
+
+export type CreateUserDTO = {
+  name: string;
+  username: string;
+};

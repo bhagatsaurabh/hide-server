@@ -1,0 +1,26 @@
+services:
+  workspace:
+    extends:
+      file: docker-compose.yml
+      service: workspace
+    build:
+      context: ../
+      dockerfile: workspace/dockerfile
+      target: development
+    volumes:
+      - .:/app/workspace
+      - /app/workspace/node_modules
+    environment:
+      - NODE_ENV=development
+      - EUREKA_HOST=service-registry
+      - EUREKA_PORT=8761
+      - SERVICE_NAME=WORKSPACE
+      - SERVICE_PORT=3003
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=admin
+      - POSTGRES_PASS=${POSTGRES_PASS}
+      - POSTGRES_DB=workspacedb
+    env_file:
+      - ./.env.local
+    command: [ "/bin/sh", "-c", "cd workspace && npm run start:dev" ]

@@ -74,6 +74,7 @@ export class SearchService {
     });
     cachedUsers = await Promise.all(dbPromises);
 
+    cachedUsers.forEach((user) => delete user?.issuer);
     return this.hideConfidentialFields(cachedUsers, uid);
   }
 

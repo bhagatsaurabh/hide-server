@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { SearchService } from './search.service';
-import { UserHeader } from 'src/common/decorators';
+import { UserHeader } from 'hide-common/decorator/user-header';
 import { User } from 'hide-common/dto/user';
+import { SearchService } from './search.service';
 
-@Controller()
+@Controller('api')
 export class SearchController {
   constructor(private readonly searchService: SearchService) {}
 
@@ -17,13 +17,13 @@ export class SearchController {
     return await this.searchService.getProfile(user.uid, user.uid);
   }
 
-  @Get(':uid')
-  async one(@Param('uid') uid: string, @UserHeader() user: User) {
-    return await this.searchService.getProfile(uid, user.uid);
-  }
-
   @Post('all')
   async all(@Body() ids: string[], @UserHeader() user: User) {
     return await this.searchService.getUsers(ids, user.uid);
+  }
+
+  @Get(':uid')
+  async one(@Param('uid') uid: string, @UserHeader() user: User) {
+    return await this.searchService.getProfile(uid, user.uid);
   }
 }
