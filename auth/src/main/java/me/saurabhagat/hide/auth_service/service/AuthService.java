@@ -15,6 +15,7 @@ public class AuthService {
             var firebaseAuth = FirebaseAuth.getInstance();
             log.info(token);
             FirebaseToken decodedToken = firebaseAuth.verifyIdToken(token);
+            // TODO: Get name & username from firestore
             log.info("done");
             return new User(
                     decodedToken.getUid(),

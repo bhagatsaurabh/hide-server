@@ -5,7 +5,7 @@ WORKDIR /app
 FROM base AS development
 COPY gateway ./gateway
 COPY libs ./libs
-RUN cd ./gateway && rm -rf node_modules && npm ci
+RUN cd ./gateway && npm ci
 RUN for dir in $(jq ".references[].path" ./gateway/tsconfig.json); do \
   (cd "${dir:2:-1}" && npm ci); \
   done

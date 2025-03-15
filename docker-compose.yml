@@ -35,6 +35,19 @@ services:
       service: user
     networks:
       - hide-network
+  workspace:
+    container_name: workspace
+    hostname: workspace
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+    extends:
+      file: ./workspace/docker-compose.dev.yml
+      service: workspace
+    networks:
+      - hide-network
   auth:
     container_name: auth
     hostname: auth

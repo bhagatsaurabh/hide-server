@@ -1,0 +1,22 @@
+FROM node:20-alpine AS base
+RUN apk add jq
+WORKDIR /app
+
+FROM base AS development
+COPY workspace ./workspace
+COPY libs ./libs
+RUN cd ./workspace && npm ci
+RUN for dir in $(jq ".references[].path" ./workspace/tsconfig.json); do \
+  (cd "${dir:2:-1}" && npm ci); \
+  done
+CMD ["cd", "workspace", "&&", "npm", "run", "start:dev"]
+
+FROM base AS production
+RUN npm ci --omit=dev
+COPY workspace ./workspace
+COPY libs ./libs
+RUN for dir in $(jq ".references[].path" ./workspace/tsconfig.json); do \
+  (cd "${dir:2:-1}" && npm ci); \
+  done
+RUN cd ./workspace && npm run build
+CMD ["node", "dist/main.js"]
