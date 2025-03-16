@@ -1,0 +1,22 @@
+services:
+  notification:
+    extends:
+      file: docker-compose.yml
+      service: notification
+    build:
+      context: ../
+      dockerfile: notification/dockerfile
+      target: development
+    volumes:
+      - .:/app/notification
+      - /app/notification/node_modules
+    environment:
+      - NODE_ENV=development
+      - EUREKA_HOST=service-registry
+      - EUREKA_PORT=8761
+      - SERVICE_NAME=NOTIFICATION
+      - SERVICE_PORT=3004
+      - RMQ_URL=amqp://rabbitmq:5672
+    env_file:
+      - ./.env.local
+    command: [ "/bin/sh", "-c", "cd notification && npm run start:dev" ]
