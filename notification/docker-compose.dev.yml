@@ -17,6 +17,13 @@ services:
       - SERVICE_NAME=NOTIFICATION
       - SERVICE_PORT=3004
       - RMQ_URL=amqp://rabbitmq:5672
+      - FIREBASE_EMULATION=true
+      - FIREBASE_AUTH_EMULATOR_HOST=host.docker.internal:9099
+      - FIRESTORE_EMULATOR_HOST=host.docker.internal:8085
+      - FIREBASE_STORAGE_EMULATOR_HOST=host.docker.internal:9199
+      - FIREBASE_APP_ID=hide-43a4b
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     env_file:
       - ./.env.local
     command: [ "/bin/sh", "-c", "cd notification && npm run start:dev" ]

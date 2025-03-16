@@ -16,4 +16,6 @@ services:
       - EUREKA_PORT=8761
       - SERVICE_NAME=API-GATEWAY
       - SERVICE_PORT=3001
+      - CORS_ORIGIN=*
+      - RMQ_URL=amqp://rabbitmq:5672
     command: [ "/bin/sh", "-c", "cd gateway && npm run start:dev" ]

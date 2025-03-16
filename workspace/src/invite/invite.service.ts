@@ -10,7 +10,11 @@ import { ClientProxy } from '@nestjs/microservices';
 import { sign, verify } from 'jsonwebtoken';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { NotificationMessage, NotificationType } from 'hide-common/message/notification.message';
+import {
+  InvitationData,
+  NotificationMessage,
+  NotificationType,
+} from 'hide-common/message/notification.message';
 import { InviteDTO } from 'src/common/dto/invite.dto';
 import { Workspace } from 'src/common/model/workspace.entity';
 import { Membership } from 'src/common/model/membership.entity';
@@ -42,7 +46,7 @@ export class InviteService {
       validTill: expiryDate.getTime(),
     };
     const jwt = (sign as JWTSignFn<InvitationPayload>)(payload, process.env.WORKSPACE_SERVICE_SECRET!);
-    this.client.emit<any, NotificationMessage>('notify', {
+    this.client.emit<any, NotificationMessage<InvitationData>>('notify', {
       uid: inviteeId,
       type: NotificationType.WORKSPACE_INVITE,
       data: { inviterId, workspaceUUID, token: jwt },
