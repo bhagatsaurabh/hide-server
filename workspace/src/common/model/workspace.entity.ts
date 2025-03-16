@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany, Generated } from 'typeorm';
 import { Membership } from './membership.entity';
 
 @Entity()
@@ -10,6 +10,10 @@ export class Workspace {
 
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: number;
+
+  @Column({ type: 'uuid', unique: true })
+  @Generated('uuid')
+  uuid: string;
 
   @Column({ nullable: false, length: 30 })
   name: string;

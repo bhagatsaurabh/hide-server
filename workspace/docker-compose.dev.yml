@@ -21,6 +21,8 @@ services:
       - POSTGRES_USER=admin
       - POSTGRES_PASS=${POSTGRES_PASS}
       - POSTGRES_DB=workspacedb
+      - RMQ_URL=amqp://rabbitmq:5672
+      - WORKSPACE_SERVICE_SECRET=${WORKSPACE_SERVICE_SECRET}
     env_file:
       - ./.env.local
     command: [ "/bin/sh", "-c", "cd workspace && npm run start:dev" ]

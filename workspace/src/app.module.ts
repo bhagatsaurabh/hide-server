@@ -2,11 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EurekaModule } from 'hide-eureka';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { Workspace } from './common/model/workspace.entity';
 import { ManageModule } from './manage/manage.module';
 import { InviteModule } from './invite/invite.module';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [
@@ -27,10 +26,21 @@ import { InviteModule } from './invite/invite.module';
       entities: [Workspace],
       synchronize: process.env.NODE_ENV === 'development',
     }),
+    ClientsModule.register([
+      {
+        name: 'WORKSPACE_SERVICE',
+        transport: Transport.RMQ,
+        options: {
+          urls: [process.env.RMQ_URL!],
+          queue: 'default',
+          queueOptions: {
+            durable: false,
+          },
+        },
+      },
+    ]),
     ManageModule,
     InviteModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}
