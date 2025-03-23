@@ -8,7 +8,6 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Cache } from '@nestjs/cache-manager';
-import { EurekaService } from 'hide-eureka';
 import { RedisService } from 'hide-redis';
 import { User } from 'hide-common/dto/user';
 import { SocketData } from 'src/utils/types';
@@ -26,7 +25,6 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private cache: Cache;
   constructor(
     @Inject('GATEWAY_SERVICE') private client: ClientProxy,
-    private readonly eurekaService: EurekaService,
     private readonly redisService: RedisService,
   ) {
     this.cache = this.redisService.get();
@@ -53,8 +51,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleAuthentication(token: string) {
     try {
-      const authServiceUrl = await this.eurekaService.getService('auth');
-      const response = await fetch(`${authServiceUrl}/api/validate`, {
+      const response = await fetch(`http://auth/api/validate`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

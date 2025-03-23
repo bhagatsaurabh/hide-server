@@ -1,6 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
-import { EurekaService } from 'hide-eureka';
 import { User } from 'hide-common/model/user';
 
 export interface AuthenticatedRequest extends Request {
@@ -9,7 +8,7 @@ export interface AuthenticatedRequest extends Request {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly eurekaService: EurekaService) {}
+  constructor() {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
@@ -22,13 +21,7 @@ export class AuthGuard implements CanActivate {
     token = token.startsWith('Bearer ') ? token.split(' ')[1] : token;
 
     try {
-      const authServiceUrl = await this.eurekaService.getService('auth');
-      console.log(authServiceUrl);
-      if (!authServiceUrl) {
-        console.log('Auth service not found');
-        throw new UnauthorizedException('Auth Service not found');
-      }
-      const response = await fetch(`${authServiceUrl}/api/validate`, {
+      const response = await fetch(`http://auth/api/validate`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

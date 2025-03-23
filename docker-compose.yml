@@ -3,14 +3,6 @@ networks:
     driver: bridge
 
 services:
-  service-registry:
-    container_name: service-registry
-    hostname: service-registry
-    extends:
-      file: ./service-registry/docker-compose.dev.yml
-      service: service-registry
-    networks:
-      - hide-network
   gateway:
     container_name: gateway
     hostname: gateway
@@ -95,20 +87,14 @@ services:
     networks:
       - hide-network
   redis:
-    image: redis:alpine
-    container_name: redis
-    restart: on-failure
-    ports:
-      - "6379:6379"
+    extends:
+      file: ./redis/docker-compose.dev.yml
+      service: redis
     networks:
       - hide-network
   rabbitmq:
-    image: rabbitmq:management-alpine
-    container_name: rabbitmq
-    ports:
-      - 5672:5672
-      - 15672:15672
-    volumes:
-      - ./.rabbitmq-data:/var/lib/rabbitmq
+    extends:
+      file: ./rmq/docker-compose.dev.yml
+      service: rabbitmq
     networks:
       - hide-network
