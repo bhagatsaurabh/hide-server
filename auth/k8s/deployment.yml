@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+        - name: auth
+          image: hide-server-auth-release:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: JAVA_OPTS
+              value: "-Xms256m -Xmx512m"
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: HIDE_FIREBASE_ADMIN_KEY_BASE64
+              valueFrom:
+                secretKeyRef:
+                  name: firebase-key
+                  key: HIDE_FIREBASE_ADMIN_KEY_BASE64

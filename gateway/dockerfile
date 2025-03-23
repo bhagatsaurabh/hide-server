@@ -9,14 +9,21 @@ RUN cd ./gateway && npm ci
 RUN for dir in $(jq ".references[].path" ./gateway/tsconfig.json); do \
   (cd "${dir:2:-1}" && npm ci); \
   done
-CMD ["cd", "gateway", "&&", "npm", "run", "start:dev"]
+CMD ["/bin/sh", "-c", "cd gateway && npm run start:dev"]
 
-FROM base AS production
-RUN npm ci --omit=dev
+FROM base AS builder
 COPY gateway ./gateway
 COPY libs ./libs
+RUN cd ./gateway && npm ci
 RUN for dir in $(jq ".references[].path" ./gateway/tsconfig.json); do \
   (cd "${dir:2:-1}" && npm ci); \
   done
-RUN cd ./gateway && npm run build
-CMD ["node", "dist/main.js"]
+RUN npm run build --prefix gateway
+
+FROM base AS production
+COPY --from=builder /app/gateway/dist ./gateway/dist
+COPY --from=builder /app/gateway/package.json ./gateway/package.json
+COPY --from=builder /app/gateway/package-lock.json ./gateway/package-lock.json
+COPY --from=builder /app/gateway/node_modules ./gateway/node_modules
+COPY --from=builder /app/libs ./libs
+CMD ["/bin/sh", "-c", "cd gateway && npm run start:prod"]

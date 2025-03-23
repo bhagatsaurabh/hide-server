@@ -27,7 +27,7 @@ public class FirebaseConfig {
     @Value("${firebase.admin.key.base64:}")
     String firebaseKeyBase64;
 
-    @Value("${firebase.project.id}")
+    @Value("${firebase.project.id:}")
     String projectId;
 
     @Bean

@@ -1,18 +1,17 @@
 services:
   auth:
-    extends:
-      file: docker-compose.yml
-      service: auth
+    ports:
+      - 8080:8080
+    build:
+      context: ../
+      dockerfile: auth/dockerfile
+      target: development
+    image: hide-server-auth
+    volumes:
+      - .:/app
+      - /app/build
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m"
       SPRING_PROFILES_ACTIVE: local
       FIREBASE_AUTH_EMULATOR_HOST: "host.docker.internal:9099"
-      EUREKA_INSTANCE_HOSTNAME: "auth"
-    build:
-      context: .
-      target: development
-    volumes:
-      - .:/app
-      - /app/build
     command: ./gradlew bootRun --no-daemon
-    restart: unless-stopped

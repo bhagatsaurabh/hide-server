@@ -34,7 +34,6 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'com.google.firebase:firebase-admin:9.4.3'
-    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
 }
 
@@ -46,4 +45,8 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+task image(type: Exec) {
+    commandLine 'docker', 'build', '--target', 'production', '-f', 'dockerfile', '-t', 'hide-server-auth-release:latest', '.'
 }

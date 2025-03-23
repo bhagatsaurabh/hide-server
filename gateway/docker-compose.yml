@@ -1,6 +1,17 @@
 services:
   gateway:
-    build:
-      context: .
     ports:
-      - "3001:3001"
+      - 3001:3001
+    build:
+      context: ../
+      dockerfile: gateway/dockerfile
+      target: production
+    image: hide-server-gateway-release
+    environment:
+      - NODE_ENV=production
+      - SERVICE_PORT=3001
+      - CORS_ORIGIN=*
+      - RMQ_URL=amqp://rabbitmq:5672
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    command: [ "/bin/sh", "-c", "cd gateway && npm run start:prod" ]
