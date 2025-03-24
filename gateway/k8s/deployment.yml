@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: hide-server-gateway-release:latest
-          imagePullPolicy: Never
+          image: hideregistry.azurecr.io/hide-server-gateway:latest
+          # imagePullPolicy: Never
           ports:
             - containerPort: 3001
           env:
@@ -31,6 +31,8 @@ spec:
               value: redis
             - name: REDIS_PORT
               value: '6379'
+      imagePullSecrets:
+        - name: acr-secret
       initContainers:
         - name: init-redis
           image: busybox:1.28

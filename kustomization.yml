@@ -11,3 +11,5 @@ resources:
   - ./gateway/k8s/service.yml
   - ./auth/k8s/deployment.yml
   - ./auth/k8s/service.yml
+  - ./k8s/gateway-ingress.yml
+  - ./k8s/cluster-issuer.yml
