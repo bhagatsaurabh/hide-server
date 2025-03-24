@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: typesense
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: typesense
+  template:
+    metadata:
+      labels:
+        app: typesense
+    spec:
+      containers:
+        - name: typesense
+          image: typesense/typesense:28.0
+          ports:
+            - containerPort: 8108
+          volumeMounts:
+            - name: data-volume
+              mountPath: /data
+          command: ["typesense"]
+          args:
+            [
+              "--data-dir",
+              "/data",
+              "--api-key",
+              "$(TYPESENSE_API_KEY)",
+              "--enable-cors",
+            ]
+          env:
+            - name: TYPESENSE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: typesense-secret
+                  key: api-key
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: typesense-pvc

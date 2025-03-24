@@ -1,8 +1,7 @@
 services:
   user:
-    extends:
-      file: docker-compose.yml
-      service: user
+    ports:
+      - 3001:3001
     build:
       context: ../
       dockerfile: user/dockerfile
@@ -12,9 +11,6 @@ services:
       - /app/user/node_modules
     environment:
       - NODE_ENV=development
-      - EUREKA_HOST=service-registry
-      - EUREKA_PORT=8761
-      - SERVICE_NAME=USER
       - SERVICE_PORT=3002
       - FIREBASE_EMULATION=true
       - FIREBASE_AUTH_EMULATOR_HOST=host.docker.internal:9099
