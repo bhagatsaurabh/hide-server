@@ -1,6 +1,0 @@
-services:
-  user:
-    build:
-      context: .
-    ports:
-      - "3002:3002"

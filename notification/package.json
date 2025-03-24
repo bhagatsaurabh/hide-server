@@ -28,7 +28,6 @@
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.5",
     "hide-common": "file:../libs/common",
-    "hide-eureka": "file:../libs/eureka",
     "hide-firebase": "file:../libs/firebase",
     "hide-redis": "file:../libs/redis",
     "reflect-metadata": "^0.2.2",

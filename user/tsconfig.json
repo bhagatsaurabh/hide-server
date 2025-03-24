@@ -23,7 +23,6 @@
   },
   "references": [
     { "path": "../libs/common" },
-    { "path": "../libs/eureka" },
     { "path": "../libs/firebase" },
     { "path": "../libs/redis" }
   ]

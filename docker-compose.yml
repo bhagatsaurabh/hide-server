@@ -6,9 +6,6 @@ services:
   gateway:
     container_name: gateway
     hostname: gateway
-    depends_on:
-      service-registry:
-        condition: service_healthy
     extends:
       file: ./gateway/docker-compose.dev.yml
       service: gateway
@@ -18,8 +15,6 @@ services:
     container_name: user
     hostname: user
     depends_on:
-      service-registry:
-        condition: service_healthy
       redis:
         condition: service_started
     extends:
@@ -76,14 +71,9 @@ services:
     networks:
       - hide-network
   typesense:
-    container_name: typesense
-    image: typesense/typesense:28.0
-    restart: on-failure
-    ports:
-      - "8108:8108"
-    volumes:
-      - ./.typesense-data:/data
-    command: '--data-dir /data --api-key=test --enable-cors'
+    extends:
+      file: ./typesense/docker-compose.dev.yml
+      service: typesense
     networks:
       - hide-network
   redis:

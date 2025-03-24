@@ -9,14 +9,21 @@ RUN cd ./user && npm ci
 RUN for dir in $(jq ".references[].path" ./user/tsconfig.json); do \
   (cd "${dir:2:-1}" && npm ci); \
   done
-CMD ["cd", "user", "&&", "npm", "run", "start:dev"]
+CMD ["/bin/sh", "-c", "cd user && npm run start:dev"]
 
-FROM base AS production
-RUN npm ci --omit=dev
+FROM base AS builder
 COPY user ./user
 COPY libs ./libs
+RUN cd ./user && npm ci
 RUN for dir in $(jq ".references[].path" ./user/tsconfig.json); do \
   (cd "${dir:2:-1}" && npm ci); \
   done
-RUN cd ./user && npm run build
-CMD ["node", "dist/main.js"]
+RUN npm run build --prefix user
+
+FROM base AS production
+COPY --from=builder /app/user/dist ./user/dist
+COPY --from=builder /app/user/package.json ./user/package.json
+COPY --from=builder /app/user/package-lock.json ./user/package-lock.json
+COPY --from=builder /app/user/node_modules ./user/node_modules
+COPY --from=builder /app/libs ./libs
+CMD ["/bin/sh", "-c", "cd user && npm run start:prod"]
