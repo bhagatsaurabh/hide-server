@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workspace-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: workspace
+  template:
+    metadata:
+      labels:
+        app: workspace
+    spec:
+      containers:
+        - name: workspace
+          image: hideregistry.azurecr.io/hide-server-workspace:latest
+          # imagePullPolicy: Never
+          ports:
+            - containerPort: 3003
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: SERVICE_PORT
+              value: '3003'
+            - name: RMQ_URL
+              value: 'amqp://rabbitmq:5672'
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_PORT
+              value: 5432
+            - name: POSTGRES_USER
+              value: admin
+            - name: POSTGRES_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: workspacedb
+            - name: WORKSPACE_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: workspace-service-secret
+                  key: WORKSPACE_SERVICE_SECRET
+      imagePullSecrets:
+        - name: acr-secret
+      initContainers:
+        - name: init-postgres
+          image: busybox:1.28
+          command:
+            [
+              'sh',
+              '-c',
+              'until nslookup postgres.default.svc.cluster.local; do echo waiting for postgres; sleep 2; done',
+            ]
+        - name: init-rmq
+          image: busybox:1.28
+          command:
+            [
+              'sh',
+              '-c',
+              'until nslookup rabbitmq.default.svc.cluster.local; do echo waiting for rabbitmq; sleep 2; done',
+            ]

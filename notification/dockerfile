@@ -9,14 +9,21 @@ RUN cd ./notification && npm ci
 RUN for dir in $(jq ".references[].path" ./notification/tsconfig.json); do \
   (cd "${dir:2:-1}" && npm ci); \
   done
-CMD ["cd", "notification", "&&", "npm", "run", "start:dev"]
+CMD ["/bin/sh", "-c", "cd notification && npm run start:dev"]
 
-FROM base AS production
-RUN npm ci --omit=dev
+FROM base AS builder
 COPY notification ./notification
 COPY libs ./libs
+RUN cd ./notification && npm ci
 RUN for dir in $(jq ".references[].path" ./notification/tsconfig.json); do \
   (cd "${dir:2:-1}" && npm ci); \
   done
-RUN cd ./notification && npm run build
-CMD ["node", "dist/main.js"]
+RUN npm run build --prefix notification
+
+FROM base AS production
+COPY --from=builder /app/notification/dist ./notification/dist
+COPY --from=builder /app/notification/package.json ./notification/package.json
+COPY --from=builder /app/notification/package-lock.json ./notification/package-lock.json
+COPY --from=builder /app/notification/node_modules ./notification/node_modules
+COPY --from=builder /app/libs ./libs
+CMD ["/bin/sh", "-c", "cd notification && npm run start:prod"]

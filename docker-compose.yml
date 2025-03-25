@@ -6,6 +6,11 @@ services:
   gateway:
     container_name: gateway
     hostname: gateway
+    depends_on:
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     extends:
       file: ./gateway/docker-compose.dev.yml
       service: gateway
@@ -22,13 +27,26 @@ services:
       service: user
     networks:
       - hide-network
+  notification:
+    container_name: notification
+    hostname: notification
+    depends_on:
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    extends:
+      file: ./notification/docker-compose.dev.yml
+      service: notification
+    networks:
+      - hide-network
   workspace:
     container_name: workspace
     hostname: workspace
     depends_on:
-      service-registry:
-        condition: service_healthy
       postgres:
+        condition: service_started
+      rabbitmq:
         condition: service_started
     extends:
       file: ./workspace/docker-compose.dev.yml
@@ -38,28 +56,15 @@ services:
   auth:
     container_name: auth
     hostname: auth
-    depends_on:
-      service-registry:
-        condition: service_healthy
     extends:
       file: ./auth/docker-compose.dev.yml
       service: auth
     networks:
       - hide-network
   postgres:
-    image: postgres:alpine
-    container_name: postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASS}
-      POSTGRES_DB: workspacedb
-    ports:
-      - "5432:5432"
-    env_file:
-      - ./.env
-    volumes:
-      - ./.postgres-data:/var/lib/postgresql/data
+    extends:
+      file: ./postgres/docker-compose.dev.yml
+      service: postgres
     networks:
       - hide-network
   adminer:
