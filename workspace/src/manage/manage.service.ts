@@ -1,7 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { EurekaService } from 'hide-eureka';
 import { User } from 'hide-common/dto/user';
 import { CreateDTO } from 'src/common/dto/create.dto';
 import { Membership } from 'src/common/model/membership.entity';
@@ -16,7 +15,6 @@ export class ManageService {
     @InjectRepository(Workspace) private wsRepository: Repository<Workspace>,
     @InjectRepository(Membership) private msRepository: Repository<Membership>,
     private dataSource: DataSource,
-    private readonly eurekaService: EurekaService,
   ) {}
 
   async createWorkspace(uid: string, data: Partial<CreateDTO>) {
@@ -81,8 +79,6 @@ export class ManageService {
   }
 
   async getAllWorkspaces(uid: string) {
-    const userServiceUrl = await this.eurekaService.getService('user');
-
     const workspaces = await this.wsRepository
       .createQueryBuilder('workspace')
       .innerJoinAndSelect('workspace.memberships', 'membership')
@@ -93,7 +89,7 @@ export class ManageService {
     for (const workspace of workspaces) {
       userIds.push(...workspace.memberships.map((membership) => membership.userId).slice(0, 3));
     }
-    const response = await fetch(`${userServiceUrl}/api/all`, {
+    const response = await fetch(`http://user/api/all`, {
       method: 'POST',
       body: JSON.stringify(userIds),
     });

@@ -1,6 +1,0 @@
-services:
-  workspace:
-    build:
-      context: .
-    ports:
-      - "3003:3003"

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASS}
+      POSTGRES_DB: workspacedb
+    ports:
+      - 5432:5432
+    env_file:
+      - ./.env
+    volumes:
+      - ./.postgres-data:/var/lib/postgresql/data

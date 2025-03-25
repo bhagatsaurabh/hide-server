@@ -2,14 +2,21 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
+  - ./k8s/gateway-ingress.yml
+  - ./k8s/cluster-issuer.yml
   - ./rmq/k8s/deployment.yml
   - ./rmq/k8s/service.yml
   - ./rmq/k8s/pvc.yml
+  - ./postgres/k8s/deployment.yml
+  - ./postgres/k8s/service.yml
+  - ./postgres/k8s/pvc.yml
   - ./redis/k8s/deployment.yml
   - ./redis/k8s/service.yml
   - ./gateway/k8s/deployment.yml
   - ./gateway/k8s/service.yml
   - ./auth/k8s/deployment.yml
   - ./auth/k8s/service.yml
-  - ./k8s/gateway-ingress.yml
-  - ./k8s/cluster-issuer.yml
+  - ./notification/k8s/deployment.yml
+  - ./notification/k8s/service.yml
+  - ./workspace/k8s/deployment.yml
+  - ./workspace/k8s/service.yml

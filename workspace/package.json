@@ -31,7 +31,6 @@
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.5",
     "hide-common": "file:../libs/common",
-    "hide-eureka": "file:../libs/eureka",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.14.0",
     "reflect-metadata": "^0.2.2",
