@@ -1,3 +1,7 @@
 {
-  "git.ignoreLimitWarning": true
+  "git.ignoreLimitWarning": true,
+  "gopls": {
+    "directoryFilters": ["-node_modules", "-vendor", "-out", "-dist", "-build"],
+    "completionBudget": "100ms"
+  }
 }
