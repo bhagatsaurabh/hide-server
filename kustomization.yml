@@ -20,3 +20,5 @@ resources:
   - ./notification/k8s/service.yml
   - ./workspace/k8s/deployment.yml
   - ./workspace/k8s/service.yml
+  - ./provisioner/k8s/deployment.yml
+  - ./provisioner/k8s/service.yml

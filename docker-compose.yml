@@ -61,6 +61,14 @@ services:
       service: auth
     networks:
       - hide-network
+  provisioner:
+    container_name: provisioner
+    hostname: provisioner
+    extends:
+      file: ./provisioner/docker-compose.dev.yml
+      service: provisioner
+    networks:
+      - hide-network
   postgres:
     extends:
       file: ./postgres/docker-compose.dev.yml

@@ -1,0 +1,20 @@
+FROM golang:1.21 as builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o ./.build/main .
+
+FROM golang:1.21 as dev
+WORKDIR /app
+RUN go install github.com/cosmtrek/air@latest
+COPY . .
+CMD ["air", "-c", ".air.toml"]
+
+
+FROM alpine:latest as prod
+WORKDIR /app
+COPY --from=builder /app/.build/main .
+RUN chmod +x provision-service
+EXPOSE 8080
+CMD ["./main"]
