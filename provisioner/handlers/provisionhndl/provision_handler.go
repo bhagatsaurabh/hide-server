@@ -9,7 +9,8 @@ import (
 )
 
 type ProvisionDTO struct {
-	Message string `json:"message"`
+	PrivateKey string `json:"privateKey"`
+	Message    string `json:"message"`
 }
 
 func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +28,8 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := provisionsvc.CreateK8sPod(req); err != nil {
+	privateKey, err := provisionsvc.CreateK8sPod(req)
+	if err != nil {
 		log.Println(err.Error())
 		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to provision pod")
 		return
@@ -35,8 +37,8 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-
 	json.NewEncoder(w).Encode(ProvisionDTO{
-		Message: "Pod created successfully",
+		Message:    "Pod created successfully",
+		PrivateKey: privateKey,
 	})
 }

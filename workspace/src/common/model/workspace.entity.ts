@@ -3,9 +3,16 @@ import { Membership } from './membership.entity';
 
 @Entity()
 export class Workspace {
-  constructor(data: { name?: string; description?: string } = {}) {
-    this.name = data.name ?? this.name;
-    this.description = data.description ?? this.description;
+  constructor(data: Partial<Workspace> = {}) {
+    if (data.name) {
+      this.name = data.name;
+    }
+    if (data.description) {
+      this.description = data.description;
+    }
+    if (data.uuid) {
+      this.uuid = data.uuid;
+    }
   }
 
   @PrimaryGeneratedColumn({ type: 'bigint' })
