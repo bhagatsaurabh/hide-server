@@ -18,10 +18,6 @@ func GetPodSpec(workspaceUUID string, image string, publicKey string) *v1.Pod {
 					Name:            "dev",
 					Image:           image,
 					ImagePullPolicy: v1.PullNever,
-					/* Command: []string{
-						"/bin/sh", "-c",
-						"mkdir -p /home/devuser/.ssh && echo \"$SSH_PUBLIC_KEY\" > /home/devuser/.ssh/authorized_keys && chmod 600 /home/devuser/.ssh/authorized_keys && exec /usr/sbin/sshd -D",
-					}, */
 					Env: []v1.EnvVar{
 						{
 							Name:  "SSH_PUBLIC_KEY",

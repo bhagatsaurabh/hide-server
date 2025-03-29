@@ -3,6 +3,7 @@ package provisionsvc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"hideserver/provisioner/config"
 	"hideserver/provisioner/util"
 	"log"
@@ -42,7 +43,17 @@ func CreateK8sPod(req ProvisionRequest) (string, error) {
 	defer cancel()
 
 	pod := util.GetPodSpec(workspaceUUID, req.Image, publicKey)
-
 	_, err = clientset.CoreV1().Pods("default").Create(ctx, pod, metav1.CreateOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	service := util.GetServiceSpec(workspaceUUID)
+	_, err = clientset.CoreV1().Services("default").Create(ctx, service, metav1.CreateOptions{})
+	if err != nil {
+		clientset.CoreV1().Pods("default").Delete(ctx, fmt.Sprintf("workspace-%s", workspaceUUID), metav1.DeleteOptions{})
+		return "", err
+	}
+
 	return privateKey, err
 }
