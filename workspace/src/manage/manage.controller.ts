@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { UserHeader } from 'hide-common/decorator/user-header';
 import { User } from 'hide-common/dto/user';
 import { CreateDTO } from 'src/common/dto/create.dto';
@@ -21,8 +21,14 @@ export class ManageController {
     await this.service.updateWorkspace(user.uid, data);
   }
 
-  @Get()
+  @Get('all')
   async all(@UserHeader() user: User) {
     return await this.service.getAllWorkspaces(user.uid);
+  }
+
+  @Get(':workspaceUUID/check-membership')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async checkMembership(@Param('workspaceUUID') workspaceUUID: string, @UserHeader() user: User) {
+    await this.service.isUserMemberOf(user.uid, workspaceUUID);
   }
 }

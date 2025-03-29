@@ -35,7 +35,8 @@
     "hide-common": "file:../libs/common",
     "hide-redis": "file:../libs/redis",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "ssh2": "^1.16.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -51,6 +52,7 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.7",
     "@types/socket.io": "^3.0.1",
+    "@types/ssh2": "^1.15.4",
     "@types/supertest": "^6.0.2",
     "cache-manager": "^6.4.1",
     "eslint": "^9.18.0",

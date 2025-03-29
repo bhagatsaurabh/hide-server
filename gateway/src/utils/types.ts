@@ -1,3 +1,10 @@
+import { User } from 'hide-common/dto/user';
+
 export type SocketData = {
-  uid: string;
+  user: User;
+};
+
+export type SSHRequest = {
+  privateKey: string;
+  workspaceUUID: string;
 };

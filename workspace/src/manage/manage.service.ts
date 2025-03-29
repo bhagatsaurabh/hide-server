@@ -108,4 +108,20 @@ export class ManageService {
     });
     return workspaces as WorkspaceDTO[];
   }
+
+  async isUserMemberOf(uid: string, workspaceUUID: string) {
+    const workspace = await this.wsRepository.findOne({
+      where: { uuid: workspaceUUID },
+    });
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+    const membership = await this.msRepository.findOne({
+      where: { workspaceId: workspace.id, userId: uid },
+    });
+    if (!membership) {
+      throw new ForbiddenException('User is not a member of the workspace');
+    }
+    return true;
+  }
 }
