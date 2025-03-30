@@ -7,6 +7,6 @@ spec:
     app: notification
   ports:
     - protocol: TCP
-      port: 3004
-      targetPort: 3004
+      port: 80
+      targetPort: 80
   type: ClusterIP

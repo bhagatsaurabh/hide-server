@@ -1,7 +1,7 @@
 services:
   provisioner:
-    ports:
-      - 3005:3005
+    expose:
+      - 80
     build:
       context: .
       dockerfile: dockerfile
@@ -12,6 +12,6 @@ services:
       - ~/.kube:/root/.kube
       - /app/.build
     environment:
-      - SERVICE_PORT=3005
+      - SERVICE_PORT=80
       - K8S_API_SERVER=https://host.docker.internal:6443
     command: [ "/bin/sh", "-c", "air -c .air.toml" ]

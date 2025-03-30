@@ -17,12 +17,12 @@ spec:
           image: hideregistry.azurecr.io/hide-server-gateway:latest
           # imagePullPolicy: Never
           ports:
-            - containerPort: 3001
+            - containerPort: 80
           env:
             - name: NODE_ENV
               value: production
             - name: SERVICE_PORT
-              value: '3001'
+              value: '80'
             - name: CORS_ORIGIN
               value: '*'
             - name: RMQ_URL

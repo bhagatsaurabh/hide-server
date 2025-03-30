@@ -1,7 +1,7 @@
 services:
   auth:
-    ports:
-      - 8080:8080
+    expose:
+      - 80
     build:
       context: .
       dockerfile: dockerfile
