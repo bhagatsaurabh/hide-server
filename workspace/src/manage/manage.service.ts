@@ -29,7 +29,8 @@ export class ManageService {
       const newWorkspace = new Workspace(data as CreateDTO);
       const savedWorkspace = await queryRunner.manager.save<Workspace>(newWorkspace);
 
-      const newMembership = new Membership({
+      const newMembership = new Membership();
+      newMembership.setData({
         workspaceId: savedWorkspace.id,
         userId: uid,
         role: 'owner',

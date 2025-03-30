@@ -3,13 +3,14 @@ services:
     ports:
       - 3005:3005
     build:
-      context: ../
-      dockerfile: provisioner/dockerfile
+      context: .
+      dockerfile: dockerfile
       target: development
     image: hide-server-provisioner
     volumes:
-      - .:/app/provisioner
-      - ~/.kube:~/.kube
+      - .:/app
+      - ~/.kube:/root/.kube
+      - /app/.build
     environment:
       - SERVICE_PORT=3005
       - K8S_API_SERVER=https://host.docker.internal:6443

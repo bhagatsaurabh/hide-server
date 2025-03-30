@@ -5,11 +5,11 @@ import { Firestore } from '@google-cloud/firestore';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Cache } from '@nestjs/cache-manager';
-import { NotificationMessage } from 'hide-common/message/notification.message';
+import { NotificationMessage } from 'hide-common';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
+import { SocketMessage, SocketMessageType } from 'hide-common';
 import { notificationConverter } from './utils/converter';
-import { SocketMessage, SocketMessageType } from 'hide-common/message/socket.message';
 
 @Injectable()
 export class AppService {

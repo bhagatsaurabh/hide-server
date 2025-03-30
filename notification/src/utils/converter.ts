@@ -1,4 +1,4 @@
-import { NotificationMessage } from 'hide-common/message/notification.message';
+import { NotificationMessage } from 'hide-common';
 
 export const notificationConverter = {
   toFirestore: (data: NotificationMessage<any>) => data,

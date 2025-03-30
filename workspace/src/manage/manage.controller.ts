@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
-import { UserHeader } from 'hide-common/decorator/user-header';
+import { UserHeader } from 'hide-common';
 import { User } from 'hide-common/dto/user';
 import { CreateDTO } from 'src/common/dto/create.dto';
 import { ManageService } from './manage.service';

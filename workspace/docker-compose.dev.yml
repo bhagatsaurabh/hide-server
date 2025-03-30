@@ -10,13 +10,13 @@ services:
       - .:/app/workspace
       - /app/workspace/node_modules
     environment:
-      - NODE_ENV=development
-      - SERVICE_PORT=3003
-      - RMQ_URL=amqp://rabbitmq:5672
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=admin
-      - POSTGRES_PASS=${POSTGRES_PASS}
-      - POSTGRES_DB=workspacedb
-      - WORKSPACE_SERVICE_SECRET=${WORKSPACE_SERVICE_SECRET}
+      NODE_ENV: development
+      SERVICE_PORT: 3003
+      RMQ_URL: "amqp://rabbitmq:5672"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: admin
+      POSTGRES_PASS: ${POSTGRES_PASS}
+      POSTGRES_DB: workspacedb
+      WORKSPACE_SERVICE_SECRET: ${WORKSPACE_SERVICE_SECRET} # From root .env due to context
     command: [ "/bin/sh", "-c", "cd workspace && npm run start:dev" ]

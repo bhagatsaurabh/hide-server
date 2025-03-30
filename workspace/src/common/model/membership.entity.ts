@@ -1,28 +1,35 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, ManyToOne, Index } from 'typeorm';
+import { Entity, Column, PrimaryColumn, CreateDateColumn, ManyToOne, Index, JoinColumn } from 'typeorm';
 import { Workspace } from './workspace.entity';
 
 @Entity()
 export class Membership {
-  constructor(data: { workspaceId: number; userId: string; role: string }) {
-    this.workspaceId = data.workspaceId;
-    this.userId = data.userId;
-    this.role = data.role;
+  setData(data: Partial<Membership>) {
+    if (data.workspaceId) {
+      this.workspaceId = data.workspaceId;
+    }
+    if (data.userId) {
+      this.userId = data.userId;
+    }
+    if (data.role) {
+      this.role = data.role;
+    }
   }
 
   @PrimaryColumn({ name: 'workspace_id', type: 'bigint' })
   @Index()
   workspaceId: number;
 
-  @PrimaryColumn({ length: 64 })
+  @PrimaryColumn({ name: 'user_id', length: 64 })
   @Index()
   userId: string;
 
   @Column({ nullable: false, length: 25, default: 'member' })
   role: string;
 
-  @CreateDateColumn({ nullable: false, name: 'joined_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'joined_at', nullable: false, type: 'timestamptz' })
   joinedAt: boolean;
 
   @ManyToOne(() => Workspace, (workspace) => workspace.memberships)
+  @JoinColumn({ name: 'workspace_id' })
   workspace: Workspace;
 }

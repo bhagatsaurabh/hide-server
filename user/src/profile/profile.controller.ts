@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
 import { type User } from 'hide-common/dto/user';
-import { UserHeader } from 'hide-common/decorator/user-header';
+import { UserHeader } from 'hide-common';
 import { ProfileService } from './profile.service';
 
 @Controller('api')

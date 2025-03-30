@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { InviteService } from './invite.service';
-import { UserHeader } from 'hide-common/decorator/user-header';
+import { UserHeader } from 'hide-common';
 import { User } from 'hide-common/dto/user';
 import { InviteDTO } from 'src/common/dto/invite.dto';
 import { AcceptDTO } from 'src/common/dto/accept.dto';

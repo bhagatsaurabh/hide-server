@@ -3,8 +3,8 @@ services:
     ports:
       - 8080:8080
     build:
-      context: ../
-      dockerfile: auth/dockerfile
+      context: .
+      dockerfile: dockerfile
       target: development
     image: hide-server-auth
     volumes:

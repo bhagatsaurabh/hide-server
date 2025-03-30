@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Workspace } from './common/model/workspace.entity';
 import { ManageModule } from './manage/manage.module';
 import { InviteModule } from './invite/invite.module';
-import { ClientsModule, Transport } from '@nestjs/microservices';
+import { Membership } from './common/model/membership.entity';
 
 @Module({
   imports: [
@@ -16,22 +16,9 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
       username: process.env.POSTGRES_USER,
       password: process.env.POSTGRES_PASS,
       database: process.env.POSTGRES_DB,
-      entities: [Workspace],
+      entities: [Workspace, Membership],
       synchronize: process.env.NODE_ENV === 'development',
     }),
-    ClientsModule.register([
-      {
-        name: 'WORKSPACE_SERVICE',
-        transport: Transport.RMQ,
-        options: {
-          urls: [process.env.RMQ_URL!],
-          queue: 'default',
-          queueOptions: {
-            durable: false,
-          },
-        },
-      },
-    ]),
     ManageModule,
     InviteModule,
   ],

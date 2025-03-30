@@ -17,7 +17,7 @@ func LoadK8sConfig() (*rest.Config, error) {
 		log.Println("Using in-cluster config.")
 		config, err = rest.InClusterConfig()
 	} else {
-		k8sAPIServer := os.Getenv("K8S_SERVER_API")
+		k8sAPIServer := os.Getenv("K8S_API_SERVER")
 		kubeconfigPath := homedir.HomeDir() + "/.kube/config"
 		log.Println(kubeconfigPath)
 		log.Printf("Using config from %s and K8s API server at: %s", kubeconfigPath, k8sAPIServer)
