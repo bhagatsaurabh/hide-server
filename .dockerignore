@@ -7,6 +7,10 @@
 .typesense-data
 .postgres-data
 
+typesense/.typesense-data
+postgres/.postgres-data
+rmq/.rabbitmq-data
+
 **/logs
 **/*.log
 **/.cache
@@ -14,4 +18,5 @@
 **/.gradle
 **/.idea
 **/build
+**/.build
 **/*-key.json

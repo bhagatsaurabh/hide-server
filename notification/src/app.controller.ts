@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { EventPattern } from '@nestjs/microservices';
-import { NotificationMessage } from 'hide-common/message/notification.message';
+import { NotificationMessage } from 'hide-common';
 import { AppService } from './app.service';
 
 @Controller()

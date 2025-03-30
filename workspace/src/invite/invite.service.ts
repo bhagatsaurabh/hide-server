@@ -10,11 +10,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { sign, verify } from 'jsonwebtoken';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  InvitationData,
-  NotificationMessage,
-  NotificationType,
-} from 'hide-common/message/notification.message';
+import { InvitationData, NotificationMessage, NotificationType } from 'hide-common';
 import { InviteDTO } from 'src/common/dto/invite.dto';
 import { Workspace } from 'src/common/model/workspace.entity';
 import { Membership } from 'src/common/model/membership.entity';
@@ -63,11 +59,8 @@ export class InviteService {
     if (!workspace) {
       throw new NotFoundException('Workspace not found');
     }
-    const newMembership = new Membership({
-      workspaceId: workspace.id,
-      userId: inviteeId,
-      role: 'member',
-    });
+    const newMembership = new Membership();
+    newMembership.setData({ workspaceId: workspace.id, userId: inviteeId, role: 'member' });
     await this.msRepository.save(newMembership);
   }
 

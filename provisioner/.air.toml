@@ -2,7 +2,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o ./.build/main.exe ."
+cmd = "go build -o ./.build/main ."
 bin = "./.build/main"
 include_ext = ["go"]
 # Ignore these filename extensions or directories.

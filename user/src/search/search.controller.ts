@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { UserHeader } from 'hide-common/decorator/user-header';
+import { UserHeader } from 'hide-common';
 import { User } from 'hide-common/dto/user';
 import { SearchService } from './search.service';
 
