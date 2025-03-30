@@ -18,9 +18,9 @@ spec:
           image: hideregistry.azurecr.io/hide-server-provisioner:latest
           # imagePullPolicy: Never
           ports:
-            - containerPort: 3005
+            - containerPort: 80
           env:
             - name: SERVICE_PORT
-              value: "3005"
+              value: "80"
       imagePullSecrets:
         - name: acr-secret

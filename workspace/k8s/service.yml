@@ -7,6 +7,6 @@ spec:
     app: workspace
   ports:
     - protocol: TCP
-      port: 3003
-      targetPort: 3003
+      port: 80
+      targetPort: 80
   type: ClusterIP
