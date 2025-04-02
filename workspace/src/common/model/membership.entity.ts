@@ -27,7 +27,7 @@ export class Membership {
   role: string;
 
   @CreateDateColumn({ name: 'joined_at', nullable: false, type: 'timestamptz' })
-  joinedAt: boolean;
+  joinedAt: string;
 
   @ManyToOne(() => Workspace, (workspace) => workspace.memberships)
   @JoinColumn({ name: 'workspace_id' })

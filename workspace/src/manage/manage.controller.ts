@@ -23,7 +23,7 @@ export class ManageController {
 
   @Get('all')
   async all(@UserHeader() user: User) {
-    return await this.service.getAllWorkspaces(user.uid);
+    return await this.service.getAllWorkspaces(user);
   }
 
   @Get(':workspaceUUID/check-membership')

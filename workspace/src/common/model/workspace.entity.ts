@@ -29,7 +29,7 @@ export class Workspace {
   description: string;
 
   @CreateDateColumn({ nullable: false, name: 'created_at', type: 'timestamptz' })
-  createdAt: boolean;
+  createdAt: string;
 
   @OneToMany(() => Membership, (membership) => membership.workspace)
   memberships: Membership[];
