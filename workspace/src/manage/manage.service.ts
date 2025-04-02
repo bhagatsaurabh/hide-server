@@ -79,20 +79,25 @@ export class ManageService {
     await this.wsRepository.save(workspace);
   }
 
-  async getAllWorkspaces(uid: string) {
+  async getAllWorkspaces(user: User) {
     const workspaces = await this.wsRepository
       .createQueryBuilder('workspace')
       .innerJoinAndSelect('workspace.memberships', 'membership')
-      .where('membership.user_id = :userId', { userId: uid })
+      .where('membership.user_id = :userId', { userId: user.uid })
       .getMany();
 
     const userIds: string[] = [];
     for (const workspace of workspaces) {
       userIds.push(...workspace.memberships.map((membership) => membership.userId).slice(0, 3));
     }
+    console.log('uids', userIds);
     const response = await fetch(`http://user/api/all`, {
       method: 'POST',
       body: JSON.stringify(userIds),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-auth-user': Buffer.from(JSON.stringify(user)).toString('base64'),
+      },
     });
     const profiles = (await response.json()) as User[];
     const profileMap: { [id: string]: User } = {};
