@@ -10,9 +10,8 @@ export class ManageController {
   constructor(private readonly service: ManageService) {}
 
   @Post('create')
-  @HttpCode(HttpStatus.NO_CONTENT)
   async create(@UserHeader() user: User, @Body() data: Partial<CreateDTO>) {
-    await this.service.createWorkspace(user.uid, data);
+    return await this.service.createWorkspace(user.uid, data);
   }
 
   @Patch('update')

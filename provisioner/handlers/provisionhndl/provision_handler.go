@@ -1,6 +1,7 @@
 package provisionhndl
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"hideserver/provisioner/services/provisionsvc"
 	"hideserver/provisioner/util"
@@ -9,8 +10,9 @@ import (
 )
 
 type ProvisionDTO struct {
-	PrivateKey string `json:"privateKey"`
-	Message    string `json:"message"`
+	PrivateKey string                    `json:"privateKey"`
+	Message    string                    `json:"message"`
+	Workspace  provisionsvc.WorkspaceDTO `json:"workspace"`
 }
 
 func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +29,22 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 		util.SendAPIErr(w, http.StatusBadRequest, "Missing field: image")
 		return
 	}
+	userHeader := r.Header.Get("x-auth-user")
+	if userHeader == "" {
+		util.SendAPIErr(w, http.StatusBadRequest, "Missing x-auth-user header")
+		return
+	}
+	decodedBytes, err := base64.StdEncoding.DecodeString(userHeader)
+	if err != nil {
+		util.SendAPIErr(w, http.StatusBadRequest, "Invalid Base64 encoding in x-auth-user header")
+		return
+	}
+	var user provisionsvc.UserHeader
+	err = json.Unmarshal(decodedBytes, &user)
+	if err != nil {
+		util.SendAPIErr(w, http.StatusBadRequest, "Invalid JSON in x-auth-user header")
+		return
+	}
 
 	privateKey, err := provisionsvc.CreateK8sPod(req)
 	if err != nil {
@@ -34,11 +52,14 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to provision pod")
 		return
 	}
+	var workspace provisionsvc.WorkspaceDTO
+	err = provisionsvc.CreateWorkspace(req, userHeader, &workspace)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(ProvisionDTO{
 		Message:    "Pod created successfully",
 		PrivateKey: privateKey,
+		Workspace:  workspace,
 	})
 }

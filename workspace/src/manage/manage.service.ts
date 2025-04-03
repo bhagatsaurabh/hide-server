@@ -25,9 +25,10 @@ export class ManageService {
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.startTransaction();
+    let savedWorkspace: Workspace;
     try {
       const newWorkspace = new Workspace(data as CreateDTO);
-      const savedWorkspace = await queryRunner.manager.save<Workspace>(newWorkspace);
+      savedWorkspace = await queryRunner.manager.save<Workspace>(newWorkspace);
 
       const newMembership = new Membership();
       newMembership.setData({
@@ -35,13 +36,15 @@ export class ManageService {
         userId: uid,
         role: 'owner',
       });
-      await queryRunner.manager.save<Membership>(newMembership);
+      const savedMembership = await queryRunner.manager.save<Membership>(newMembership);
+      savedWorkspace.memberships = [savedMembership];
     } catch (err) {
-      void err;
       await queryRunner.rollbackTransaction();
+      throw err;
     } finally {
       await queryRunner.release();
     }
+    return savedWorkspace;
   }
   private validateCreation(data: Partial<CreateDTO>) {
     if (!data.name || !nameRegex.test(data.name)) {

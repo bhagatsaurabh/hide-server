@@ -1,12 +1,16 @@
 package provisionsvc
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hideserver/provisioner/config"
 	"hideserver/provisioner/util"
+	"io"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,8 +18,36 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+type UserHeader struct {
+	Uid      string `json:"uid"`
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Picture  string `json:"picture"`
+	Issuer   string `json:"issuer"`
+}
 type ProvisionRequest struct {
-	Image string `json:"image"`
+	Image       string `json:"image"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+type CreateWorkspaceRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+type MembershipDTO struct {
+	WorkspaceId string `json:"workspaceId"`
+	UserId      string `json:"userId"`
+	Role        string `json:"role"`
+	JoinedAt    string `json:"joinedAt"`
+}
+type WorkspaceDTO struct {
+	Id          int32           `json:"id"`
+	Uuid        string          `json:"uuid"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	CreatedAt   string          `json:"createdAt"`
+	Memberships []MembershipDTO `json:"memberships"`
 }
 
 func CreateK8sPod(req ProvisionRequest) (string, error) {
@@ -56,4 +88,36 @@ func CreateK8sPod(req ProvisionRequest) (string, error) {
 	}
 
 	return privateKey, err
+}
+
+func CreateWorkspace(req ProvisionRequest, userHeader string, workspace *WorkspaceDTO) error {
+	wsJson, err := json.Marshal(&CreateWorkspaceRequest{
+		Name:        req.Name,
+		Description: req.Description,
+	})
+	if err != nil {
+		return errors.New("Failed to marshal workspace request")
+	}
+
+	var wsReq *http.Request
+	wsReq, err = http.NewRequest("POST", "http://workspace/api/create", bytes.NewBuffer(wsJson))
+	if err != nil {
+		return errors.New("Failed to create request")
+	}
+	wsReq.Header.Set("x-auth-user", userHeader)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(wsReq)
+	if err != nil {
+		return errors.New("Workspace creation request failed")
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.New("Failed to read workspace creation response")
+	}
+
+	err = json.Unmarshal(body, &workspace)
+
+	return err
 }
