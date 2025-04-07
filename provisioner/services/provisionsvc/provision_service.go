@@ -40,6 +40,9 @@ type MembershipDTO struct {
 	UserId      string `json:"userId"`
 	Role        string `json:"role"`
 	JoinedAt    string `json:"joinedAt"`
+	Name        string `json:"name"`
+	Username    string `json:"username"`
+	Picture     string `json:"picture"`
 }
 type WorkspaceDTO struct {
 	Id          int32           `json:"id"`
@@ -99,11 +102,13 @@ func CreateWorkspace(req ProvisionRequest, userHeader string, workspace *Workspa
 		return errors.New("Failed to marshal workspace request")
 	}
 
+	log.Printf("JSON output: %s", wsJson)
 	var wsReq *http.Request
 	wsReq, err = http.NewRequest("POST", "http://workspace/api/create", bytes.NewBuffer(wsJson))
 	if err != nil {
 		return errors.New("Failed to create request")
 	}
+	wsReq.Header.Set("Content-Type", "application/json")
 	wsReq.Header.Set("x-auth-user", userHeader)
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(wsReq)

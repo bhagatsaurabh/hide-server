@@ -7,7 +7,7 @@ import { Membership } from 'src/common/model/membership.entity';
 import { Workspace } from 'src/common/model/workspace.entity';
 import { nameRegex, roleLevels } from 'src/utils/constants';
 import { UpdateDTO } from 'src/common/dto/update.dto';
-import { WorkspaceDTO } from 'src/common/dto/workspace.dto';
+import { MembershipDTO, WorkspaceDTO } from 'src/common/dto/workspace.dto';
 
 @Injectable()
 export class ManageService {
@@ -17,7 +17,7 @@ export class ManageService {
     private dataSource: DataSource,
   ) {}
 
-  async createWorkspace(uid: string, data: Partial<CreateDTO>) {
+  async createWorkspace(user: User, data: Partial<CreateDTO>) {
     let err: string | undefined;
     if ((err = this.validateCreation(data))) {
       throw new BadRequestException(err);
@@ -33,15 +33,19 @@ export class ManageService {
       const newMembership = new Membership();
       newMembership.setData({
         workspaceId: savedWorkspace.id,
-        userId: uid,
+        userId: user.uid,
         role: 'owner',
       });
       const savedMembership = await queryRunner.manager.save<Membership>(newMembership);
+      (savedMembership as MembershipDTO).name = user.name;
+      (savedMembership as MembershipDTO).username = user.username;
+      (savedMembership as MembershipDTO).picture = user.picture;
       savedWorkspace.memberships = [savedMembership];
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
     } finally {
+      await queryRunner.commitTransaction();
       await queryRunner.release();
     }
     return savedWorkspace;
@@ -91,7 +95,7 @@ export class ManageService {
 
     const userIds: string[] = [];
     for (const workspace of workspaces) {
-      userIds.push(...workspace.memberships.map((membership) => membership.userId).slice(0, 3));
+      userIds.push(...workspace.memberships.map((membership) => membership.userId));
     }
     console.log('uids', userIds);
     const response = await fetch(`http://user/api/all`, {
