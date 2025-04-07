@@ -11,7 +11,7 @@ export class ManageController {
 
   @Post('create')
   async create(@UserHeader() user: User, @Body() data: Partial<CreateDTO>) {
-    return await this.service.createWorkspace(user.uid, data);
+    return await this.service.createWorkspace(user, data);
   }
 
   @Patch('update')

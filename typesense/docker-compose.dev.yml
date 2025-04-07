@@ -4,6 +4,8 @@ services:
     container_name: typesense
     ports:
       - 8108:8108
+    environment:
+      GLOG_minloglevel: 1
     volumes:
       - ./.typesense-data:/data
     command: '--data-dir /data --api-key=test --enable-cors'
