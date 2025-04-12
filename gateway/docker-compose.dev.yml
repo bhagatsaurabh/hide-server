@@ -16,4 +16,5 @@ services:
       - RMQ_URL=amqp://rabbitmq:5672
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - CORS_ORIGIN=*
     command: [ "/bin/sh", "-c", "cd gateway && npm run start:dev" ]
