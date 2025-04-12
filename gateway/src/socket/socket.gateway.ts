@@ -124,8 +124,8 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
 
     conn.connect({
-      host: `workspace-${workspaceUUID}`,
-      port: 22,
+      host: 'host.docker.internal' /* `workspace-${workspaceUUID}` */,
+      port: 2222 /* 22 */,
       username: 'devuser',
       privateKey,
     });
