@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import {
   ConnectedSocket,
@@ -11,14 +8,18 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { Cache } from '@nestjs/cache-manager';
 import { RedisService } from 'hide-redis';
 import { User } from 'hide-common/dto/user';
 import { ClientProxy } from '@nestjs/microservices';
 import { SocketMessage } from 'hide-common/message/socket.message';
 import { Client as SSHClient } from 'ssh2';
-import { SocketData, SSHRequest } from 'src/utils/types';
+import { SocketData, SSHClose, SSHCloseAll, SSHData, SSHRequest } from 'src/utils/types';
+import { EventsMap } from 'socket.io/dist/typed-events';
+import { randomUUID } from 'node:crypto';
+
+type SocketWithData = Socket<DefaultEventsMap, EventsMap, DefaultEventsMap, SocketData>;
 
 @WebSocketGateway({
   cors: { origin: process.env.CORS_ORIGIN! },
@@ -36,7 +37,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.cache = this.redisService.get();
   }
 
-  async handleConnection(@ConnectedSocket() socket: Socket) {
+  async handleConnection(@ConnectedSocket() socket: SocketWithData) {
     const token = socket.handshake.auth?.token as string;
     if (!token) {
       return socket.disconnect();
@@ -45,7 +46,8 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!user) {
       return socket.disconnect();
     }
-    (socket.data as SocketData).user = user;
+    socket.data.user = user;
+    socket.data.ssh = {};
     await this.cache.set<string>(`presence:${user.uid}`, socket.id);
     this.client.emit('user-online', user.uid);
   }
@@ -88,8 +90,8 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('ssh:request')
-  async handleSSHRequest(@MessageBody() data: SSHRequest, @ConnectedSocket() client: Socket) {
-    const user = (client.data as SocketData).user;
+  async handleSSHRequest(@MessageBody() data: SSHRequest, @ConnectedSocket() client: SocketWithData) {
+    const user = client.data.user;
     if (!(await this.checkMembership(user, data.workspaceUUID))) {
       client.emit('ssh:error', { message: 'Permission denied' });
       return;
@@ -98,39 +100,86 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.handleSSHConnection(data.privateKey, data.workspaceUUID, client);
   }
 
-  handleSSHConnection(privateKey: string, workspaceUUID: string, client: Socket) {
-    const conn = new SSHClient();
-
-    conn.on('ready', () => {
-      console.log(`SSH Connected for ${workspaceUUID}`);
-      conn.shell((err, stream) => {
-        if (err) {
-          console.log(err);
-          client.emit('ssh:error', 'Failed to start shell');
-          return;
-        }
-        client.on('ssh:data', (msg) => void stream.write(msg));
-        stream.on('data', (data) => client.emit('ssh:output', data.toString()));
-        stream.on('close', () => {
-          client.emit('ssh:closed');
-          conn.end();
-        });
-      });
-    });
-
-    conn.on('error', (err) => {
-      console.error(`SSH Error for ${workspaceUUID}:`, err);
-      client.emit('ssh:error', 'SSH connection failed');
-    });
-
-    conn.connect({
-      host: 'host.docker.internal' /* `workspace-${workspaceUUID}` */,
-      port: 2222 /* 22 */,
-      username: 'devuser',
-      privateKey,
-    });
+  @SubscribeMessage('ssh:data')
+  handleSSHData(@MessageBody() data: SSHData, @ConnectedSocket() client: SocketWithData) {
+    const stream = client.data.ssh?.[data.workspaceUUID]?.sessions?.[data.sessionId];
+    if (stream) {
+      stream.write(data.input);
+    }
   }
 
+  @SubscribeMessage('ssh:close')
+  handleSSHClose(@MessageBody() data: SSHClose, @ConnectedSocket() client: SocketWithData) {
+    console.log(`Closing session ${data.sessionId}`);
+    client.data.ssh?.[data.workspaceUUID]?.sessions?.[data.sessionId]?.close();
+  }
+
+  @SubscribeMessage('ssh:closeall')
+  handleSSHCloseAll(@MessageBody() data: SSHCloseAll, @ConnectedSocket() client: SocketWithData) {
+    for (const sessionId in client.data.ssh?.[data.workspaceUUID]?.sessions) {
+      client.data.ssh?.[data.workspaceUUID]?.sessions?.[sessionId]?.close();
+    }
+    client.data.ssh?.[data.workspaceUUID]?.conn?.end();
+  }
+
+  handleSSHConnection(privateKey: string, workspaceUUID: string, client: SocketWithData) {
+    if (!client.data?.ssh?.[workspaceUUID]) {
+      this.handleNewSSHConnection(privateKey, workspaceUUID, client);
+    } else {
+      this.handleNewSSHSession(workspaceUUID, client);
+    }
+  }
+  handleNewSSHConnection(privateKey: string, workspaceUUID: string, client: SocketWithData) {
+    const conn = new SSHClient();
+    conn.on('ready', () => {
+      client.data.ssh[workspaceUUID] = { conn, sessions: {} };
+      this.handleNewSSHSession(workspaceUUID, client);
+    });
+    conn.on('error', (err) => {
+      console.error(`SSH Conn Error for ${workspaceUUID}:`, err);
+      client.emit('ssh:error', { message: 'SSH connection failed' });
+    });
+    conn.on('close', () => {
+      delete client.data.ssh[workspaceUUID];
+    });
+
+    if (process.env.NODE_ENV === 'development') {
+      conn.connect({
+        host: 'host.docker.internal',
+        port: 2222,
+        username: 'devuser',
+        privateKey,
+      });
+    } else {
+      conn.connect({
+        host: `workspace-${workspaceUUID}`,
+        port: 22,
+        username: 'devuser',
+        privateKey,
+      });
+    }
+  }
+  handleNewSSHSession(workspaceUUID: string, client: SocketWithData) {
+    const conn = client.data.ssh[workspaceUUID].conn;
+    const sessionId = randomUUID();
+
+    conn.shell((err, stream) => {
+      if (err) {
+        console.log(err);
+        client.emit('ssh:error', { message: 'Failed to start shell' });
+        return;
+      }
+      client.data.ssh[workspaceUUID].sessions[sessionId] = stream;
+      client.emit('ssh:open', sessionId);
+
+      stream.on('data', (data: Buffer) => {
+        client.emit('ssh:output', { sessionId, output: data.toString() });
+      });
+      stream.on('close', () => {
+        client.emit('ssh:closed', { sessionId });
+      });
+    });
+  }
   async send(uid: string, data: SocketMessage<any>) {
     const socketId = await this.cache.get<string>(`presence:${uid}`);
     if (socketId) {
