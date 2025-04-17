@@ -143,7 +143,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       delete client.data.ssh[workspaceUUID];
     });
 
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development' && process.env.HIDE_ENV_ON_K8s) {
       conn.connect({
         host: 'host.docker.internal',
         port: 2222,

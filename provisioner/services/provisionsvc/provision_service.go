@@ -13,6 +13,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/network"
 	"github.com/google/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -53,7 +56,7 @@ type WorkspaceDTO struct {
 	Memberships []MembershipDTO `json:"memberships"`
 }
 
-func CreateK8sPod(req ProvisionRequest) (string, error) {
+func CreateK8sPod(req ProvisionRequest, devEnv string) (string, error) {
 	config, err := config.LoadK8sConfig()
 
 	clientset, err := kubernetes.NewForConfig(config)
@@ -77,7 +80,7 @@ func CreateK8sPod(req ProvisionRequest) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	pod := util.GetPodSpec(workspaceUUID, req.Image, publicKey)
+	pod := util.GetPodSpec(workspaceUUID, req.Image, publicKey, devEnv)
 	_, err = clientset.CoreV1().Pods("default").Create(ctx, pod, metav1.CreateOptions{})
 	if err != nil {
 		return "", err
@@ -87,6 +90,56 @@ func CreateK8sPod(req ProvisionRequest) (string, error) {
 	_, err = clientset.CoreV1().Services("default").Create(ctx, service, metav1.CreateOptions{})
 	if err != nil {
 		clientset.CoreV1().Pods("default").Delete(ctx, fmt.Sprintf("workspace-%s", workspaceUUID), metav1.DeleteOptions{})
+		return "", err
+	}
+
+	return privateKey, err
+}
+
+// Development-only
+func CreateDockerContainer(req ProvisionRequest) (string, error) {
+	cli, err := config.LoadDockerConfig()
+
+	if err != nil {
+		log.Println("Error creating docker client:", err)
+		return "", err
+	}
+
+	workspaceUUID := uuid.New().String()
+	if workspaceUUID == "" {
+		log.Println("Cannot generate UUID")
+		return "", errors.New("Error creating Kubernetes client")
+	}
+
+	privateKey, publicKey, err := util.GenSSHKeyPair(4096)
+	if err != nil {
+		log.Println("Failed to generate SSH key pair")
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err = cli.ImagePull(ctx, req.Image, image.PullOptions{})
+	if err != nil {
+		log.Println("Image pull failed (may already exist):", err)
+	}
+
+	resp, err := cli.ContainerCreate(
+		ctx,
+		util.GetContainerSpec(req.Image, publicKey),
+		nil, &network.NetworkingConfig{
+			EndpointsConfig: map[string]*network.EndpointSettings{
+				"hide-server_hide-network": {},
+			},
+		}, nil, fmt.Sprintf("workspace-%s", workspaceUUID),
+	)
+	if err != nil {
+		log.Println("Failed to create container", err)
+		return "", err
+	}
+	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+		log.Println("Failed to start container", err)
 		return "", err
 	}
 
