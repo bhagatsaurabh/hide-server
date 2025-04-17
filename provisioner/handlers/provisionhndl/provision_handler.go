@@ -7,6 +7,7 @@ import (
 	"hideserver/provisioner/util"
 	"log"
 	"net/http"
+	"os"
 )
 
 type ProvisionDTO struct {
@@ -46,12 +47,18 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	privateKey, err := provisionsvc.CreateK8sPod(req)
+	var privateKey string
+	if devEnv, exists := os.LookupEnv("DEV_PLATFORM"); exists && devEnv == "docker" {
+		privateKey, err = provisionsvc.CreateDockerContainer(req)
+	} else {
+		privateKey, err = provisionsvc.CreateK8sPod(req, devEnv)
+	}
 	if err != nil {
 		log.Println(err.Error())
 		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to provision pod")
 		return
 	}
+
 	var workspace provisionsvc.WorkspaceDTO
 	err = provisionsvc.CreateWorkspace(req, userHeader, &workspace)
 
