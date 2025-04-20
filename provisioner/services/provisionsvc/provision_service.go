@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +36,7 @@ type ProvisionRequest struct {
 type CreateWorkspaceRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	Uuid        string `json:"uuid"`
 }
 type MembershipDTO struct {
 	WorkspaceId string `json:"workspaceId"`
@@ -56,25 +56,25 @@ type WorkspaceDTO struct {
 	Memberships []MembershipDTO `json:"memberships"`
 }
 
-func CreateK8sPod(req ProvisionRequest, devEnv string) (string, error) {
+func CreateK8sPod(req ProvisionRequest, devEnv string) (string, string, error) {
 	config, err := config.LoadK8sConfig()
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Println("Error creating Kubernetes client:", err)
-		return "", err
+		return "", "", err
 	}
 
 	workspaceUUID := uuid.New().String()
 	if workspaceUUID == "" {
 		log.Println("Cannot generate UUID")
-		return "", errors.New("Error creating Kubernetes client")
+		return "", "", errors.New("Error creating Kubernetes client")
 	}
 
 	privateKey, publicKey, err := util.GenSSHKeyPair(4096)
 	if err != nil {
 		log.Println("Failed to generate SSH key pair")
-		return "", err
+		return "", "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -83,47 +83,42 @@ func CreateK8sPod(req ProvisionRequest, devEnv string) (string, error) {
 	pod := util.GetPodSpec(workspaceUUID, req.Image, publicKey, devEnv)
 	_, err = clientset.CoreV1().Pods("default").Create(ctx, pod, metav1.CreateOptions{})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	service := util.GetServiceSpec(workspaceUUID)
 	_, err = clientset.CoreV1().Services("default").Create(ctx, service, metav1.CreateOptions{})
 	if err != nil {
 		clientset.CoreV1().Pods("default").Delete(ctx, fmt.Sprintf("workspace-%s", workspaceUUID), metav1.DeleteOptions{})
-		return "", err
+		return "", "", err
 	}
 
-	return privateKey, err
+	return privateKey, workspaceUUID, err
 }
 
 // Development-only
-func CreateDockerContainer(req ProvisionRequest) (string, error) {
+func CreateDockerContainer(req ProvisionRequest) (string, string, error) {
 	cli, err := config.LoadDockerConfig()
 
 	if err != nil {
 		log.Println("Error creating docker client:", err)
-		return "", err
+		return "", "", err
 	}
 
 	workspaceUUID := uuid.New().String()
 	if workspaceUUID == "" {
 		log.Println("Cannot generate UUID")
-		return "", errors.New("Error creating Kubernetes client")
+		return "", "", errors.New("Cannot generate UUID")
 	}
 
 	privateKey, publicKey, err := util.GenSSHKeyPair(4096)
 	if err != nil {
 		log.Println("Failed to generate SSH key pair")
-		return "", err
+		return "", "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-	_, err = cli.ImagePull(ctx, req.Image, image.PullOptions{})
-	if err != nil {
-		log.Println("Image pull failed (may already exist):", err)
-	}
 
 	resp, err := cli.ContainerCreate(
 		ctx,
@@ -136,26 +131,26 @@ func CreateDockerContainer(req ProvisionRequest) (string, error) {
 	)
 	if err != nil {
 		log.Println("Failed to create container", err)
-		return "", err
+		return "", "", err
 	}
 	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		log.Println("Failed to start container", err)
-		return "", err
+		return "", "", err
 	}
 
-	return privateKey, err
+	return privateKey, workspaceUUID, err
 }
 
-func CreateWorkspace(req ProvisionRequest, userHeader string, workspace *WorkspaceDTO) error {
+func CreateWorkspace(req ProvisionRequest, userHeader string, workspaceUUID string, workspace *WorkspaceDTO) error {
 	wsJson, err := json.Marshal(&CreateWorkspaceRequest{
 		Name:        req.Name,
 		Description: req.Description,
+		Uuid:        workspaceUUID,
 	})
 	if err != nil {
 		return errors.New("Failed to marshal workspace request")
 	}
 
-	log.Printf("JSON output: %s", wsJson)
 	var wsReq *http.Request
 	wsReq, err = http.NewRequest("POST", "http://workspace/api/create", bytes.NewBuffer(wsJson))
 	if err != nil {
