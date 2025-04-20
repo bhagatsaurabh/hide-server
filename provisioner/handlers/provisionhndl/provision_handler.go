@@ -48,10 +48,11 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var privateKey string
+	var workspaceUUID string
 	if devEnv, exists := os.LookupEnv("DEV_PLATFORM"); exists && devEnv == "docker" {
-		privateKey, err = provisionsvc.CreateDockerContainer(req)
+		privateKey, workspaceUUID, err = provisionsvc.CreateDockerContainer(req)
 	} else {
-		privateKey, err = provisionsvc.CreateK8sPod(req, devEnv)
+		privateKey, workspaceUUID, err = provisionsvc.CreateK8sPod(req, devEnv)
 	}
 	if err != nil {
 		log.Println(err.Error())
@@ -60,7 +61,7 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var workspace provisionsvc.WorkspaceDTO
-	err = provisionsvc.CreateWorkspace(req, userHeader, &workspace)
+	err = provisionsvc.CreateWorkspace(req, userHeader, workspaceUUID, &workspace)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
