@@ -1,38 +1,64 @@
-import { All, Controller, Param, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  All,
+  BadGatewayException,
+  Controller,
+  HttpStatus,
+  Param,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 import { User } from 'hide-common/model/user';
 
 import { Authenticate } from 'src/common/decorator/auth.decorator';
 import { AuthGuard } from 'src/common/guard/auth.guard';
+import { rules } from './translations';
+import { EventPattern, Transport } from '@nestjs/microservices';
+import { ExtTransport, FSSync, SocketMessageType } from 'hide-common';
+import { ProxyService } from './proxy.service';
+import { SocketGateway } from 'src/socket/socket.gateway';
 
 @Controller('api')
 export class ProxyController {
-  constructor() {}
+  constructor(
+    private readonly proxyService: ProxyService,
+    private readonly socketsGateway: SocketGateway,
+  ) {}
 
   @All(':service/:action')
   @UseGuards(AuthGuard)
   async proxyRequest(
     @Param('service') serviceName: string,
     @Param('action') action: string,
+    @Query() queries: Record<string, string>,
     @Req() req: Request,
     @Res() res: Response,
     @Authenticate() user: User,
   ) {
-    try {
-      const response = await fetch(`http://${serviceName}/api/${action}`, {
-        method: req.method,
-        body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body),
-        headers: {
-          'Content-Type': req.headers['content-type'] || 'application/json',
-          'x-auth-user': Buffer.from(JSON.stringify(user)).toString('base64'),
-        },
-      });
-      console.log('proxy end');
-
-      const responseData = await response.text();
-      res.status(response.status).send(responseData);
-    } catch (error) {
-      console.error(`Error forwarding request: ${error}`);
+    const rule = rules[serviceName]?.[action]?.[req.method as 'GET'];
+    if (!rule) {
+      throw new BadGatewayException();
     }
+
+    let status = HttpStatus.OK,
+      data: any;
+    if (rule.targetProtocol === ExtTransport.HTTP) {
+      ({ status, data } = await this.proxyService.sendRequest(serviceName, action, req, user, queries));
+    }
+    if (rule.targetProtocol === Transport.REDIS) {
+      data = await this.proxyService.sendMessage(rule.pattern!, req, user, queries);
+    }
+    res.status(status).send(data);
+  }
+
+  @EventPattern('fs:sync')
+  async handleFSSync(data: FSSync) {
+    await this.socketsGateway.send<FSSync>(data.uid, {
+      uid: data.uid,
+      type: SocketMessageType.FILESYSTEM,
+      data,
+    });
   }
 }

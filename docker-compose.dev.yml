@@ -78,7 +78,6 @@ services:
   adminer:
     image: adminer
     container_name: adminer
-    restart: unless-stopped
     ports:
       - 8087:8080
     networks:

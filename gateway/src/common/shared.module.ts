@@ -15,6 +15,14 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
           },
         },
       },
+      {
+        name: 'GATEWAY_SERVICE_REDIS',
+        transport: Transport.REDIS,
+        options: {
+          host: process.env.REDIS_HOST!,
+          port: parseInt(process.env.REDIS_PORT!),
+        },
+      },
     ]),
   ],
   exports: [ClientsModule],
