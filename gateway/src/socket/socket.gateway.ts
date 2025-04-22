@@ -180,7 +180,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
     });
   }
-  async send(uid: string, data: SocketMessage<any>) {
+  async send<T = any>(uid: string, data: SocketMessage<T>) {
     const socketId = await this.cache.get<string>(`presence:${uid}`);
     if (socketId) {
       this.server.to(socketId).emit(data.type, data);

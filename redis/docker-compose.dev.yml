@@ -2,6 +2,5 @@ services:
   redis:
     image: redis:alpine
     container_name: redis
-    restart: on-failure
     expose:
       - 6379

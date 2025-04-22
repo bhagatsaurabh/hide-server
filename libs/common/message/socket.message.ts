@@ -7,4 +7,5 @@ export type SocketMessage<T> = {
 export enum SocketMessageType {
   NOTIFICATION = "notification",
   PENDING_NOTIFICATION = "pending-notifications",
+  FILESYSTEM = "fs",
 }
