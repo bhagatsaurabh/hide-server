@@ -12,13 +12,13 @@ export class ProxyService {
 
   async sendRequest(
     serviceName: string,
-    action: string,
+    path: string,
     req: Request,
     user: User,
     queries: Record<string, string>,
   ) {
     try {
-      let url = `http://${serviceName}/api/${action}`;
+      let url = `http://${serviceName}/api/${path}`;
       if (queries && Object.keys(queries).length > 0) {
         url += `/${new URLSearchParams(queries).toString()}`;
       }
@@ -46,9 +46,9 @@ export class ProxyService {
     if (req.body) {
       payload = { ...payload, ...(req.body as object) };
     }
-    const observable = this.redis
-      .send<File[]>(pattern, createMessage(user.uid, req.path, payload))
-      .pipe(timeout(3000));
+    const msg = createMessage(user.uid, req.path, payload);
+    console.log(msg);
+    const observable = this.redis.send<File[]>(pattern, msg).pipe(timeout(3000));
 
     return new Promise<File[]>((res, rej) => {
       let data: File[],
