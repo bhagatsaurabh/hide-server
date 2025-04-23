@@ -1,53 +1,67 @@
 import { Transport } from '@nestjs/microservices';
 import { ExtTransport } from 'hide-common';
 
-type Rule = {
+type Translation = {
   sourceProtocol: Transport | ExtTransport;
   targetProtocol: Transport | ExtTransport;
   pattern?: string;
 };
-type Actions = Record<string, Partial<Record<'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS', Rule>>>;
-type Rules = Record<string, Actions>;
+export type Methods = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS';
+type Paths = Record<string, Partial<Record<Methods, Translation>>>;
+export type Rule = { service: string; paths: Paths };
+type Rules = Array<Rule>;
 
-export const rules: Rules = {
-  user: {
-    register: {
-      POST: {
-        sourceProtocol: ExtTransport.HTTP,
-        targetProtocol: ExtTransport.HTTP,
+export const rules: Rules = [
+  {
+    service: 'user',
+    paths: {
+      register: {
+        POST: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
       },
     },
   },
-  filesystem: {
-    open: {
-      GET: {
-        sourceProtocol: ExtTransport.HTTP,
-        targetProtocol: Transport.REDIS,
-        pattern: 'fs:open',
+  {
+    service: 'workspace-*',
+    paths: {
+      'dir/open': {
+        GET: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: Transport.REDIS,
+          pattern: 'fs:open',
+        },
       },
-    },
-    close: {
-      POST: {
-        sourceProtocol: ExtTransport.HTTP,
-        targetProtocol: Transport.REDIS,
-        pattern: 'fs:close',
-      },
-    },
-  },
-  workspace: {
-    all: {
-      GET: {
-        sourceProtocol: ExtTransport.HTTP,
-        targetProtocol: ExtTransport.HTTP,
+      'dir/close': {
+        POST: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: Transport.REDIS,
+          pattern: 'fs:close',
+        },
       },
     },
   },
-  provisioner: {
-    provision: {
-      POST: {
-        sourceProtocol: ExtTransport.HTTP,
-        targetProtocol: ExtTransport.HTTP,
+  {
+    service: 'workspace',
+    paths: {
+      all: {
+        GET: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
       },
     },
   },
-};
+  {
+    service: 'provisioner',
+    paths: {
+      provision: {
+        POST: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
+      },
+    },
+  },
+];
