@@ -31,7 +31,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private cache: Cache;
   constructor(
-    @Inject('GATEWAY_SERVICE') private client: ClientProxy,
+    @Inject('GATEWAY_SERVICE_REDIS') private redis: ClientProxy,
     private readonly redisService: RedisService,
   ) {
     this.cache = this.redisService.get();
@@ -49,11 +49,14 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     socket.data.user = user;
     socket.data.ssh = {};
     await this.cache.set<string>(`presence:${user.uid}`, socket.id);
-    this.client.emit('user-online', user.uid);
+    this.redis.emit('user-online', user.uid);
+    console.log('user-online sent via Redis');
   }
   async handleDisconnect(@ConnectedSocket() socket: Socket) {
-    const uid = (socket.data as SocketData).user.uid;
-    this.client.emit('user-offline', uid);
+    const uid = (socket.data as SocketData)?.user?.uid;
+    if (!uid) return;
+    console.log('user-offline sent via Redis');
+    this.redis.emit('user-offline', uid);
     await this.cache.del(`presence:${uid}`);
   }
   async handleAuthentication(token: string) {

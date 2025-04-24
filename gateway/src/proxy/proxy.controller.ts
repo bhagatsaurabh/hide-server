@@ -16,17 +16,12 @@ import { minimatch } from 'minimatch';
 import { Authenticate } from 'src/common/decorator/auth.decorator';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { Methods, Rule, rules } from './translations';
-import { EventPattern, Transport } from '@nestjs/microservices';
-import { ExtTransport, FSSync, SocketMessageType } from 'hide-common';
+import { ExtTransport } from 'hide-common';
 import { ProxyService } from './proxy.service';
-import { SocketGateway } from 'src/socket/socket.gateway';
 
 @Controller('api')
 export class ProxyController {
-  constructor(
-    private readonly proxyService: ProxyService,
-    private readonly socketsGateway: SocketGateway,
-  ) {}
+  constructor(private readonly proxyService: ProxyService) {}
 
   @All(':service/*path')
   @UseGuards(AuthGuard)
@@ -55,19 +50,9 @@ export class ProxyController {
       data: any;
     if (translation.targetProtocol === ExtTransport.HTTP) {
       ({ status, data } = await this.proxyService.sendRequest(serviceName, servicePath, req, user, queries));
-    }
-    if (translation.targetProtocol === Transport.REDIS) {
-      data = await this.proxyService.sendMessage(translation.pattern!, req, user, queries);
+    } else {
+      data = await this.proxyService.sendMessage(translation, req, user, queries);
     }
     res.status(status).send(data);
-  }
-
-  @EventPattern('fs:sync')
-  async handleFSSync(data: FSSync) {
-    await this.socketsGateway.send<FSSync>(data.uid, {
-      uid: data.uid,
-      type: SocketMessageType.FILESYSTEM,
-      data,
-    });
   }
 }

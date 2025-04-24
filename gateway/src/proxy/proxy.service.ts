@@ -1,14 +1,17 @@
 import { BadGatewayException, GatewayTimeoutException, Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { ClientProxy, Transport } from '@nestjs/microservices';
 import { Request } from 'express';
-import { File } from 'hide-common';
 import { User } from 'hide-common/model/user';
-import { timeout } from 'rxjs';
+import { Observable, timeout } from 'rxjs';
 import { createMessage } from 'src/utils';
+import { Translation } from './translations';
 
 @Injectable()
 export class ProxyService {
-  constructor(@Inject('GATEWAY_SERVICE_REDIS') private redis: ClientProxy) {}
+  constructor(
+    @Inject('GATEWAY_SERVICE_REDIS') private redis: ClientProxy,
+    @Inject('GATEWAY_SERVICE') private rmq: ClientProxy,
+  ) {}
 
   async sendRequest(
     serviceName: string,
@@ -38,7 +41,7 @@ export class ProxyService {
     }
   }
 
-  async sendMessage(pattern: string, req: Request, user: User, queries: Record<string, string>) {
+  async sendMessage(translation: Translation, req: Request, user: User, queries: Record<string, string>) {
     let payload = {};
     if (queries) {
       payload = { ...payload, ...queries };
@@ -47,11 +50,15 @@ export class ProxyService {
       payload = { ...payload, ...(req.body as object) };
     }
     const msg = createMessage(user.uid, req.path, payload);
-    console.log(msg);
-    const observable = this.redis.send<File[]>(pattern, msg).pipe(timeout(3000));
+    let observable: Observable<unknown>;
+    if (translation.targetProtocol === Transport.REDIS) {
+      observable = this.redis.send(translation.pattern, msg).pipe(timeout(3000));
+    } else if (translation.targetProtocol === Transport.RMQ) {
+      observable = this.rmq.send(translation.pattern, msg).pipe(timeout(3000));
+    }
 
-    return new Promise<File[]>((res, rej) => {
-      let data: File[],
+    return new Promise<unknown>((res, rej) => {
+      let data: unknown,
         success = true;
       observable.subscribe({
         next: (value) => void (data = value),

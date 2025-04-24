@@ -5,7 +5,6 @@ import { Cache } from '@nestjs/cache-manager';
 import { NotificationMessage } from 'hide-common';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
-import { SocketMessage, SocketMessageType } from 'hide-common';
 import { notificationConverter } from './utils/converter';
 
 @Injectable()
@@ -14,7 +13,7 @@ export class AppService {
   private cache: Cache;
 
   constructor(
-    @Inject('NOTIFICATION_SERVICE') private client: ClientProxy,
+    @Inject('NOTIFICATION_SERVICE') private rmq: ClientProxy,
     private readonly firestore: FirestoreService,
     private readonly redisService: RedisService,
   ) {
@@ -27,11 +26,7 @@ export class AppService {
     if (!presence) {
       await this.db.collection('notifications').doc(data.uid).collection('messages').add(data);
     } else {
-      this.client.emit<any, SocketMessage<NotificationMessage<any>>>('socket', {
-        uid: data.uid,
-        type: SocketMessageType.NOTIFICATION,
-        data,
-      });
+      this.rmq.emit<any, NotificationMessage<any>>('notification.send', data);
     }
   }
 
@@ -45,11 +40,7 @@ export class AppService {
 
     const pendingNtfns = snap.docs.map((doc) => doc.data());
     for (const ntfn of pendingNtfns) {
-      this.client.emit<any, SocketMessage<NotificationMessage<any>>>('socket', {
-        uid: ntfn.uid,
-        type: SocketMessageType.NOTIFICATION,
-        data: ntfn,
-      });
+      this.rmq.emit<any, NotificationMessage<any>>('notification.send', ntfn);
     }
   }
 }

@@ -9,10 +9,6 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         transport: Transport.RMQ,
         options: {
           urls: [process.env.RMQ_URL!],
-          queue: 'default',
-          queueOptions: {
-            durable: false,
-          },
         },
       },
       {

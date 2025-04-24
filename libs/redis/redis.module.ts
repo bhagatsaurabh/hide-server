@@ -6,6 +6,7 @@ import { RedisService } from "./redis.service";
 export interface RedisOptions {
   host: string;
   port: string | number;
+  database?: string;
 }
 
 @Module({})
@@ -16,8 +17,14 @@ export class RedisModule {
       imports: [
         CacheModule.registerAsync({
           useFactory: async () => {
+            let url: string;
+            if (options.database) {
+              url = `redis://${options.host}:${options.port}/${options.database}`;
+            } else {
+              url = `redis://${options.host}:${options.port}`;
+            }
             return {
-              stores: [createKeyv(`redis://${options.host}:${options.port}`)],
+              stores: [createKeyv(url)],
             };
           },
         }),

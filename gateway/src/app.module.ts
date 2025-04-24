@@ -8,7 +8,7 @@ import { SocketModule } from './socket/socket.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
-    RedisModule.register({ host: process.env.REDIS_HOST!, port: process.env.REDIS_PORT! }),
+    RedisModule.register({ host: process.env.REDIS_HOST!, port: process.env.REDIS_PORT!, database: '1' }),
     CoreModule,
     ProxyModule,
     SocketModule,
