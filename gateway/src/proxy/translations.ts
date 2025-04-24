@@ -1,7 +1,7 @@
 import { Transport } from '@nestjs/microservices';
 import { ExtTransport } from 'hide-common';
 
-type Translation = {
+export type Translation = {
   sourceProtocol: Transport | ExtTransport;
   targetProtocol: Transport | ExtTransport;
   pattern?: string;
