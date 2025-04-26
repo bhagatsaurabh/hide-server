@@ -11,6 +11,8 @@ services:
       - .:/app
       - ~/.kube:/root/.kube
       - /app/.build
+    env_file:
+      - .env
     environment:
       - SERVICE_PORT=80
       - K8S_API_SERVER=https://kubernetes.docker.internal:6443
