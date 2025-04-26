@@ -97,7 +97,6 @@ export class ManageService {
     for (const workspace of workspaces) {
       userIds.push(...workspace.memberships.map((membership) => membership.userId));
     }
-    console.log('uids', userIds);
     const response = await fetch(`http://user/api/all`, {
       method: 'POST',
       body: JSON.stringify(userIds),

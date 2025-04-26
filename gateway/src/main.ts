@@ -22,6 +22,10 @@ async function bootstrap() {
     options: {
       host: process.env.REDIS_HOST!,
       port: parseInt(process.env.REDIS_PORT!),
+      retryAttempts: 3,
+      retryDelay: 2000,
+      connectionName: 'gateway-listener',
+      db: 0,
     },
   });
   await app.startAllMicroservices();

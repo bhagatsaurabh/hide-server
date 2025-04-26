@@ -50,12 +50,10 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     socket.data.ssh = {};
     await this.cache.set<string>(`presence:${user.uid}`, socket.id);
     this.redis.emit('user-online', user.uid);
-    console.log('user-online sent via Redis');
   }
   async handleDisconnect(@ConnectedSocket() socket: Socket) {
     const uid = (socket.data as SocketData)?.user?.uid;
     if (!uid) return;
-    console.log('user-offline sent via Redis');
     this.redis.emit('user-offline', uid);
     await this.cache.del(`presence:${uid}`);
   }
@@ -113,7 +111,6 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('ssh:close')
   handleSSHClose(@MessageBody() data: SSHClose, @ConnectedSocket() client: SocketWithData) {
-    console.log(`Closing session ${data.sessionId}`);
     client.data.ssh?.[data.workspaceUUID]?.sessions?.[data.sessionId]?.close();
   }
 
