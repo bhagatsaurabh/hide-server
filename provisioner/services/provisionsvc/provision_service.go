@@ -11,9 +11,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,13 +120,32 @@ func CreateDockerContainer(req ProvisionRequest) (string, string, error) {
 		return "", "", err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
+
+	var hostConfig *container.HostConfig = nil
+	if sourcePath, exists := os.LookupEnv("DEV_FS_SOURCE"); exists {
+		log.Println(strings.ReplaceAll(sourcePath, `\`, `\`))
+		hostConfig = &container.HostConfig{
+			Mounts: []mount.Mount{
+				{
+					Type:   mount.TypeBind,
+					Source: strings.ReplaceAll(sourcePath, `\`, `\`),
+					Target: "/app/filesystem",
+				},
+				{
+					Type:   mount.TypeVolume,
+					Target: "/app/filesystem/node_modules",
+				},
+			},
+		}
+	}
 
 	resp, err := cli.ContainerCreate(
 		ctx,
 		util.GetContainerSpec(req.Image, publicKey),
-		nil, &network.NetworkingConfig{
+		hostConfig,
+		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
 				"hide-server_hide-network": {},
 			},
