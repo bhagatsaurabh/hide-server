@@ -14,7 +14,6 @@ export class AppController {
 
   @EventPattern('user-online', Transport.REDIS)
   async handleUserOnline(uid: string) {
-    console.log('user-online received via Redis');
     await this.appService.pushAllPendingNotifications(uid);
   }
 }

@@ -14,7 +14,6 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    console.log(`Eureka service: ${this.options.host}:${this.options.port}`);
     await this.registerWithEureka();
     this.heartbeatInterval = setInterval(
       () => void this.sendHeartbeat(),
@@ -94,16 +93,13 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
     }
   }
   private async deregisterFromEureka() {
-    console.log("De-registering with Eureka server");
     try {
-      const response = await fetch(
+      await fetch(
         `${this.EUREKA_URL}/${this.options.serviceName}/${this.INSTANCE_ID}`,
         {
           method: "DELETE",
         }
       );
-
-      console.log(`${response.status} Deregistered from Eureka`);
     } catch (error) {
       console.error(`❌ Failed to deregister:`, error);
     }
@@ -117,7 +113,6 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      console.log(`${response.status}`);
       const data = (await response.json()) as {
         application: {
           instance: Array<{ ipAddr: string; port: { $: number } }>;

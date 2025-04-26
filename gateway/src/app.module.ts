@@ -4,6 +4,7 @@ import { RedisModule } from 'hide-redis';
 import { CoreModule } from './core/core.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { SocketModule } from './socket/socket.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -13,5 +14,6 @@ import { SocketModule } from './socket/socket.module';
     ProxyModule,
     SocketModule,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}
