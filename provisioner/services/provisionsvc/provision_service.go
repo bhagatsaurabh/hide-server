@@ -130,12 +130,21 @@ func CreateDockerContainer(req ProvisionRequest) (string, string, error) {
 			Mounts: []mount.Mount{
 				{
 					Type:   mount.TypeBind,
-					Source: strings.ReplaceAll(sourcePath, `\`, `\`),
+					Source: fmt.Sprintf("%s\\%s", sourcePath, "env-gateway"),
+					Target: "/app/env-gateway",
+				},
+				{
+					Type:   mount.TypeVolume,
+					Target: "/app/env-gateway/node_modules",
+				},
+				{
+					Type:   mount.TypeBind,
+					Source: fmt.Sprintf("%s\\%s", sourcePath, "filesystem"),
 					Target: "/app/filesystem",
 				},
 				{
 					Type:   mount.TypeVolume,
-					Target: "/app/filesystem/node_modules",
+					Target: "/app/filesystem/.build",
 				},
 			},
 		}
