@@ -15,6 +15,7 @@ func GetContainerSpec(image string, publicKey string) *container.Config {
 			"RMQ_URL=amqp://rabbitmq:5672",
 			"REDIS_HOST=redis",
 			"REDIS_PORT=6379",
+			"EVENT_QUEUE_SIZE=100",
 			fmt.Sprintf("SSH_PUBLIC_KEY=%s", publicKey),
 		},
 	}
