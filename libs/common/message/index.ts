@@ -3,7 +3,8 @@ export * from "./socket.message";
 export * from "./filesystem.message";
 
 export enum ExtTransport {
-  HTTP = 999,
+  HTTP = 998,
+  WS = 999,
 }
 export type HttpMethod =
   | "GET"

@@ -9,3 +9,8 @@ export type FSSync = {
   path: string;
   action: "add" | "addDir" | "unlink" | "unlinkDir" | "change";
 };
+
+export type FSMessage<T = any> = {
+  action: string;
+  payload: T;
+};
