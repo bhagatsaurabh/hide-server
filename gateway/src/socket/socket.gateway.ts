@@ -18,6 +18,8 @@ import { Client as SSHClient } from 'ssh2';
 import { SocketData, SSHClose, SSHCloseAll, SSHData, SSHRequest } from 'src/utils/types';
 import { EventsMap } from 'socket.io/dist/typed-events';
 import { randomUUID } from 'node:crypto';
+import { FSMessage } from 'hide-common';
+import { createMessage } from 'src/utils';
 
 type SocketWithData = Socket<DefaultEventsMap, EventsMap, DefaultEventsMap, SocketData>;
 
@@ -180,6 +182,13 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
     });
   }
+
+  @SubscribeMessage('fs')
+  handleFSMessage<T>(@MessageBody() data: FSMessage<T>, @ConnectedSocket() client: SocketWithData) {
+    const msg = createMessage<T>(client.data.user.uid, '', data.payload);
+    this.redis.emit(`fs:${data.action}`, msg);
+  }
+
   async send<T = any>(uid: string, data: SocketMessage<T>) {
     const socketId = await this.cache.get<string>(`presence:${uid}`);
     if (socketId) {
