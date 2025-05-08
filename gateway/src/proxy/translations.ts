@@ -40,6 +40,20 @@ export const rules: Rules = [
           pattern: 'fs:close',
         },
       },
+      'file/open': {
+        POST: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: Transport.REDIS,
+          pattern: 'fs:open',
+        },
+      },
+      'file/close': {
+        POST: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: Transport.REDIS,
+          pattern: 'fs:close',
+        },
+      },
     },
   },
   {
