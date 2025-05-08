@@ -152,7 +152,7 @@ func CreateDockerContainer(req ProvisionRequest) (string, string, error) {
 
 	resp, err := cli.ContainerCreate(
 		ctx,
-		util.GetContainerSpec(req.Image, publicKey),
+		util.GetContainerSpec(workspaceUUID, req.Image, publicKey),
 		hostConfig,
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{

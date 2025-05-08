@@ -1,3 +1,5 @@
+import { SocketMessagePayload } from "./socket.message";
+
 export type File = {
   name: string;
   path: string;
@@ -14,3 +16,9 @@ export type FSMessage<T = any> = {
   action: string;
   payload: T;
 };
+
+export interface FSDocUpdate extends SocketMessagePayload {
+  uuid: string;
+  path: string;
+  update: Uint8Array<ArrayBufferLike>;
+}

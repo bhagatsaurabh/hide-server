@@ -13,7 +13,7 @@ import { Cache } from '@nestjs/cache-manager';
 import { RedisService } from 'hide-redis';
 import { User } from 'hide-common/dto/user';
 import { ClientProxy } from '@nestjs/microservices';
-import { SocketMessage } from 'hide-common/message/socket.message';
+import { SocketBroadcast, SocketMessage, SocketMessagePayload } from 'hide-common/message/socket.message';
 import { Client as SSHClient } from 'ssh2';
 import { SocketData, SSHClose, SSHCloseAll, SSHData, SSHRequest } from 'src/utils/types';
 import { EventsMap } from 'socket.io/dist/typed-events';
@@ -193,6 +193,14 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const socketId = await this.cache.get<string>(`presence:${uid}`);
     if (socketId) {
       this.server.to(socketId).emit(data.type, data);
+    }
+  }
+  async broadcast<T extends SocketMessagePayload = any>(msg: SocketBroadcast<T>) {
+    const socketIds = await Promise.all(msg.uids.map((uid) => this.cache.get<string>(`presence:${uid}`)));
+    for (const socketId of socketIds) {
+      if (socketId) {
+        this.server.to(socketId).emit(msg.type, msg);
+      }
     }
   }
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 )
 
-func GetContainerSpec(image string, publicKey string) *container.Config {
+func GetContainerSpec(workspaceUUID, image, publicKey string) *container.Config {
 	containerSpec := &container.Config{
 		Image: image,
 		Env: []string{
@@ -16,6 +16,7 @@ func GetContainerSpec(image string, publicKey string) *container.Config {
 			"REDIS_HOST=redis",
 			"REDIS_PORT=6379",
 			"EVENT_QUEUE_SIZE=100",
+			fmt.Sprintf("WS_UUID=%s", workspaceUUID),
 			fmt.Sprintf("SSH_PUBLIC_KEY=%s", publicKey),
 		},
 	}
