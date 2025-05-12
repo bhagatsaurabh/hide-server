@@ -54,6 +54,13 @@ export const rules: Rules = [
           pattern: 'fs:close',
         },
       },
+      'file/save': {
+        POST: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: Transport.REDIS,
+          pattern: 'fs:save',
+        },
+      },
     },
   },
   {
