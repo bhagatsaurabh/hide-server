@@ -1,7 +1,14 @@
 import { Controller } from '@nestjs/common';
 import { SocketGateway } from './socket/socket.gateway';
 import { EventPattern, Transport } from '@nestjs/microservices';
-import { SocketMessage, SocketMessageType, NotificationMessage, SocketBroadcast } from 'hide-common';
+import {
+  SocketMessage,
+  SocketMessageType,
+  NotificationMessage,
+  SocketBroadcast,
+  MembersModifiedMessage,
+  WorkspaceDeletedMessage,
+} from 'hide-common';
 
 @Controller()
 export class AppController {
@@ -19,5 +26,14 @@ export class AppController {
   @EventPattern('notification.send', Transport.RMQ)
   async handleSendNotification(data: NotificationMessage<any>) {
     await this.socketsGateway.send(data.uid, { data, uid: data.uid, type: SocketMessageType.NOTIFICATION });
+  }
+
+  @EventPattern('workspace.members.modified', Transport.REDIS)
+  async handleMembersModified(data: MembersModifiedMessage) {
+    await this.socketsGateway.handleMembersModified(data);
+  }
+  @EventPattern('workspace.deleted', Transport.REDIS)
+  async handleWorkspaceDeleted(data: WorkspaceDeletedMessage) {
+    await this.socketsGateway.handleWorkspaceDeleted(data);
   }
 }

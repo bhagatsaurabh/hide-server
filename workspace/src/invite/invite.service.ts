@@ -11,7 +11,7 @@ import { sign, verify } from 'jsonwebtoken';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InvitationData, NotificationMessage, NotificationType } from 'hide-common';
-import { InviteDTO } from 'src/common/dto/invite.dto';
+import { InviteAllDTO, InviteDTO } from 'src/common/dto/invite.dto';
 import { Workspace } from 'src/common/model/workspace.entity';
 import { Membership } from 'src/common/model/membership.entity';
 import { roleLevels } from 'src/utils/constants';
@@ -21,15 +21,17 @@ import { AcceptDTO } from 'src/common/dto/accept.dto';
 @Injectable()
 export class InviteService {
   constructor(
-    @Inject('WORKSPACE_SERVICE') private client: ClientProxy,
+    @Inject('WORKSPACE_SERVICE_RMQ') private client: ClientProxy,
     @InjectRepository(Workspace) private wsRepository: Repository<Workspace>,
     @InjectRepository(Membership) private msRepository: Repository<Membership>,
   ) {}
 
-  async inviteUser(inviterId: string, { inviteeId, workspaceUUID }: InviteDTO) {
+  async inviteUser(inviterId: string, { inviteeId, workspaceUUID }: InviteDTO, doValidate: boolean = true) {
     let err: HttpException | undefined;
-    if ((err = await this.validateInvite(inviterId, workspaceUUID))) {
-      throw err;
+    if (doValidate) {
+      if ((err = await this.validateInvite(inviterId, workspaceUUID))) {
+        throw err;
+      }
     }
 
     const expiryDate = new Date();
@@ -47,6 +49,18 @@ export class InviteService {
       type: NotificationType.WORKSPACE_INVITE,
       data: { inviterId, workspaceUUID, token: jwt },
     });
+  }
+  async inviteAllUsers(inviterId: string, { inviteeIds, workspaceUUID }: InviteAllDTO) {
+    let err: HttpException | undefined;
+    if ((err = await this.validateInvite(inviterId, workspaceUUID))) {
+      throw err;
+    }
+
+    await Promise.all(
+      inviteeIds.map((inviteeId) => {
+        return this.inviteUser(inviterId, { inviteeId, workspaceUUID }, false);
+      }),
+    );
   }
 
   async acceptInvitation(inviteeId: string, { token }: AcceptDTO) {

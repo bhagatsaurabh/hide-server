@@ -2,7 +2,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { InviteService } from './invite.service';
 import { UserHeader } from 'hide-common';
 import { User } from 'hide-common/dto/user';
-import { InviteDTO } from 'src/common/dto/invite.dto';
+import { InviteAllDTO, InviteDTO } from 'src/common/dto/invite.dto';
 import { AcceptDTO } from 'src/common/dto/accept.dto';
 
 @Controller('api')
@@ -13,6 +13,12 @@ export class InviteController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async invite(@UserHeader() user: User, @Body() data: InviteDTO) {
     await this.service.inviteUser(user.uid, data);
+  }
+
+  @Post('invite-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async inviteAll(@UserHeader() user: User, @Body() data: InviteAllDTO) {
+    await this.service.inviteAllUsers(user.uid, data);
   }
 
   @Post('accept')

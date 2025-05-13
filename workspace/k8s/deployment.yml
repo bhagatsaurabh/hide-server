@@ -25,6 +25,10 @@ spec:
               value: '80'
             - name: RMQ_URL
               value: 'amqp://rabbitmq:5672'
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: '6379'
             - name: POSTGRES_HOST
               value: postgres
             - name: POSTGRES_PORT

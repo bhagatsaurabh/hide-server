@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { UserHeader } from 'hide-common';
 import { User } from 'hide-common/dto/user';
 import { CreateDTO } from 'src/common/dto/create.dto';
@@ -12,6 +12,11 @@ export class ManageController {
   @Post('create')
   async create(@UserHeader() user: User, @Body() data: Partial<CreateDTO>) {
     return await this.service.createWorkspace(user, data);
+  }
+
+  @Delete(':workspaceUUID/delete')
+  async delete(@Param('workspaceUUID') workspaceUUID: string, @UserHeader() user: User) {
+    await this.service.deleteWorkspace(user.uid, workspaceUUID);
   }
 
   @Patch('update')

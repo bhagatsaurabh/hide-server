@@ -10,5 +10,6 @@ import { SharedModule } from 'src/common/shared.module';
   imports: [TypeOrmModule.forFeature([Workspace, Membership]), SharedModule],
   controllers: [InviteController],
   providers: [InviteService],
+  exports: [InviteService],
 })
 export class InviteModule {}

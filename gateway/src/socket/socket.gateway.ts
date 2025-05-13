@@ -18,10 +18,11 @@ import { Client as SSHClient } from 'ssh2';
 import { SocketData, SSHClose, SSHCloseAll, SSHData, SSHRequest } from 'src/utils/types';
 import { EventsMap } from 'socket.io/dist/typed-events';
 import { randomUUID } from 'node:crypto';
-import { FSMessage } from 'hide-common';
+import { FSMessage, EnvMessage, MembersModifiedMessage, WorkspaceDeletedMessage } from 'hide-common';
 import { createMessage } from 'src/utils';
 
 type SocketWithData = Socket<DefaultEventsMap, EventsMap, DefaultEventsMap, SocketData>;
+type CachedMembership = Record<string, boolean>;
 
 @WebSocketGateway({
   cors: { origin: process.env.CORS_ORIGIN! },
@@ -74,7 +75,16 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return null;
     }
   }
-  async checkMembership(user, workspaceUUID) {
+
+  async checkMembership(user: User, workspaceUUID: string) {
+    const cachedMemberships = await this.cache.get<CachedMembership>(`membership:${user.uid}`);
+    if (cachedMemberships && cachedMemberships[workspaceUUID] !== undefined) {
+      return cachedMemberships[workspaceUUID];
+    }
+
+    return await this.fetchMembership(user, workspaceUUID, cachedMemberships);
+  }
+  async fetchMembership(user: User, workspaceUUID: string, cache: CachedMembership | null) {
     try {
       const response = await fetch(`http://workspace/api/${workspaceUUID}/check-membership`, {
         method: 'GET',
@@ -82,14 +92,73 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
           'x-auth-user': Buffer.from(JSON.stringify(user)).toString('base64'),
         },
       });
-      if (!response.ok) {
-        return false;
+      let isMember = false;
+      if (response.ok) {
+        isMember = true;
       }
-      return true;
+      await this.cacheMembership(user.uid, workspaceUUID, isMember, cache);
+      return isMember;
     } catch (error) {
       console.log(error);
     }
     return false;
+  }
+  async cacheMembership(
+    uid: string,
+    workspaceUUID: string,
+    isMember: boolean,
+    cache: CachedMembership | null,
+  ) {
+    if (!cache) {
+      cache = {};
+    }
+    cache[workspaceUUID] = isMember;
+    await this.cache.set(`membership:${uid}`, cache);
+  }
+  async handleMembersModified(msg: MembersModifiedMessage) {
+    await this.invalidateRemovedMembers(msg.removed, msg.uuid);
+    await this.updateAddedMembers(msg.added, msg.uuid);
+  }
+  async invalidateRemovedMembers(uids: string[], uuid: string) {
+    const removed = new Map<string, CachedMembership | null>();
+    const cachedMemberships = await Promise.all(uids.map((uid) => this.cache.get<CachedMembership>(uid)));
+    uids.forEach((uid, idx) => removed.set(uid, cachedMemberships[idx]));
+
+    for (const [uid, cache] of removed.entries()) {
+      let modified = false;
+      if (!cache) {
+        continue;
+      }
+      if (cache[uuid] !== undefined) {
+        delete cache[uuid];
+        modified = true;
+      }
+      if (modified) {
+        await this.cache.set(uid, cache);
+      }
+    }
+  }
+  async updateAddedMembers(uids: string[], uuid: string) {
+    const added = new Map<string, CachedMembership | null>();
+    const cachedMemberships = await Promise.all(uids.map((uid) => this.cache.get<CachedMembership>(uid)));
+    uids.forEach((uid, idx) => added.set(uid, cachedMemberships[idx]));
+
+    for (const [uid, cache] of added.entries()) {
+      let modified = false;
+      if (!cache) {
+        continue;
+      }
+      if (cache[uuid] !== undefined) {
+        cache[uuid] = true;
+        modified = true;
+      }
+      if (modified) {
+        await this.cache.set(uid, cache);
+      }
+    }
+  }
+  async handleWorkspaceDeleted({ uuid, members }: WorkspaceDeletedMessage) {
+    await this.invalidateRemovedMembers(members, uuid);
   }
 
   @SubscribeMessage('ssh:request')
@@ -184,8 +253,20 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('fs')
-  handleFSMessage<T>(@MessageBody() data: FSMessage<T>, @ConnectedSocket() client: SocketWithData) {
+  handleFSMessage<T extends SocketMessagePayload>(
+    @MessageBody() data: FSMessage<T>,
+    @ConnectedSocket() client: SocketWithData,
+  ) {
     const msg = createMessage<T>(client.data.user.uid, '', data.payload);
+    this.redis.emit(`fs:${data.action}`, msg);
+  }
+  @SubscribeMessage('env')
+  async handleEnvMessage(@MessageBody() data: EnvMessage, @ConnectedSocket() client: SocketWithData) {
+    if (!(await this.checkMembership(client.data.user, data.payload.uuid))) {
+      return;
+    }
+
+    const msg = createMessage(client.data.user.uid, '', data.payload);
     this.redis.emit(`fs:${data.action}`, msg);
   }
 

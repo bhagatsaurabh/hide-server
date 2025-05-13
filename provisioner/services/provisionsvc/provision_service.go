@@ -23,14 +23,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type UserHeader struct {
-	Uid      string `json:"uid"`
-	Name     string `json:"name"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Picture  string `json:"picture"`
-	Issuer   string `json:"issuer"`
-}
 type ProvisionRequest struct {
 	Image       string `json:"image"`
 	Name        string `json:"name"`
