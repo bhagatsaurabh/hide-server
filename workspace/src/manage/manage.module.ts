@@ -4,9 +4,11 @@ import { ManageService } from './manage.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Workspace } from 'src/common/model/workspace.entity';
 import { Membership } from 'src/common/model/membership.entity';
+import { InviteModule } from 'src/invite/invite.module';
+import { SharedModule } from 'src/common/shared.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Workspace, Membership])],
+  imports: [InviteModule, TypeOrmModule.forFeature([Workspace, Membership]), SharedModule],
   controllers: [ManageController],
   providers: [ManageService],
 })

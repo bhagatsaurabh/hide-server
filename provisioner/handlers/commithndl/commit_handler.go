@@ -1,20 +1,15 @@
-package provisionhndl
+package commithndl
 
 import (
 	"encoding/base64"
 	"encoding/json"
-	"hideserver/provisioner/services/provisionsvc"
+	"hideserver/provisioner/services/commitsvc"
 	"hideserver/provisioner/util"
 	"log"
 	"net/http"
 	"os"
 )
 
-type ProvisionDTO struct {
-	PrivateKey string                    `json:"privateKey"`
-	Message    string                    `json:"message"`
-	Workspace  provisionsvc.WorkspaceDTO `json:"workspace"`
-}
 type UserHeader struct {
 	Uid      string `json:"uid"`
 	Name     string `json:"name"`
@@ -24,18 +19,18 @@ type UserHeader struct {
 	Issuer   string `json:"issuer"`
 }
 
-func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
+func CommitHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		util.SendAPIErr(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
-	var req provisionsvc.ProvisionRequest
+	var req commitsvc.CommitRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.SendAPIErr(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
-	if req.Image == "" {
-		util.SendAPIErr(w, http.StatusBadRequest, "Missing field: image")
+	if req.Uuid == "" {
+		util.SendAPIErr(w, http.StatusBadRequest, "Missing field: uuid")
 		return
 	}
 	userHeader := r.Header.Get("x-auth-user")
@@ -55,27 +50,16 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var privateKey string
-	var workspaceUUID string
 	if devEnv, exists := os.LookupEnv("DEV_PLATFORM"); exists && devEnv == "docker" {
-		privateKey, workspaceUUID, err = provisionsvc.CreateDockerContainer(req)
+		err = commitsvc.CommitDockerImage(req)
 	} else {
-		privateKey, workspaceUUID, err = provisionsvc.CreateK8sPod(req, devEnv)
+		err = commitsvc.CommitK8sImage(req, devEnv)
 	}
 	if err != nil {
 		log.Println(err.Error())
-		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to provision pod")
+		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to commit dev container")
 		return
 	}
 
-	var workspace provisionsvc.WorkspaceDTO
-	err = provisionsvc.CreateWorkspace(req, userHeader, workspaceUUID, &workspace)
-
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(ProvisionDTO{
-		Message:    "Pod created successfully",
-		PrivateKey: privateKey,
-		Workspace:  workspace,
-	})
 }

@@ -5,10 +5,18 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
   imports: [
     ClientsModule.register([
       {
-        name: 'WORKSPACE_SERVICE',
+        name: 'WORKSPACE_SERVICE_RMQ',
         transport: Transport.RMQ,
         options: {
           urls: [process.env.RMQ_URL!],
+        },
+      },
+      {
+        name: 'WORKSPACE_SERVICE_REDIS',
+        transport: Transport.REDIS,
+        options: {
+          host: process.env.REDIS_HOST!,
+          port: parseInt(process.env.REDIS_PORT!),
         },
       },
     ]),

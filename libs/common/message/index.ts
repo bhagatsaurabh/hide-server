@@ -1,6 +1,8 @@
 export * from "./notification.message";
 export * from "./socket.message";
 export * from "./filesystem.message";
+export * from "./env.message";
+export * from "./workspace.message";
 
 export enum ExtTransport {
   HTTP = 998,
