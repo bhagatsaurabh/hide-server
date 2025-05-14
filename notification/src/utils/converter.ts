@@ -1,6 +1,6 @@
-import { NotificationMessage } from 'hide-common';
+import { UserNotificationPayload } from 'hide-common';
 
 export const notificationConverter = {
-  toFirestore: (data: NotificationMessage<any>) => data,
-  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => snap.data() as NotificationMessage<any>,
+  toFirestore: (data: UserNotificationPayload) => data,
+  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => snap.data() as UserNotificationPayload,
 };

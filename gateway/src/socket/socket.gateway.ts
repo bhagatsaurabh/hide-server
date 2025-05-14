@@ -12,17 +12,25 @@ import { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { Cache } from '@nestjs/cache-manager';
 import { RedisService } from 'hide-redis';
 import { User } from 'hide-common/dto/user';
+import { Client, ClientChannel } from 'ssh2';
 import { ClientProxy } from '@nestjs/microservices';
-import { SocketBroadcast, SocketMessage, SocketMessagePayload } from 'hide-common/message/socket.message';
-import { Client as SSHClient } from 'ssh2';
-import { SocketData, SSHClose, SSHCloseAll, SSHData, SSHRequest } from 'src/utils/types';
-import { EventsMap } from 'socket.io/dist/typed-events';
-import { randomUUID } from 'node:crypto';
-import { FSMessage, EnvMessage, MembersModifiedMessage, WorkspaceDeletedMessage } from 'hide-common';
-import { createMessage } from 'src/utils';
+import {
+  InSocketMessage,
+  InSocketMessagePayloadMap,
+  SocketMessagePayload,
+} from 'hide-common/message/socket.message';
 
-type SocketWithData = Socket<DefaultEventsMap, EventsMap, DefaultEventsMap, SocketData>;
-type CachedMembership = Record<string, boolean>;
+import { EventsMap } from 'socket.io/dist/typed-events';
+import { FSMessage, EnvMessage, SocketSend, SocketBroadcast } from 'hide-common';
+import { createMessage } from 'src/utils';
+import { SSHProxyService } from './sshproxy.service';
+import { CommonService } from './common.service';
+
+export type SocketData = {
+  user: User;
+  ssh: Record<string, { conn: Client; sessions: Record<string, ClientChannel> }>;
+};
+export type SocketWithData = Socket<DefaultEventsMap, EventsMap, DefaultEventsMap, SocketData>;
 
 @WebSocketGateway({
   cors: { origin: process.env.CORS_ORIGIN! },
@@ -36,6 +44,8 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     @Inject('GATEWAY_SERVICE_REDIS') private redis: ClientProxy,
     private readonly redisService: RedisService,
+    private readonly sshService: SSHProxyService,
+    private readonly service: CommonService,
   ) {
     this.cache = this.redisService.get();
   }
@@ -76,180 +86,24 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  async checkMembership(user: User, workspaceUUID: string) {
-    const cachedMemberships = await this.cache.get<CachedMembership>(`membership:${user.uid}`);
-    if (cachedMemberships && cachedMemberships[workspaceUUID] !== undefined) {
-      return cachedMemberships[workspaceUUID];
-    }
-
-    return await this.fetchMembership(user, workspaceUUID, cachedMemberships);
-  }
-  async fetchMembership(user: User, workspaceUUID: string, cache: CachedMembership | null) {
-    try {
-      const response = await fetch(`http://workspace/api/${workspaceUUID}/check-membership`, {
-        method: 'GET',
-        headers: {
-          'x-auth-user': Buffer.from(JSON.stringify(user)).toString('base64'),
-        },
-      });
-      let isMember = false;
-      if (response.ok) {
-        isMember = true;
-      }
-      await this.cacheMembership(user.uid, workspaceUUID, isMember, cache);
-      return isMember;
-    } catch (error) {
-      console.log(error);
-    }
-    return false;
-  }
-  async cacheMembership(
-    uid: string,
-    workspaceUUID: string,
-    isMember: boolean,
-    cache: CachedMembership | null,
+  @SubscribeMessage('msg')
+  async handleSocketMessage(
+    @MessageBody() msg: InSocketMessage<keyof InSocketMessagePayloadMap, any>,
+    @ConnectedSocket() client: SocketWithData,
   ) {
-    if (!cache) {
-      cache = {};
-    }
-    cache[workspaceUUID] = isMember;
-    await this.cache.set(`membership:${uid}`, cache);
-  }
-  async handleMembersModified(msg: MembersModifiedMessage) {
-    await this.invalidateRemovedMembers(msg.removed, msg.uuid);
-    await this.updateAddedMembers(msg.added, msg.uuid);
-  }
-  async invalidateRemovedMembers(uids: string[], uuid: string) {
-    const removed = new Map<string, CachedMembership | null>();
-    const cachedMemberships = await Promise.all(uids.map((uid) => this.cache.get<CachedMembership>(uid)));
-    uids.forEach((uid, idx) => removed.set(uid, cachedMemberships[idx]));
-
-    for (const [uid, cache] of removed.entries()) {
-      let modified = false;
-      if (!cache) {
-        continue;
-      }
-      if (cache[uuid] !== undefined) {
-        delete cache[uuid];
-        modified = true;
-      }
-      if (modified) {
-        await this.cache.set(uid, cache);
-      }
-    }
-  }
-  async updateAddedMembers(uids: string[], uuid: string) {
-    const added = new Map<string, CachedMembership | null>();
-    const cachedMemberships = await Promise.all(uids.map((uid) => this.cache.get<CachedMembership>(uid)));
-    uids.forEach((uid, idx) => added.set(uid, cachedMemberships[idx]));
-
-    for (const [uid, cache] of added.entries()) {
-      let modified = false;
-      if (!cache) {
-        continue;
-      }
-      if (cache[uuid] !== undefined) {
-        cache[uuid] = true;
-        modified = true;
-      }
-      if (modified) {
-        await this.cache.set(uid, cache);
-      }
-    }
-  }
-  async handleWorkspaceDeleted({ uuid, members }: WorkspaceDeletedMessage) {
-    await this.invalidateRemovedMembers(members, uuid);
-  }
-
-  @SubscribeMessage('ssh:request')
-  async handleSSHRequest(@MessageBody() data: SSHRequest, @ConnectedSocket() client: SocketWithData) {
-    const user = client.data.user;
-    if (!(await this.checkMembership(user, data.workspaceUUID))) {
-      client.emit('ssh:error', { message: 'Permission denied' });
-      return;
-    }
-
-    this.handleSSHConnection(data.privateKey, data.workspaceUUID, client);
-  }
-
-  @SubscribeMessage('ssh:data')
-  handleSSHData(@MessageBody() data: SSHData, @ConnectedSocket() client: SocketWithData) {
-    const stream = client.data.ssh?.[data.workspaceUUID]?.sessions?.[data.sessionId];
-    if (stream) {
-      stream.write(data.input);
+    if (msg.service === 'env') {
+      await this.handleEnvMessage(msg, client);
     }
   }
 
-  @SubscribeMessage('ssh:close')
-  handleSSHClose(@MessageBody() data: SSHClose, @ConnectedSocket() client: SocketWithData) {
-    client.data.ssh?.[data.workspaceUUID]?.sessions?.[data.sessionId]?.close();
-  }
-
-  @SubscribeMessage('ssh:closeall')
-  handleSSHCloseAll(@MessageBody() data: SSHCloseAll, @ConnectedSocket() client: SocketWithData) {
-    for (const sessionId in client.data.ssh?.[data.workspaceUUID]?.sessions) {
-      client.data.ssh?.[data.workspaceUUID]?.sessions?.[sessionId]?.close();
-    }
-    client.data.ssh?.[data.workspaceUUID]?.conn?.end();
-  }
-
-  handleSSHConnection(privateKey: string, workspaceUUID: string, client: SocketWithData) {
-    if (!client.data?.ssh?.[workspaceUUID]) {
-      this.handleNewSSHConnection(privateKey, workspaceUUID, client);
+  async handleEnvMessage(msg: InSocketMessage<'env', any>, client: SocketWithData) {
+    if (msg.action.startsWith('ssh.')) {
+      await this.sshService.handleSSHProxyMessage(msg, client);
+    } else if (msg.action.startsWith('fs.')) {
+      // TODO
     } else {
-      this.handleNewSSHSession(workspaceUUID, client);
+      // TODO
     }
-  }
-  handleNewSSHConnection(privateKey: string, workspaceUUID: string, client: SocketWithData) {
-    const conn = new SSHClient();
-    conn.on('ready', () => {
-      client.data.ssh[workspaceUUID] = { conn, sessions: {} };
-      this.handleNewSSHSession(workspaceUUID, client);
-    });
-    conn.on('error', (err) => {
-      console.error(`SSH Conn Error for ${workspaceUUID}:`, err);
-      client.emit('ssh:error', { message: 'SSH connection failed' });
-    });
-    conn.on('close', () => {
-      delete client.data.ssh[workspaceUUID];
-    });
-
-    if (process.env.NODE_ENV === 'development' && process.env.HIDE_ENV_ON_K8s) {
-      conn.connect({
-        host: 'host.docker.internal',
-        port: 2222,
-        username: 'devuser',
-        privateKey,
-      });
-    } else {
-      conn.connect({
-        host: `workspace-${workspaceUUID}`,
-        port: 22,
-        username: 'devuser',
-        privateKey,
-      });
-    }
-  }
-  handleNewSSHSession(workspaceUUID: string, client: SocketWithData) {
-    const conn = client.data.ssh[workspaceUUID].conn;
-    const sessionId = randomUUID();
-
-    conn.shell((err, stream) => {
-      if (err) {
-        console.log(err);
-        client.emit('ssh:error', { message: 'Failed to start shell' });
-        return;
-      }
-      client.data.ssh[workspaceUUID].sessions[sessionId] = stream;
-      client.emit('ssh:open', sessionId);
-
-      stream.on('data', (data: Buffer) => {
-        client.emit('ssh:output', { sessionId, output: data.toString() });
-      });
-      stream.on('close', () => {
-        client.emit('ssh:closed', { sessionId });
-      });
-    });
   }
 
   @SubscribeMessage('fs')
@@ -261,8 +115,8 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.redis.emit(`fs:${data.action}`, msg);
   }
   @SubscribeMessage('env')
-  async handleEnvMessage(@MessageBody() data: EnvMessage, @ConnectedSocket() client: SocketWithData) {
-    if (!(await this.checkMembership(client.data.user, data.payload.uuid))) {
+  async handleEnvMessage1(@MessageBody() data: EnvMessage, @ConnectedSocket() client: SocketWithData) {
+    if (!(await this.service.checkMembership(client.data.user, data.payload.uuid))) {
       return;
     }
 
@@ -270,17 +124,17 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.redis.emit(`fs:${data.action}`, msg);
   }
 
-  async send<T = any>(uid: string, data: SocketMessage<T>) {
-    const socketId = await this.cache.get<string>(`presence:${uid}`);
+  async send<T extends SocketMessagePayload>(data: SocketSend<T>) {
+    const socketId = await this.cache.get<string>(`presence:${data.uid}`);
     if (socketId) {
-      this.server.to(socketId).emit(data.type, data);
+      this.server.to(socketId).emit(data.pattern, data.msg);
     }
   }
-  async broadcast<T extends SocketMessagePayload = any>(msg: SocketBroadcast<T>) {
-    const socketIds = await Promise.all(msg.uids.map((uid) => this.cache.get<string>(`presence:${uid}`)));
+  async broadcast<T extends SocketMessagePayload>(data: SocketBroadcast<T>) {
+    const socketIds = await Promise.all(data.uids.map((uid) => this.cache.get<string>(`presence:${uid}`)));
     for (const socketId of socketIds) {
       if (socketId) {
-        this.server.to(socketId).emit(msg.type, msg);
+        this.server.to(socketId).emit(data.pattern, data.msg);
       }
     }
   }
