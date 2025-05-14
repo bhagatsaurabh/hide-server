@@ -1,21 +1,21 @@
-export enum NotificationType {
-  WORKSPACE_INVITE = "WORKSPACE_INVITE",
-  WORKSPACE_MEMBER_REMOVED = "WORKSPACE_MEMBER_REMOVED",
+import { SocketMessagePayload } from "./socket.message";
+
+export type NotificationType =
+  | "workspace-invite"
+  | "workspace-membership-removed";
+
+export interface UserNotificationPayload extends SocketMessagePayload {
+  action: NotificationType;
+  [key: string]: unknown;
 }
 
-export type NotificationMessage<T> = {
-  uid: string;
-  type: NotificationType;
-  data: T;
-};
-
-export type InvitationData = {
+export interface WorkspaceInvite extends UserNotificationPayload {
   inviterId: string;
   workspaceUUID: string;
   token: string;
-};
+}
 
-export type ExclusionData = {
+export interface ExclusionData extends UserNotificationPayload {
   actorId: string;
   workspaceUUID: string;
-};
+}

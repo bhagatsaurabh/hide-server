@@ -10,7 +10,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { sign, verify } from 'jsonwebtoken';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { InvitationData, NotificationMessage, NotificationType } from 'hide-common';
+import { WorkspaceInvite, NotifyUser, createMessage } from 'hide-common';
 import { InviteAllDTO, InviteDTO } from 'src/common/dto/invite.dto';
 import { Workspace } from 'src/common/model/workspace.entity';
 import { Membership } from 'src/common/model/membership.entity';
@@ -21,7 +21,7 @@ import { AcceptDTO } from 'src/common/dto/accept.dto';
 @Injectable()
 export class InviteService {
   constructor(
-    @Inject('WORKSPACE_SERVICE_RMQ') private client: ClientProxy,
+    @Inject('WORKSPACE_SERVICE_RMQ') private rmq: ClientProxy,
     @InjectRepository(Workspace) private wsRepository: Repository<Workspace>,
     @InjectRepository(Membership) private msRepository: Repository<Membership>,
   ) {}
@@ -44,11 +44,11 @@ export class InviteService {
       validTill: expiryDate.getTime(),
     };
     const jwt = (sign as JWTSignFn<InvitationPayload>)(payload, process.env.WORKSPACE_SERVICE_SECRET!);
-    this.client.emit<any, NotificationMessage<InvitationData>>('notify', {
+    const msg = createMessage<NotifyUser<WorkspaceInvite>>(inviteeId, '', {
       uid: inviteeId,
-      type: NotificationType.WORKSPACE_INVITE,
-      data: { inviterId, workspaceUUID, token: jwt },
+      notification: { action: 'workspace-invite', inviterId, workspaceUUID, token: jwt },
     });
+    this.rmq.emit('notification.send', msg);
   }
   async inviteAllUsers(inviterId: string, { inviteeIds, workspaceUUID }: InviteAllDTO) {
     let err: HttpException | undefined;

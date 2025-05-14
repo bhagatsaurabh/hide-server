@@ -3,8 +3,8 @@ import { ClientProxy, Transport } from '@nestjs/microservices';
 import { Request } from 'express';
 import { User } from 'hide-common/model/user';
 import { Observable, timeout } from 'rxjs';
-import { createMessage } from 'src/utils';
 import { Translation } from './translations';
+import { createMessage } from 'hide-common';
 
 @Injectable()
 export class ProxyService {

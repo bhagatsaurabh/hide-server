@@ -2,7 +2,7 @@ import { Firestore } from '@google-cloud/firestore';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Cache } from '@nestjs/cache-manager';
-import { NotificationMessage } from 'hide-common';
+import { NotifyUser, ServiceEvent, ServiceMessage, SocketSend, UserNotificationPayload } from 'hide-common';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
 import { notificationConverter } from './utils/converter';
@@ -13,7 +13,8 @@ export class AppService {
   private cache: Cache;
 
   constructor(
-    @Inject('NOTIFICATION_SERVICE') private rmq: ClientProxy,
+    @Inject('NOTIFICATION_SERVICE_RMQ') private rmq: ClientProxy,
+    @Inject('NOTIFICATION_SERVICE_REDIS') private redis: ClientProxy,
     private readonly firestore: FirestoreService,
     private readonly redisService: RedisService,
   ) {
@@ -21,12 +22,18 @@ export class AppService {
     this.cache = this.redisService.get();
   }
 
-  async pushNotification(data: NotificationMessage<any>) {
-    const presence = await this.cache.get<boolean>(`presence:${data.uid}`);
+  async pushNotification(data: ServiceMessage<NotifyUser<UserNotificationPayload>>) {
+    const presence = await this.cache.get<boolean>(`presence:${data.payload.uid}`);
     if (!presence) {
-      await this.db.collection('notifications').doc(data.uid).collection('messages').add(data);
+      await this.db
+        .collection('notifications')
+        .doc(data.payload.uid)
+        .collection('messages')
+        .add(data.payload.notification);
     } else {
-      this.rmq.emit<any, NotificationMessage<any>>('notification.send', data);
+      this.redis.send<any, ServiceEvent<SocketSend<UserNotificationPayload>>>('socket.send', {
+        payload: { pattern: 'notification', uid: data.payload.uid, msg: data.payload.notification },
+      });
     }
   }
 
@@ -40,7 +47,9 @@ export class AppService {
 
     const pendingNtfns = snap.docs.map((doc) => doc.data());
     for (const ntfn of pendingNtfns) {
-      this.rmq.emit<any, NotificationMessage<any>>('notification.send', ntfn);
+      this.redis.send<any, ServiceEvent<SocketSend<any>>>('socket.send', {
+        payload: { pattern: 'notification', uid, msg: ntfn },
+      });
     }
   }
 }

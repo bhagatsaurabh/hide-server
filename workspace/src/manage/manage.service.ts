@@ -18,10 +18,10 @@ import { MembershipDTO, WorkspaceDTO } from 'src/common/dto/workspace.dto';
 import { InviteService } from 'src/invite/invite.service';
 import { ClientProxy } from '@nestjs/microservices';
 import {
+  createMessage,
   ExclusionData,
   MembersModifiedMessage,
-  NotificationMessage,
-  NotificationType,
+  NotifyUser,
   WorkspaceDeletedMessage,
 } from 'hide-common';
 
@@ -144,11 +144,11 @@ export class ManageService {
       await queryRunner.release();
     }
     for (const removedUid of removed) {
-      this.rmq.emit<any, NotificationMessage<ExclusionData>>('notify', {
+      const msg = createMessage<NotifyUser<ExclusionData>>(removedUid, '', {
         uid: removedUid,
-        type: NotificationType.WORKSPACE_MEMBER_REMOVED,
-        data: { actorId: uid, workspaceUUID: workspace.uuid },
+        notification: { action: 'workspace-membership-removed', actorId: uid, workspaceUUID: workspace.uuid },
       });
+      this.rmq.emit('notification.send', msg);
     }
 
     // Added members
