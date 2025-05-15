@@ -6,6 +6,7 @@ import { NotifyUser, ServiceEvent, ServiceMessage, SocketSend, UserNotificationP
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
 import { notificationConverter } from './utils/converter';
+import { NotificationReadDTO } from './common/dto';
 
 @Injectable()
 export class AppService {
@@ -13,7 +14,6 @@ export class AppService {
   private cache: Cache;
 
   constructor(
-    @Inject('NOTIFICATION_SERVICE_RMQ') private rmq: ClientProxy,
     @Inject('NOTIFICATION_SERVICE_REDIS') private redis: ClientProxy,
     private readonly firestore: FirestoreService,
     private readonly redisService: RedisService,
@@ -23,16 +23,21 @@ export class AppService {
   }
 
   async pushNotification(data: ServiceMessage<NotifyUser<UserNotificationPayload>>) {
+    await this.db
+      .collection('notifications')
+      .doc(data.payload.uid)
+      .collection('messages')
+      .doc(data.payload.notification.id)
+      .set(data.payload.notification);
+
     const presence = await this.cache.get<boolean>(`presence:${data.payload.uid}`);
-    if (!presence) {
-      await this.db
-        .collection('notifications')
-        .doc(data.payload.uid)
-        .collection('messages')
-        .add(data.payload.notification);
-    } else {
-      this.redis.send<any, ServiceEvent<SocketSend<UserNotificationPayload>>>('socket.send', {
-        payload: { pattern: 'notification', uid: data.payload.uid, msg: data.payload.notification },
+    if (presence) {
+      this.redis.emit<any, ServiceEvent<SocketSend<'notification'>>>('socket.send', {
+        payload: {
+          uid: data.payload.uid,
+          pattern: 'notification',
+          msg: { action: 'new', payload: data.payload.notification },
+        },
       });
     }
   }
@@ -46,10 +51,23 @@ export class AppService {
       .get();
 
     const pendingNtfns = snap.docs.map((doc) => doc.data());
-    for (const ntfn of pendingNtfns) {
-      this.redis.send<any, ServiceEvent<SocketSend<any>>>('socket.send', {
-        payload: { pattern: 'notification', uid, msg: ntfn },
-      });
-    }
+    this.redis.emit<any, ServiceEvent<SocketSend<'notification'>>>('socket.send', {
+      payload: {
+        uid,
+        pattern: 'notification',
+        msg: { action: 'pending', payload: pendingNtfns },
+      },
+    });
+  }
+
+  async handleReadNotification(uid: string, data: NotificationReadDTO, ignorePersistent: boolean = true) {
+    const docRef = this.db.collection('notifications').doc(uid).collection('messages').doc(data.id);
+    const doc = await docRef.withConverter(notificationConverter).get();
+
+    if (!doc.exists) return;
+    const ntfn = doc.data()!;
+    if (ignorePersistent && ntfn.action === 'workspace-invite') return;
+
+    await docRef.delete();
   }
 }

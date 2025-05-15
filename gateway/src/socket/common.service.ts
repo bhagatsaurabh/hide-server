@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Cache } from '@nestjs/cache-manager';
 import { User } from 'hide-common/dto/user';
 import { RedisService } from 'hide-redis';
-import { MembersModifiedMessage, WorkspaceDeletedMessage } from 'hide-common';
+import { MembersModified, WorkspaceDeleted } from 'hide-common';
 
 export type CachedMembership = Record<string, boolean>;
 
@@ -54,7 +54,7 @@ export class CommonService {
     await this.cache.set(`membership:${uid}`, cache);
   }
 
-  async handleMembersModified(msg: MembersModifiedMessage) {
+  async handleMembersModified(msg: MembersModified) {
     await this.invalidateRemovedMembers(msg.removed, msg.uuid);
     await this.updateAddedMembers(msg.added, msg.uuid);
   }
@@ -96,7 +96,7 @@ export class CommonService {
       }
     }
   }
-  async handleWorkspaceDeleted({ uuid, members }: WorkspaceDeletedMessage) {
+  async handleWorkspaceDeleted({ uuid, members }: WorkspaceDeleted) {
     await this.invalidateRemovedMembers(members, uuid);
   }
 }

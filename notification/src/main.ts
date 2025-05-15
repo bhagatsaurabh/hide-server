@@ -12,6 +12,8 @@ async function bootstrap() {
       queueOptions: {
         durable: false,
       },
+      exchange: 'hide-default',
+      exchangeType: 'topic',
     },
   });
   app.connectMicroservice<MicroserviceOptions>({

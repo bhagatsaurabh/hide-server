@@ -5,13 +5,6 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
   imports: [
     ClientsModule.register([
       {
-        name: 'NOTIFICATION_SERVICE_RMQ',
-        transport: Transport.RMQ,
-        options: {
-          urls: [process.env.RMQ_URL!],
-        },
-      },
-      {
         name: 'NOTIFICATION_SERVICE_REDIS',
         transport: Transport.REDIS,
         options: {

@@ -1,16 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { RmqModule } from 'hide-rmq';
 
 @Module({
   imports: [
     ClientsModule.register([
-      {
-        name: 'WORKSPACE_SERVICE_RMQ',
-        transport: Transport.RMQ,
-        options: {
-          urls: [process.env.RMQ_URL!],
-        },
-      },
       {
         name: 'WORKSPACE_SERVICE_REDIS',
         transport: Transport.REDIS,
@@ -20,6 +14,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         },
       },
     ]),
+    RmqModule.forRoot({ urls: [process.env.RMQ_URL!] }),
   ],
   exports: [ClientsModule],
 })

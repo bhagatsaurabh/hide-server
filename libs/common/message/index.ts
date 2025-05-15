@@ -1,11 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { SocketMessagePayload } from "./socket.message";
 import { UserNotificationPayload } from "./notification.message";
+import { OutSocketMessage, OutSocketMessageActionMap } from "./socket.message";
 
 export * from "./notification.message";
 export * from "./socket.message";
-export * from "./filesystem.message";
-export * from "./env.message";
 export * from "./workspace.message";
 
 export enum ExtTransport {
@@ -56,22 +54,37 @@ export interface ServiceEvent<T extends ServiceEventPayload> {
 }
 export type ServiceEventPayload = {};
 
-export interface SocketSend<T extends SocketMessagePayload>
+export interface SocketSend<K extends keyof OutSocketMessageActionMap>
   extends ServiceEventPayload {
   uid: string;
   pattern: string;
-  msg: T;
+  msg: OutSocketMessage<K>;
 }
-
-export interface SocketBroadcast<T extends SocketMessagePayload>
+export interface SocketBroadcast<K extends keyof OutSocketMessageActionMap>
   extends ServiceEventPayload {
   uids: string[];
   pattern: string;
-  msg: T;
+  msg: OutSocketMessage<K>;
 }
 
 export interface NotifyUser<T extends UserNotificationPayload>
   extends ServiceEventPayload {
   uid: string;
   notification: T;
+}
+export interface NotificationRead extends ServiceMesagePayload {
+  uid: string;
+  notificationId: string;
+}
+
+export interface UserOnline extends ServiceEventPayload {
+  uid: string;
+}
+export type UserOffline = UserOnline;
+
+export interface EnvShutdown extends ServiceEventPayload {
+  uid: string;
+}
+export interface EnvDeprovision extends ServiceEventPayload {
+  uuid: string;
 }

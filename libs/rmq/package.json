@@ -1,0 +1,23 @@
+{
+  "name": "hide-rmq",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/core": "^11.0.1",
+    "amqp-connection-manager": "^4.1.14",
+    "amqplib": "^0.10.8",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/microservices": "^11.1.1",
+    "@types/amqplib": "^0.10.7",
+    "@types/node": "^22.13.9",
+    "typescript": "^5.7.3"
+  }
+}

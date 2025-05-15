@@ -30,7 +30,7 @@ export class SSHProxyService {
   async handleSSHRequest(msg: InSocketMessage<'env', SSHRequest>, client: SocketWithData) {
     const user = client.data.user;
     if (!(await this.service.checkMembership(user, msg.payload.uuid))) {
-      client.emit('ssh:error', { message: 'Permission denied' });
+      client.emit('ssh', { action: 'error', payload: { message: 'Permission denied' } });
       return;
     }
 
@@ -67,7 +67,7 @@ export class SSHProxyService {
     });
     conn.on('error', (err) => {
       console.error(`SSH Conn Error for ${workspaceUUID}:`, err);
-      client.emit('ssh:error', { message: 'SSH connection failed' });
+      client.emit('ssh', { action: 'error', payload: { message: 'SSH connection failed' } });
     });
     conn.on('close', () => {
       delete client.data.ssh[workspaceUUID];
@@ -96,17 +96,17 @@ export class SSHProxyService {
     conn.shell((err, stream) => {
       if (err) {
         console.log(err);
-        client.emit('ssh:error', { message: 'Failed to start shell' });
+        client.emit('ssh', { action: 'error', payload: { message: 'Failed to start shell' } });
         return;
       }
       client.data.ssh[workspaceUUID].sessions[sessionId] = stream;
-      client.emit('ssh:open', sessionId);
+      client.emit('ssh', { action: 'open', payload: { sessionId } });
 
       stream.on('data', (data: Buffer) => {
-        client.emit('ssh:output', { sessionId, output: data.toString() });
+        client.emit('ssh', { action: 'output', payload: { sessionId, output: data.toString() } });
       });
       stream.on('close', () => {
-        client.emit('ssh:closed', { sessionId });
+        client.emit('ssh', { action: 'closed', payload: { sessionId } });
       });
     });
   }
