@@ -1,3 +1,7 @@
+import { FSAction } from "./filesystem.message";
+import { NotificationPayload } from "./notification.message";
+import { SSHAction, SSHPayload } from "./ssh.message";
+
 export type InSocketMessageService = string | "env";
 export type InSocketMessagePayload = Record<string, unknown>;
 export interface InSocketMessageEnv extends InSocketMessagePayload {
@@ -6,12 +10,7 @@ export interface InSocketMessageEnv extends InSocketMessagePayload {
 export type InSocketMessagePayloadMap = {
   env: InSocketMessageEnv;
 };
-export type SSHAction =
-  | "ssh.request"
-  | "ssh.data"
-  | "ssh.close"
-  | "ssh.closeall";
-export type FSAction = "fs.sync" | "fs.close";
+
 export type EnvAction = "ping";
 export type InSocketMessageActionMap = {
   env: EnvAction | SSHAction | FSAction;
@@ -25,7 +24,13 @@ export type InSocketMessage<
   payload: P;
 };
 
-export type SocketMessagePayload = {
-  [k: string]: unknown;
-  action: string;
+export type OutSocketMessageActionMap = {
+  ssh: SSHPayload;
+  notification: NotificationPayload;
 };
+export type OutSocketMessagePayload = {
+  [key: string]: unknown;
+};
+
+export type OutSocketMessage<K extends keyof OutSocketMessageActionMap> =
+  OutSocketMessageActionMap[K];

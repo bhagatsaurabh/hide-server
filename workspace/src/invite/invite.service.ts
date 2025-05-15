@@ -1,16 +1,16 @@
+import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ForbiddenException,
   HttpException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
 import { sign, verify } from 'jsonwebtoken';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { WorkspaceInvite, NotifyUser, createMessage } from 'hide-common';
+import { WorkspaceInvite, NotifyUser, createMessage, ServiceMessage, NotificationRead } from 'hide-common';
+import { RmqService } from 'hide-rmq';
 import { InviteAllDTO, InviteDTO } from 'src/common/dto/invite.dto';
 import { Workspace } from 'src/common/model/workspace.entity';
 import { Membership } from 'src/common/model/membership.entity';
@@ -21,7 +21,7 @@ import { AcceptDTO } from 'src/common/dto/accept.dto';
 @Injectable()
 export class InviteService {
   constructor(
-    @Inject('WORKSPACE_SERVICE_RMQ') private rmq: ClientProxy,
+    private readonly rmq: RmqService,
     @InjectRepository(Workspace) private wsRepository: Repository<Workspace>,
     @InjectRepository(Membership) private msRepository: Repository<Membership>,
   ) {}
@@ -37,7 +37,9 @@ export class InviteService {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 7);
 
-    const payload = {
+    const notificationId = randomUUID();
+    const payload: InvitationPayload = {
+      notificationId,
       inviterId,
       inviteeId,
       workspaceUUID,
@@ -46,9 +48,9 @@ export class InviteService {
     const jwt = (sign as JWTSignFn<InvitationPayload>)(payload, process.env.WORKSPACE_SERVICE_SECRET!);
     const msg = createMessage<NotifyUser<WorkspaceInvite>>(inviteeId, '', {
       uid: inviteeId,
-      notification: { action: 'workspace-invite', inviterId, workspaceUUID, token: jwt },
+      notification: { type: 'workspace-invite', id: notificationId, inviterId, workspaceUUID, token: jwt },
     });
-    this.rmq.emit('notification.send', msg);
+    this.rmq.send<ServiceMessage<NotifyUser<WorkspaceInvite>>>('notification.send', msg);
   }
   async inviteAllUsers(inviterId: string, { inviteeIds, workspaceUUID }: InviteAllDTO) {
     let err: HttpException | undefined;
@@ -64,7 +66,7 @@ export class InviteService {
   }
 
   async acceptInvitation(inviteeId: string, { token }: AcceptDTO) {
-    const { err, payload } = this.validateAccept(token);
+    const { err, payload } = this.validateAccept(inviteeId, token);
     if (err) {
       throw err;
     }
@@ -74,8 +76,14 @@ export class InviteService {
       throw new NotFoundException('Workspace not found');
     }
     const newMembership = new Membership();
-    newMembership.setData({ workspaceId: workspace.id, userId: inviteeId, role: 'member' });
+    newMembership.setData({ workspaceId: workspace.id, userId: payload.inviteeId, role: 'member' });
     await this.msRepository.save(newMembership);
+
+    const msg: ServiceMessage<NotificationRead> = createMessage(payload.inviteeId, '', {
+      uid: payload.inviteeId,
+      notificationId: payload.notificationId,
+    });
+    this.rmq.send<ServiceMessage<NotificationRead>>('notification.read', msg);
   }
 
   private async validateInvite(inviterId: string, workspaceUUID: string) {
@@ -96,13 +104,13 @@ export class InviteService {
       return new ForbiddenException('Missing required priviledges for sending invitations');
     }
   }
-  private validateAccept(token: string) {
+  private validateAccept(inviteeId: string, token: string) {
     let err: HttpException | null = null;
     const payload = (verify as unknown as JWTVerifyFn<InvitationPayload>)(
       token,
       process.env.WORKSPACE_SERVICE_SECRET!,
     );
-    if (!payload) {
+    if (!payload || inviteeId !== payload.inviteeId) {
       err = new BadRequestException('Invalid invitation token');
     }
 

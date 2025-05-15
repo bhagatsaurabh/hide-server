@@ -5,12 +5,13 @@ import { User } from 'hide-common/model/user';
 import { Observable, timeout } from 'rxjs';
 import { Translation } from './translations';
 import { createMessage } from 'hide-common';
+import { RmqService } from 'hide-rmq';
 
 @Injectable()
 export class ProxyService {
   constructor(
     @Inject('GATEWAY_SERVICE_REDIS') private redis: ClientProxy,
-    @Inject('GATEWAY_SERVICE') private rmq: ClientProxy,
+    private readonly rmq: RmqService,
   ) {}
 
   async sendRequest(
@@ -54,7 +55,7 @@ export class ProxyService {
     if (translation.targetProtocol === Transport.REDIS) {
       observable = this.redis.send(translation.pattern, msg).pipe(timeout(3000));
     } else if (translation.targetProtocol === Transport.RMQ) {
-      observable = this.rmq.send(translation.pattern, msg).pipe(timeout(3000));
+      observable = this.rmq.send(translation.pattern!, msg).pipe(timeout(3000));
     }
 
     return new Promise<unknown>((res, rej) => {

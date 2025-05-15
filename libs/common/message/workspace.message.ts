@@ -1,10 +1,10 @@
-export type MembersModifiedMessage = {
+export type MembersModified = {
   uuid: string;
   added: string[];
   removed: string[];
 };
 
-export type WorkspaceDeletedMessage = {
+export type WorkspaceDeleted = {
   uuid: string;
   members: string[];
 };

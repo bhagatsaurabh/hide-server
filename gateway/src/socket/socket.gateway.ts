@@ -16,21 +16,25 @@ import { Client, ClientChannel } from 'ssh2';
 import { ClientProxy } from '@nestjs/microservices';
 import {
   InSocketMessage,
+  InSocketMessageEnv,
   InSocketMessagePayloadMap,
-  SocketMessagePayload,
+  OutSocketMessage,
+  OutSocketMessageActionMap,
 } from 'hide-common/message/socket.message';
 
-import { EventsMap } from 'socket.io/dist/typed-events';
-import { FSMessage, EnvMessage, SocketSend, SocketBroadcast } from 'hide-common';
-import { createMessage } from 'src/utils';
+import { SocketSend, SocketBroadcast, ServiceEvent, UserOnline, UserOffline } from 'hide-common';
 import { SSHProxyService } from './sshproxy.service';
 import { CommonService } from './common.service';
+
+export interface ClientEvents {
+  ssh: (msg: OutSocketMessage<'ssh'>) => void;
+}
 
 export type SocketData = {
   user: User;
   ssh: Record<string, { conn: Client; sessions: Record<string, ClientChannel> }>;
 };
-export type SocketWithData = Socket<DefaultEventsMap, EventsMap, DefaultEventsMap, SocketData>;
+export type SocketWithData = Socket<DefaultEventsMap, ClientEvents, DefaultEventsMap, SocketData>;
 
 @WebSocketGateway({
   cors: { origin: process.env.CORS_ORIGIN! },
@@ -38,7 +42,7 @@ export type SocketWithData = Socket<DefaultEventsMap, EventsMap, DefaultEventsMa
 @Injectable()
 export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  private server: Server;
+  private server: Server<DefaultEventsMap, ClientEvents>;
 
   private cache: Cache;
   constructor(
@@ -62,12 +66,12 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     socket.data.user = user;
     socket.data.ssh = {};
     await this.cache.set<string>(`presence:${user.uid}`, socket.id);
-    this.redis.emit('user-online', user.uid);
+    this.redis.emit<any, ServiceEvent<UserOnline>>('user.online', { payload: { uid: user.uid } });
   }
   async handleDisconnect(@ConnectedSocket() socket: Socket) {
     const uid = (socket.data as SocketData)?.user?.uid;
     if (!uid) return;
-    this.redis.emit('user-offline', uid);
+    this.redis.emit<any, ServiceEvent<UserOffline>>('user.offline', { payload: { uid } });
     await this.cache.del(`presence:${uid}`);
   }
   async handleAuthentication(token: string) {
@@ -87,54 +91,48 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('msg')
-  async handleSocketMessage(
-    @MessageBody() msg: InSocketMessage<keyof InSocketMessagePayloadMap, any>,
+  async handleSocketMessage<K extends keyof InSocketMessagePayloadMap>(
+    @MessageBody()
+    msg: InSocketMessage<K, InSocketMessagePayloadMap[K]>,
     @ConnectedSocket() client: SocketWithData,
   ) {
     if (msg.service === 'env') {
+      if (!(await this.service.checkMembership(client.data.user, msg.payload.uuid))) {
+        return;
+      }
+
       await this.handleEnvMessage(msg, client);
     }
   }
 
-  async handleEnvMessage(msg: InSocketMessage<'env', any>, client: SocketWithData) {
+  async handleEnvMessage(msg: InSocketMessage<'env', InSocketMessageEnv>, client: SocketWithData) {
+    let forward = false;
     if (msg.action.startsWith('ssh.')) {
       await this.sshService.handleSSHProxyMessage(msg, client);
     } else if (msg.action.startsWith('fs.')) {
-      // TODO
+      forward = true;
     } else {
-      // TODO
+      forward = true;
+    }
+
+    if (forward) {
+      this.redis.emit<any, ServiceEvent<InSocketMessageEnv>>(`env.${msg.payload.uuid}.${msg.action}`, {
+        payload: msg.payload,
+      });
     }
   }
 
-  @SubscribeMessage('fs')
-  handleFSMessage<T extends SocketMessagePayload>(
-    @MessageBody() data: FSMessage<T>,
-    @ConnectedSocket() client: SocketWithData,
-  ) {
-    const msg = createMessage<T>(client.data.user.uid, '', data.payload);
-    this.redis.emit(`fs:${data.action}`, msg);
-  }
-  @SubscribeMessage('env')
-  async handleEnvMessage1(@MessageBody() data: EnvMessage, @ConnectedSocket() client: SocketWithData) {
-    if (!(await this.service.checkMembership(client.data.user, data.payload.uuid))) {
-      return;
-    }
-
-    const msg = createMessage(client.data.user.uid, '', data.payload);
-    this.redis.emit(`fs:${data.action}`, msg);
-  }
-
-  async send<T extends SocketMessagePayload>(data: SocketSend<T>) {
+  async send<T extends keyof OutSocketMessageActionMap>(data: SocketSend<T>) {
     const socketId = await this.cache.get<string>(`presence:${data.uid}`);
     if (socketId) {
-      this.server.to(socketId).emit(data.pattern, data.msg);
+      this.server.to(socketId).emit(data.pattern as any, data.msg);
     }
   }
-  async broadcast<T extends SocketMessagePayload>(data: SocketBroadcast<T>) {
+  async broadcast<T extends keyof OutSocketMessageActionMap>(data: SocketBroadcast<T>) {
     const socketIds = await Promise.all(data.uids.map((uid) => this.cache.get<string>(`presence:${uid}`)));
     for (const socketId of socketIds) {
       if (socketId) {
-        this.server.to(socketId).emit(data.pattern, data.msg);
+        this.server.to(socketId).emit(data.pattern as any, data.msg);
       }
     }
   }

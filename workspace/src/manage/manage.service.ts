@@ -19,18 +19,24 @@ import { InviteService } from 'src/invite/invite.service';
 import { ClientProxy } from '@nestjs/microservices';
 import {
   createMessage,
+  EnvDeprovision,
+  EnvShutdown,
   ExclusionData,
-  MembersModifiedMessage,
+  MembersModified,
   NotifyUser,
-  WorkspaceDeletedMessage,
+  ServiceEvent,
+  ServiceMessage,
+  WorkspaceDeleted,
 } from 'hide-common';
+import { randomUUID } from 'node:crypto';
+import { RmqService } from 'hide-rmq';
 
 @Injectable()
 export class ManageService {
   constructor(
     @InjectRepository(Workspace) private wsRepository: Repository<Workspace>,
     @InjectRepository(Membership) private msRepository: Repository<Membership>,
-    @Inject('WORKSPACE_SERVICE_RMQ') private rmq: ClientProxy,
+    private readonly rmq: RmqService,
     @Inject('WORKSPACE_SERVICE_REDIS') private redis: ClientProxy,
     private readonly inviteService: InviteService,
     private dataSource: DataSource,
@@ -143,21 +149,25 @@ export class ManageService {
       await queryRunner.commitTransaction();
       await queryRunner.release();
     }
+
     for (const removedUid of removed) {
       const msg = createMessage<NotifyUser<ExclusionData>>(removedUid, '', {
         uid: removedUid,
-        notification: { action: 'workspace-membership-removed', actorId: uid, workspaceUUID: workspace.uuid },
+        notification: {
+          type: 'workspace-membership-removed',
+          id: randomUUID(),
+          actorId: uid,
+          workspaceUUID: workspace.uuid,
+        },
       });
-      this.rmq.emit('notification.send', msg);
+      this.rmq.send<ServiceMessage<NotifyUser<ExclusionData>>>('notification.send', msg);
     }
 
     // Added members
     await this.inviteService.inviteAllUsers(uid, { inviteeIds: added, workspaceUUID: workspace.uuid });
 
-    this.redis.emit<any, MembersModifiedMessage>('workspace.members.modified', {
-      uuid: workspace.uuid,
-      added,
-      removed,
+    this.redis.emit<any, ServiceEvent<MembersModified>>('workspace.members.modified', {
+      payload: { uuid: workspace.uuid, added, removed },
     });
   }
 
@@ -235,7 +245,9 @@ export class ManageService {
     );
 
     const shutdownSignal = new Promise<void>((res, rej) => {
-      const observable = this.redis.send('env.shutdown', { uid });
+      const observable = this.redis.send<any, ServiceEvent<EnvShutdown>>('env.shutdown', {
+        payload: { uid },
+      });
       observable.subscribe({
         error: (err) => rej(err as Error),
         complete: () => res(),
@@ -261,7 +273,9 @@ export class ManageService {
       await queryRunner.release();
     }
 
-    this.redis.emit<any, WorkspaceDeletedMessage>('workspace.deleted', { uuid: workspaceUUID, members });
-    this.rmq.emit('env.deprovision', { uuid: workspaceUUID });
+    this.redis.emit<any, ServiceEvent<WorkspaceDeleted>>('workspace.deleted', {
+      payload: { uuid: workspaceUUID, members },
+    });
+    this.rmq.send<ServiceEvent<EnvDeprovision>>('env.deprovision', { payload: { uuid: workspaceUUID } });
   }
 }
