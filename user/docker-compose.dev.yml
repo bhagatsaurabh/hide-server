@@ -24,4 +24,5 @@ services:
       - TYPESENSE_APIKEY=test
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - RMQ_URL=amqp://rabbitmq:5672
     command: [ "/bin/sh", "-c", "cd user && npm run start:dev" ]

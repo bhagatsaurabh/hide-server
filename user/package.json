@@ -28,9 +28,13 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/microservices": "^11.0.11",
     "@nestjs/platform-express": "^11.0.1",
+    "amqp-connection-manager": "^4.1.14",
+    "amqplib": "^0.10.8",
     "hide-common": "file:../libs/common",
     "hide-firebase": "file:../libs/firebase",
     "hide-redis": "file:../libs/redis",
+    "hide-rmq": "file:../libs/rmq",
+    "ioredis": "^5.6.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "typesense": "^2.0.3"

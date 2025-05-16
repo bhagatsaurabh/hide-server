@@ -28,6 +28,7 @@ import { CommonService } from './common.service';
 
 export interface ClientEvents {
   ssh: (msg: OutSocketMessage<'ssh'>) => void;
+  fs: (msg: OutSocketMessage<'fs'>) => void;
 }
 
 export type SocketData = {
