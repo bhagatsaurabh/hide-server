@@ -245,7 +245,7 @@ export class ManageService {
     );
 
     const shutdownSignal = new Promise<void>((res, rej) => {
-      const observable = this.redis.send<any, ServiceEvent<EnvShutdown>>('env.shutdown', {
+      const observable = this.rmq.send<ServiceEvent<EnvShutdown>>(`env.${workspaceUUID}.shutdown`, {
         payload: { uid },
       });
       observable.subscribe({
@@ -276,6 +276,8 @@ export class ManageService {
     this.redis.emit<any, ServiceEvent<WorkspaceDeleted>>('workspace.deleted', {
       payload: { uuid: workspaceUUID, members },
     });
-    this.rmq.send<ServiceEvent<EnvDeprovision>>('env.deprovision', { payload: { uuid: workspaceUUID } });
+    this.rmq.send<ServiceEvent<EnvDeprovision>>('provisioner.deprovision', {
+      payload: { uuid: workspaceUUID },
+    });
   }
 }

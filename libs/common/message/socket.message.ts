@@ -1,4 +1,4 @@
-import { FSAction } from "./filesystem.message";
+import { FSAction, FSPayload } from "./filesystem.message";
 import { NotificationPayload } from "./notification.message";
 import { SSHAction, SSHPayload } from "./ssh.message";
 
@@ -27,6 +27,7 @@ export type InSocketMessage<
 export type OutSocketMessageActionMap = {
   ssh: SSHPayload;
   notification: NotificationPayload;
+  fs: FSPayload;
 };
 export type OutSocketMessagePayload = {
   [key: string]: unknown;

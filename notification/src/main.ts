@@ -14,6 +14,7 @@ async function bootstrap() {
       },
       exchange: 'hide-default',
       exchangeType: 'topic',
+      wildcards: true,
     },
   });
   app.connectMicroservice<MicroserviceOptions>({
