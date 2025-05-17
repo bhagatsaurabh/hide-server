@@ -18,7 +18,7 @@ export type HttpMethod =
   | "PATCH"
   | "OPTIONS";
 
-export interface ServiceMessage<T extends ServiceMesagePayload> {
+export interface ServiceMessage<T extends ServiceMessagePayload> {
   meta: {
     requestId: string;
     timestamp: number;
@@ -27,9 +27,9 @@ export interface ServiceMessage<T extends ServiceMesagePayload> {
   };
   payload: T;
 }
-export type ServiceMesagePayload = {};
+export type ServiceMessagePayload = {};
 
-export const createMessage = <T extends ServiceMesagePayload>(
+export const createMessage = <T extends ServiceMessagePayload>(
   uid: string,
   route: string,
   payload: T
@@ -72,9 +72,13 @@ export interface NotifyUser<T extends UserNotificationPayload>
   uid: string;
   notification: T;
 }
-export interface NotificationRead extends ServiceMesagePayload {
+export interface NotificationRead extends ServiceMessagePayload {
   uid: string;
   notificationId: string;
+}
+export interface UserRegistered extends ServiceMessagePayload {
+  uid: string;
+  username: string;
 }
 
 export interface UserOnline extends ServiceEventPayload {

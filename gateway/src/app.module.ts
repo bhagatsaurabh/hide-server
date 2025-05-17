@@ -5,6 +5,7 @@ import { CoreModule } from './core/core.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { SocketModule } from './socket/socket.module';
 import { AppController } from './app.controller';
+import { PublicModule } from './public/public.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { AppController } from './app.controller';
     CoreModule,
     ProxyModule,
     SocketModule,
+    PublicModule,
   ],
   controllers: [AppController],
 })
