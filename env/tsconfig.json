@@ -20,11 +20,5 @@
   },
   "watchOptions": {
     "watchFile": "fixedPollingInterval"
-  },
-  "references": [
-    { "path": "../libs/common" },
-    { "path": "../libs/redis" },
-    { "path": "../libs/rmq" },
-    { "path": "../libs/firebase" }
-  ]
+  }
 }

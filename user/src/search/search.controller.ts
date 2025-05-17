@@ -21,10 +21,12 @@ export class SearchController implements OnModuleInit {
       if (chan !== 'test.pattern') return;
       const parsed = JSON.parse(message) as { id: string; data: unknown };
       console.log('Received: ', parsed);
-      void pub.publish(
-        `${chan}.reply`,
-        JSON.stringify({ id: parsed.id, data: { beep: 'boop' }, pattern: `${chan}.reply` }),
-      );
+      if (parsed.id) {
+        void pub.publish(
+          `${chan}.reply`,
+          JSON.stringify({ id: parsed.id, data: { beep: 'boop' }, pattern: `${chan}.reply` }),
+        );
+      }
     });
   }
 

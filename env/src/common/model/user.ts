@@ -1,12 +1,8 @@
-export type User = {
+export interface User {
   uid: string;
   name: string;
   username: string;
   email: string;
   picture: string;
   issuer: string;
-};
-
-export type UsernameAvailabilityDTO = {
-  available: boolean;
-};
+}

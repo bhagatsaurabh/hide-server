@@ -20,7 +20,7 @@ export class AppController implements OnModuleInit {
 
   onModuleInit() {
     setTimeout(() => {
-      this.redis.send('test.pattern', { hi: 'hello' }).subscribe({
+      this.redis.emit('test.pattern', { hi: 'hello' }).subscribe({
         next: (val) => console.log('Received: ', val),
         error: (err) => console.log('Error: ', err),
         complete: () => console.log('Done'),
