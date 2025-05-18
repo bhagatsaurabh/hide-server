@@ -1,9 +1,8 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { PublicService } from './public.service';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { MessagePattern, Payload, Transport } from '@nestjs/microservices';
-import { ServiceMessage, UserRegistered } from 'hide-common';
 import { UsernameAvailabilityDTO } from 'hide-common/dto/user';
+import { UserRegistered, WebHookDTO } from 'hide-common/dto/webhook';
 
 @Controller('api')
 export class PublicController {
@@ -16,8 +15,13 @@ export class PublicController {
     return await this.service.checkUsernameExistence(username);
   }
 
-  @MessagePattern('user.registered', Transport.RMQ)
-  async handleUserRegistered(@Payload() msg: ServiceMessage<UserRegistered>) {
-    await this.service.addUsername(msg.payload.username);
+  // TODO: Network restriction & service key
+  @Post('webhook')
+  async handleWebhook(@Body() data: WebHookDTO<unknown>) {
+    if (data.type === 'user.registered') {
+      const payload = data.payload as UserRegistered;
+      await this.service.addUsername(payload.username);
+      await this.service.refreshProfileCheckCache(payload);
+    }
   }
 }

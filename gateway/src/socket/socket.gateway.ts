@@ -25,6 +25,8 @@ import {
 import { SocketSend, SocketBroadcast, ServiceEvent, UserOnline, UserOffline } from 'hide-common';
 import { SSHProxyService } from './sshproxy.service';
 import { CommonService } from './common.service';
+import { FirestoreService } from 'hide-firebase';
+import { Firestore } from '@google-cloud/firestore';
 
 export interface ClientEvents {
   ssh: (msg: OutSocketMessage<'ssh'>) => void;
@@ -46,13 +48,17 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private server: Server<DefaultEventsMap, ClientEvents>;
 
   private cache: Cache;
+  private db: Firestore;
+
   constructor(
     @Inject('GATEWAY_SERVICE_REDIS') private redis: ClientProxy,
     private readonly redisService: RedisService,
+    private readonly firestore: FirestoreService,
     private readonly sshService: SSHProxyService,
     private readonly service: CommonService,
   ) {
     this.cache = this.redisService.get();
+    this.db = this.firestore.db;
   }
 
   async handleConnection(@ConnectedSocket() socket: SocketWithData) {
@@ -84,7 +90,17 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (!response.ok) {
         throw new UnauthorizedException('Invalid token');
       }
-      return (await response.json()) as User;
+
+      const user = (await response.json()) as User;
+
+      let isProfileCreated = await this.cache.get<boolean>(`profile:${user.uid}`);
+      if (isProfileCreated === null) {
+        const profileSnap = await this.db.collection('users').where('uid', '==', user.uid).get();
+        isProfileCreated = profileSnap.docs.length > 0;
+        await this.cache.set(`profile:${user.uid}`, isProfileCreated);
+      }
+
+      return user;
     } catch (error) {
       console.log(error);
       return null;
