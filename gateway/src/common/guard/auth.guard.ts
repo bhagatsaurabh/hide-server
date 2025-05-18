@@ -1,6 +1,10 @@
+import { Firestore } from '@google-cloud/firestore';
+import { Cache } from '@nestjs/cache-manager';
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
 import { User } from 'hide-common/model/user';
+import { FirestoreService } from 'hide-firebase';
+import { RedisService } from 'hide-redis';
 
 export interface AuthenticatedRequest extends Request {
   user?: User;
@@ -8,7 +12,16 @@ export interface AuthenticatedRequest extends Request {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor() {}
+  cache: Cache;
+  db: Firestore;
+
+  constructor(
+    private readonly redis: RedisService,
+    private readonly firestore: FirestoreService,
+  ) {
+    this.cache = this.redis.get();
+    this.db = this.firestore.db;
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
@@ -30,7 +43,16 @@ export class AuthGuard implements CanActivate {
       }
       const userData = (await response.json()) as User;
       request.user = userData;
-      return true;
+
+      // Check profile validity
+      let isProfileCreated = await this.cache.get<boolean>(`profile:${userData.uid}`);
+      if (isProfileCreated === null) {
+        const profileSnap = await this.db.collection('users').where('uid', '==', userData.uid).get();
+        isProfileCreated = profileSnap.docs.length > 0;
+        await this.cache.set(`profile:${userData.uid}`, isProfileCreated);
+      }
+
+      return isProfileCreated;
     } catch (error) {
       console.log(error);
       throw new UnauthorizedException('Authentication failed');

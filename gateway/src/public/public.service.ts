@@ -1,6 +1,9 @@
 import { Firestore } from '@google-cloud/firestore';
+import { Cache } from '@nestjs/cache-manager';
 import { BadRequestException, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { UserRegistered } from 'hide-common/dto/webhook';
 import { FirestoreService } from 'hide-firebase';
+import { RedisService } from 'hide-redis';
 import Redis from 'ioredis';
 import Redlock, { Lock } from 'redlock';
 import { usernameRegex } from 'src/utils/constants';
@@ -10,9 +13,14 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
   redis: Redis;
   db: Firestore;
   redlock: Redlock;
+  cache: Cache;
 
-  constructor(private readonly firestore: FirestoreService) {
+  constructor(
+    private readonly firestore: FirestoreService,
+    private readonly cacheService: RedisService,
+  ) {
     this.db = this.firestore.db;
+    this.cache = this.cacheService.get();
   }
 
   async onModuleInit() {
@@ -77,6 +85,12 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
       console.log('[BloomInit] "usernames" populated');
     } catch (err) {
       console.error('[BloomInit] "usernames" failed', err);
+    }
+  }
+  async refreshProfileCheckCache(data: UserRegistered) {
+    const isProfileCreated = await this.cache.get<boolean>(`profile:${data.uid}`);
+    if (isProfileCreated !== null && isProfileCreated === false) {
+      await this.cache.set(`profile:${data.uid}`, true);
     }
   }
 }

@@ -76,10 +76,6 @@ export interface NotificationRead extends ServiceMessagePayload {
   uid: string;
   notificationId: string;
 }
-export interface UserRegistered extends ServiceMessagePayload {
-  uid: string;
-  username: string;
-}
 
 export interface UserOnline extends ServiceEventPayload {
   uid: string;
