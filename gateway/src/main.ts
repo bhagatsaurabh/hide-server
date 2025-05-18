@@ -13,7 +13,7 @@ async function bootstrap() {
       urls: [process.env.RMQ_URL!],
       queue: 'gateway',
       queueOptions: {
-        durable: false,
+        durable: true,
       },
       exchange: 'hide-default',
       exchangeType: 'topic',

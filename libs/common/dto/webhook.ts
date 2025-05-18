@@ -8,4 +8,5 @@ export type WebHookDTO<T> = {
 export type UserRegistered = {
   uid: string;
   username: string;
+  name: string;
 };

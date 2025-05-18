@@ -22,4 +22,5 @@ services:
       - FIRESTORE_EMULATOR_HOST=host.docker.internal:8085
       - FIREBASE_STORAGE_EMULATOR_HOST=host.docker.internal:9199
       - FIREBASE_APP_ID=hide-43a4b
+      - JWT_PUBLIC_KEY=test
     command: [ "/bin/sh", "-c", "cd gateway && npm run start:dev" ]

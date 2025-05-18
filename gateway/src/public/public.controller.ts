@@ -3,6 +3,7 @@ import { PublicService } from './public.service';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { UsernameAvailabilityDTO } from 'hide-common/dto/user';
 import { UserRegistered, WebHookDTO } from 'hide-common/dto/webhook';
+import { PublicGuard } from 'src/common/guard/public.guard';
 
 @Controller('api')
 export class PublicController {
@@ -17,7 +18,9 @@ export class PublicController {
 
   // TODO: Network restriction & service key
   @Post('webhook')
+  @UseGuards(PublicGuard)
   async handleWebhook(@Body() data: WebHookDTO<unknown>) {
+    console.log(data);
     if (data.type === 'user.registered') {
       const payload = data.payload as UserRegistered;
       await this.service.addUsername(payload.username);
