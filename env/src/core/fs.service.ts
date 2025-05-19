@@ -114,7 +114,6 @@ export class FSService {
     for (const event of events) {
       const doc = this.syncService.docs.get(event.path);
       if (event.type === 'file' && event.action === 'write' && doc) {
-        console.log('yup');
         const fileHash = await this.syncService.getHashFromFile(event.path);
         const docHash = doc.computeHash();
         if (fileHash === docHash) {

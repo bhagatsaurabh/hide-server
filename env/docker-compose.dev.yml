@@ -1,0 +1,19 @@
+services:
+  env:
+    expose:
+      - 80
+    build:
+      context: ../
+      dockerfile: env/dockerfile
+      target: development
+    image: hide-server-env
+    volumes:
+      - .:/app/env
+      - /app/env/node_modules
+    environment:
+      - NODE_ENV=development
+      - SERVICE_PORT=80
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RMQ_URL=amqp://rabbitmq:5672
+    command: [ "/bin/sh", "-c", "cd env && npm run start:dev" ]

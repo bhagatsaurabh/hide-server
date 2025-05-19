@@ -16,14 +16,11 @@ import { Client, ClientChannel } from 'ssh2';
 import { ClientProxy } from '@nestjs/microservices';
 import {
   InSocketMessage,
-  InSocketMessageEnv,
-  InSocketMessagePayloadMap,
   OutSocketMessage,
   OutSocketMessageActionMap,
 } from 'hide-common/message/socket.message';
 
 import { SocketSend, SocketBroadcast, ServiceEvent, UserOnline, UserOffline } from 'hide-common';
-import { SSHProxyService } from './sshproxy.service';
 import { CommonService } from './common.service';
 import { FirestoreService } from 'hide-firebase';
 import { Firestore } from '@google-cloud/firestore';
@@ -52,9 +49,9 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(
     @Inject('GATEWAY_SERVICE_REDIS') private redis: ClientProxy,
+    @Inject('GATEWAY_SERVICE_RMQ') private readonly rmq: ClientProxy,
     private readonly redisService: RedisService,
     private readonly firestore: FirestoreService,
-    private readonly sshService: SSHProxyService,
     private readonly service: CommonService,
   ) {
     this.cache = this.redisService.get();
@@ -108,35 +105,25 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('msg')
-  async handleSocketMessage<K extends keyof InSocketMessagePayloadMap>(
-    @MessageBody()
-    msg: InSocketMessage<K, InSocketMessagePayloadMap[K]>,
-    @ConnectedSocket() client: SocketWithData,
-  ) {
+  async handleSocketMessage(@MessageBody() msg: InSocketMessage, @ConnectedSocket() client: SocketWithData) {
     if (msg.service === 'env') {
       if (!(await this.service.checkMembership(client.data.user, msg.payload.uuid))) {
         return;
       }
 
-      await this.handleEnvMessage(msg, client);
+      await this.handleEnvMessage(client.data.user.uid, msg);
     }
   }
 
-  async handleEnvMessage(msg: InSocketMessage<'env', InSocketMessageEnv>, client: SocketWithData) {
-    let forward = false;
-    if (msg.action.startsWith('ssh.')) {
-      await this.sshService.handleSSHProxyMessage(msg, client);
-    } else if (msg.action.startsWith('fs.')) {
-      forward = true;
-    } else {
-      forward = true;
+  async handleEnvMessage(uid: string, msg: InSocketMessage<'env'>) {
+    const instanceId = await this.cache.get<string>(`workspace:${uid}`);
+    if (!instanceId) {
+      return;
     }
 
-    if (forward) {
-      this.redis.emit<any, ServiceEvent<InSocketMessageEnv>>(`env.${msg.payload.uuid}.${msg.action}`, {
-        payload: msg.payload,
-      });
-    }
+    this.redis.emit<any, ServiceEvent<InSocketMessage<'env'>>>(`env.${instanceId}`, {
+      payload: msg,
+    });
   }
 
   async send<T extends keyof OutSocketMessageActionMap>(data: SocketSend<T>) {

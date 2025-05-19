@@ -56,9 +56,6 @@ export class RmqService implements OnModuleInit, OnModuleDestroy {
 
     try {
       await channelWrapper.publish(this.defaultExchange, routingKey, msgBuffer);
-      console.log(
-        `Published message to exchange "${this.defaultExchange}" with routing key "${routingKey}"`
-      );
     } catch (error) {
       console.error("Failed to publish message", error);
       // TODO: Retry & re-throw

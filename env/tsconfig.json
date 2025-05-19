@@ -20,5 +20,6 @@
   },
   "watchOptions": {
     "watchFile": "fixedPollingInterval"
-  }
+  },
+  "references": [{ "path": "../libs/common" }, { "path": "../libs/redis" }]
 }

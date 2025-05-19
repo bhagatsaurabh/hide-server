@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: env-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: env
+  template:
+    metadata:
+      labels:
+        app: env
+    spec:
+      containers:
+        - name: env
+          image: hideregistry.azurecr.io/hide-server-env:latest
+          # imagePullPolicy: Never
+          ports:
+            - containerPort: 3001
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: SERVICE_PORT
+              value: '80'
+            - name: REDIS_HOST
+              value: 'redis'
+            - name: REDIS_PORT
+              value: '6379'
+      imagePullSecrets:
+        - name: acr-secret
+      initContainers:
+        - name: init-redis
+          image: busybox:1.28
+          command:
+            [
+              'sh',
+              '-c',
+              'until nslookup redis.default.svc.cluster.local; do echo waiting for redis; sleep 2; done',
+            ]

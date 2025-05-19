@@ -1,14 +1,13 @@
 import { Module } from '@nestjs/common';
 import { SocketGateway } from './socket.gateway';
 import { SharedModule } from '../common/shared.module';
-import { SSHProxyService } from './sshproxy.service';
 import { CommonService } from './common.service';
 import { SocketController } from './socket.controller';
 
 @Module({
   imports: [SharedModule],
   controllers: [SocketController],
-  providers: [SocketGateway, SSHProxyService, CommonService],
-  exports: [SocketGateway, SSHProxyService, CommonService],
+  providers: [SocketGateway, CommonService],
+  exports: [SocketGateway, CommonService],
 })
 export class SocketModule {}
