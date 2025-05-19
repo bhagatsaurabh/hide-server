@@ -1,4 +1,8 @@
-import { OutSocketMessagePayload } from "./socket.message";
+import { InSocketMessageEnv } from "./env.message";
+import {
+  InSocketMessagePayload,
+  OutSocketMessagePayload,
+} from "./socket.message";
 
 export type FSAction = "fs.sync" | "fs.close";
 
@@ -38,3 +42,14 @@ export type FSPayload = {
     payload: FSResponseMap[K];
   };
 }[keyof FSResponseMap];
+
+///////
+
+export interface FSSyncIn extends InSocketMessageEnv {
+  path: string;
+  buf: string;
+}
+
+export interface FSClose extends InSocketMessageEnv {
+  path: string;
+}

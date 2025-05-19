@@ -16,11 +16,10 @@ export class PublicController {
     return await this.service.checkUsernameExistence(username);
   }
 
-  // TODO: Network restriction & service key
+  // TODO: Network restriction
   @Post('webhook')
   @UseGuards(PublicGuard)
   async handleWebhook(@Body() data: WebHookDTO<unknown>) {
-    console.log(data);
     if (data.type === 'user.registered') {
       const payload = data.payload as UserRegistered;
       await this.service.addUsername(payload.username);

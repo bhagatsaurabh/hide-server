@@ -6,6 +6,16 @@ import { RmqModule } from 'hide-rmq';
   imports: [
     ClientsModule.register([
       {
+        name: 'GATEWAY_SERVICE_RMQ',
+        transport: Transport.RMQ,
+        options: {
+          urls: [process.env.RMQ_URL!],
+          exchange: 'hide-default',
+          exchangeType: 'topic',
+          wildcards: true,
+        },
+      },
+      {
         name: 'GATEWAY_SERVICE_REDIS',
         transport: Transport.REDIS,
         options: {

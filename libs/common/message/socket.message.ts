@@ -1,28 +1,14 @@
-import { FSAction, FSPayload } from "./filesystem.message";
+import { EnvPing, InSocketMessageEnv } from "./env.message";
+import { FSClose, FSPayload, FSSyncIn } from "./filesystem.message";
 import { NotificationPayload } from "./notification.message";
-import { SSHAction, SSHPayload } from "./ssh.message";
-
-export type InSocketMessageService = string | "env";
-export type InSocketMessagePayload = Record<string, unknown>;
-export interface InSocketMessageEnv extends InSocketMessagePayload {
-  uuid: string;
-}
-export type InSocketMessagePayloadMap = {
-  env: InSocketMessageEnv;
-};
-
-export type EnvAction = "ping";
-export type InSocketMessageActionMap = {
-  env: EnvAction | SSHAction | FSAction;
-};
-export type InSocketMessage<
-  K extends keyof InSocketMessagePayloadMap,
-  P extends InSocketMessagePayloadMap[K]
-> = {
-  service: K;
-  action: InSocketMessageActionMap[K];
-  payload: P;
-};
+import { InSocketMessagePresence, PresencePing } from "./presence.message";
+import {
+  SSHClose,
+  SSHCloseAll,
+  SSHData,
+  SSHPayload,
+  SSHRequest,
+} from "./ssh.message";
 
 export type OutSocketMessageActionMap = {
   ssh: SSHPayload;
@@ -35,3 +21,54 @@ export type OutSocketMessagePayload = {
 
 export type OutSocketMessage<K extends keyof OutSocketMessageActionMap> =
   OutSocketMessageActionMap[K];
+
+/////////////////////
+
+export type InSocketMessagePayload = Record<string, unknown>;
+export type InSocketMessagePayloadActionMap = {
+  env: InSocketMessageEnv;
+  presence: InSocketMessagePresence;
+};
+export type EnforcedInSocketMessagePayloadActionMap<
+  T extends {
+    [K in keyof InSocketMessagePayloadActionMap]: {
+      [Sub in string]: InSocketMessagePayloadActionMap[K];
+    };
+  }
+> = T;
+export type InSocketMessagePayloadMap =
+  EnforcedInSocketMessagePayloadActionMap<{
+    env: {
+      "ssh.request": SSHRequest;
+      "ssh.data": SSHData;
+      "ssh.close": SSHClose;
+      "ssh.closeall": SSHCloseAll;
+      "fs.sync": FSSyncIn;
+      "fs.close": FSClose;
+      ping: EnvPing;
+    };
+    presence: {
+      ping: PresencePing;
+    };
+  }>;
+
+export type InSocketMessageMap<
+  T extends keyof InSocketMessagePayloadMap = keyof InSocketMessagePayloadMap,
+  S extends keyof InSocketMessagePayloadMap[T] = keyof InSocketMessagePayloadMap[T]
+> = {
+  service: T;
+  action: S;
+  payload: InSocketMessagePayloadMap[T][S];
+};
+
+export type InSocketMessage<
+  T extends keyof InSocketMessagePayloadMap = keyof InSocketMessagePayloadMap
+> = {
+  [K in T]: {
+    [S in keyof InSocketMessagePayloadMap[K]]: {
+      service: K;
+      action: S;
+      payload: InSocketMessagePayloadMap[K][S];
+    };
+  }[keyof InSocketMessagePayloadMap[K]];
+}[T];

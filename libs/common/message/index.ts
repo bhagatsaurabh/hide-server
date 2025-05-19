@@ -19,11 +19,11 @@ export type HttpMethod =
   | "OPTIONS";
 
 export interface ServiceMessage<T extends ServiceMessagePayload> {
-  meta: {
-    requestId: string;
-    timestamp: number;
+  meta?: {
     uid: string;
-    route: string;
+    requestId?: string;
+    timestamp?: number;
+    route?: string;
   };
   payload: T;
 }
@@ -75,6 +75,10 @@ export interface NotifyUser<T extends UserNotificationPayload>
 export interface NotificationRead extends ServiceMessagePayload {
   uid: string;
   notificationId: string;
+}
+export interface MembershipCheck extends ServiceMessagePayload {
+  uid: string;
+  uuid: string;
 }
 
 export interface UserOnline extends ServiceEventPayload {

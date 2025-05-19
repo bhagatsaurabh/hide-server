@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { Cache } from '@nestjs/cache-manager';
 import { User } from 'hide-common/dto/user';
 import { RedisService } from 'hide-redis';
-import { MembersModified, WorkspaceDeleted } from 'hide-common';
+import { MembershipCheck, MembersModified, ServiceMessage, WorkspaceDeleted } from 'hide-common';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
 
 export type CachedMembership = Record<string, boolean>;
 
@@ -10,7 +12,10 @@ export type CachedMembership = Record<string, boolean>;
 export class CommonService {
   private cache: Cache;
 
-  constructor(private readonly redisService: RedisService) {
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly rmq: ClientProxy,
+  ) {
     this.cache = this.redisService.get();
   }
 
@@ -23,23 +28,13 @@ export class CommonService {
     return await this.fetchMembership(user, workspaceUUID, cachedMemberships);
   }
   async fetchMembership(user: User, workspaceUUID: string, cache: CachedMembership | null) {
-    try {
-      const response = await fetch(`http://workspace/api/${workspaceUUID}/check-membership`, {
-        method: 'GET',
-        headers: {
-          'x-auth-user': Buffer.from(JSON.stringify(user)).toString('base64'),
-        },
-      });
-      let isMember = false;
-      if (response.ok) {
-        isMember = true;
-      }
-      await this.cacheMembership(user.uid, workspaceUUID, isMember, cache);
-      return isMember;
-    } catch (error) {
-      console.log(error);
-    }
-    return false;
+    const observable = this.rmq.send<boolean, ServiceMessage<MembershipCheck>>('workspace.membership.check', {
+      payload: { uid: user.uid, uuid: workspaceUUID },
+    });
+    const isMember = await firstValueFrom(observable);
+
+    await this.cacheMembership(user.uid, workspaceUUID, isMember, cache);
+    return isMember;
   }
   async cacheMembership(
     uid: string,

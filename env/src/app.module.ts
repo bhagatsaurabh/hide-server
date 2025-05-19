@@ -1,8 +1,12 @@
 import { Module } from '@nestjs/common';
-import { GatewayModule } from './gateway/gateway.module';
+import { CoreModule } from './core/core.module';
+import { RedisModule } from 'hide-redis';
 
 @Module({
-  imports: [GatewayModule],
+  imports: [
+    CoreModule,
+    RedisModule.register({ host: process.env.REDIS_HOST!, port: process.env.REDIS_PORT!, database: '1' }),
+  ],
   controllers: [],
   providers: [],
 })

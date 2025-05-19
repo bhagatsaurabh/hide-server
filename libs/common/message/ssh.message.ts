@@ -1,4 +1,5 @@
-import { InSocketMessageEnv, OutSocketMessagePayload } from "./socket.message";
+import { InSocketMessageEnv } from "./env.message";
+import { OutSocketMessagePayload } from "./socket.message";
 
 export type SSHAction =
   | "ssh.request"
@@ -17,6 +18,8 @@ export interface SSHClose extends InSocketMessageEnv {
   sessionId: string;
 }
 export type SSHCloseAll = InSocketMessageEnv;
+
+///////////
 
 export type SSHResponseMap = {
   open: SSHOpen;

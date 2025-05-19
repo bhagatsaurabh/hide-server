@@ -23,18 +23,19 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/microservices": "^11.0.17",
     "@nestjs/platform-express": "^11.0.1",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.8",
-    "chokidar": "^4.0.3",
+    "hide-common": "file:../libs/common",
+    "hide-redis": "file:../libs/redis",
     "ioredis": "^5.6.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "y-protocols": "^1.0.6",
-    "yjs": "^13.6.26"
+    "ssh2": "^1.16.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -47,6 +48,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.7",
+    "@types/ssh2": "^1.15.4",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
