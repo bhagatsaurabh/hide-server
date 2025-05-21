@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Cache } from '@nestjs/cache-manager';
 import { User } from 'hide-common/dto/user';
 import { RedisService } from 'hide-redis';
@@ -14,7 +14,7 @@ export class CommonService {
 
   constructor(
     private readonly redisService: RedisService,
-    private readonly rmq: ClientProxy,
+    @Inject('GATEWAY_SERVICE_RMQ') private readonly rmq: ClientProxy,
   ) {
     this.cache = this.redisService.get();
   }
