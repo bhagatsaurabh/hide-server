@@ -15,4 +15,9 @@ export class SocketController {
   async handleSendBroadcast(msg: ServiceEvent<SocketBroadcast<any>>) {
     await this.socketGateway.broadcast(msg.payload);
   }
+
+  @EventPattern('__keyevent@1__:expired', Transport.REDIS)
+  handleUserPresenceExpiry(data: string) {
+    this.socketGateway.handleUserPresenceExpiry(data);
+  }
 }

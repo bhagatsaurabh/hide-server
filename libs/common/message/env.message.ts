@@ -7,3 +7,7 @@ export interface InSocketMessageEnv extends InSocketMessagePayload {
 }
 
 export interface EnvPing extends InSocketMessageEnv {}
+
+export interface EnvUserDisconnect extends InSocketMessageEnv {
+  uid: string;
+}

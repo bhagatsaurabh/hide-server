@@ -17,7 +17,7 @@ import { RedisModule } from 'hide-redis';
           : Buffer.from(process.env.FIREBASE_KEY_BASE64!, 'base64').toString(),
       emulate: !!process.env.FIREBASE_EMULATION,
     }),
-    RedisModule.register({ host: process.env.REDIS_HOST!, port: process.env.REDIS_PORT! }),
+    RedisModule.register({ host: process.env.REDIS_HOST!, port: process.env.REDIS_PORT!, database: '1' }),
     ProfileModule,
     SearchModule,
   ],

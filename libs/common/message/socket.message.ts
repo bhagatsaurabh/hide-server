@@ -1,4 +1,4 @@
-import { EnvPing, InSocketMessageEnv } from "./env.message";
+import { EnvPing, EnvUserDisconnect, InSocketMessageEnv } from "./env.message";
 import { FSClose, FSPayload, FSSyncIn } from "./filesystem.message";
 import { NotificationPayload } from "./notification.message";
 import { InSocketMessagePresence, PresencePing } from "./presence.message";
@@ -49,6 +49,9 @@ export type InSocketMessagePayloadMap =
     };
     presence: {
       ping: PresencePing;
+    };
+    internal: {
+      "user.disconnect": EnvUserDisconnect;
     };
   }>;
 

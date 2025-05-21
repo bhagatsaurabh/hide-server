@@ -86,7 +86,7 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
       throw new UnauthorizedException('Not a member of workspace');
     }
 
-    await this.cache.set(`workspace:${user.uid}`, this.instanceId);
+    await this.cache.set(`presence:${user.uid}:${workspaceUuid}`, this.instanceId);
   }
 
   /* handleHeartbeat(msg: Message<EnvPingEvent>) {
