@@ -85,4 +85,16 @@ export const rules: Rules = [
       },
     },
   },
+  {
+    service: 'env',
+    paths: {
+      open: {
+        GET: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: Transport.RMQ,
+          pattern: 'open',
+        },
+      },
+    },
+  },
 ];

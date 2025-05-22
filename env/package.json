@@ -31,8 +31,10 @@
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.8",
     "hide-common": "file:../libs/common",
+    "hide-health": "file:../libs/health",
     "hide-redis": "file:../libs/redis",
     "ioredis": "^5.6.1",
+    "redlock": "^5.0.0-beta.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "ssh2": "^1.16.0"

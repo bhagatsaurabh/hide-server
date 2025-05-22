@@ -57,7 +57,7 @@ export type ServiceEventPayload = {};
 export interface SocketSend<K extends keyof OutSocketMessageActionMap>
   extends ServiceEventPayload {
   uid: string;
-  pattern: string;
+  pattern: K;
   msg: OutSocketMessage<K>;
 }
 export interface SocketBroadcast<K extends keyof OutSocketMessageActionMap>

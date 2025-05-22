@@ -1,28 +1,21 @@
 import { randomUUID } from 'node:crypto';
-import {
-  Controller,
-  Get,
-  Inject,
-  OnModuleDestroy,
-  OnModuleInit,
-  Param,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
-import { InSocketMessage, MembershipCheck, ServiceEvent, ServiceMessage, UserHeader } from 'hide-common';
-import { User } from 'hide-common/model/user';
+import { Controller, Inject, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { ClientProxy, MessagePattern, Transport } from '@nestjs/microservices';
+import { InSocketMessage, ServiceEvent, ServiceMessage } from 'hide-common';
 import Redis from 'ioredis';
 import { RedisRef } from 'src/common/refs/redis.ref';
 import { SSHProxyService } from './sshproxy.service';
 import { Cache } from '@nestjs/cache-manager';
 import { RedisService } from 'hide-redis';
+import { WorkspaceService } from './workspace.service';
+import { CommonRef } from 'src/common/refs/common.ref';
+import { EnvWorkspaceOpen } from 'hide-common/message/env.message';
 
 @Controller('api')
 export class CoreController implements OnModuleInit, OnModuleDestroy {
-  instanceId: string;
   redisServer: [Redis, Redis];
   cache: Cache;
+  instanceId: string;
 
   /* root = '/home/devuser/workspace';
   uuid = process.env.WS_UUID!;
@@ -34,11 +27,13 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
   ]; */
 
   constructor(
-    @Inject('ENV_SERVICE_RMQ') private readonly rmq: ClientProxy,
+    @Inject('ENV_SERVICE_REDIS') private readonly redis: ClientProxy,
     private readonly sshService: SSHProxyService,
     private readonly cacheService: RedisService,
+    private readonly workspaceService: WorkspaceService,
   ) {
-    this.instanceId = randomUUID();
+    CommonRef.setInstanceId(randomUUID());
+    this.instanceId = CommonRef.getInstanceId();
     this.cache = this.cacheService.get();
   }
 
@@ -48,10 +43,18 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
 
     await sub.subscribe(`env.${this.instanceId}`);
     sub.on('message', (_chan, message) => {
-      const parsed = JSON.parse(message) as ServiceEvent<InSocketMessage<'env'>>;
+      const parsed = JSON.parse(message) as ServiceEvent<InSocketMessage<'env' | 'internal'>>;
       if (!parsed.meta?.uid) return;
 
       switch (parsed.payload.action) {
+        case 'workspace.open': {
+          void this.workspaceService.handleWorkspaceOpen(
+            parsed.meta.uid,
+            parsed.payload.payload,
+            parsed.payload.correlationId,
+          );
+          break;
+        }
         case 'ssh.request': {
           this.sshService.handleRequest(parsed.meta.uid, parsed.payload.payload);
           break;
@@ -68,6 +71,10 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
           this.sshService.handleSSHCloseAll(parsed.meta.uid, parsed.payload.payload);
           break;
         }
+        case 'user.disconnect': {
+          // TODO
+          break;
+        }
         default:
           break;
       }
@@ -77,16 +84,13 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
     await this.redisServer[1].removeAllListeners().unsubscribe(`env.${this.instanceId}`);
   }
 
-  @Get(':workspaceUuid')
-  async openWorkspace(@UserHeader() user: User, @Param('workspaceUuid') workspaceUuid: string) {
-    const observable = this.rmq.send<boolean, ServiceMessage<MembershipCheck>>('workspace.membership.check', {
-      payload: { uid: user.uid, uuid: workspaceUuid },
-    });
-    if (!(await firstValueFrom(observable))) {
-      throw new UnauthorizedException('Not a member of workspace');
-    }
-
-    await this.cache.set(`presence:${user.uid}:${workspaceUuid}`, this.instanceId);
+  @MessagePattern('workspace.open', Transport.RMQ)
+  async handleWorkspaceOpen(msg: ServiceMessage<InSocketMessage<'env'>>) {
+    await this.workspaceService.handleWorkspaceOpen(
+      msg.meta!.uid,
+      msg.payload as unknown as EnvWorkspaceOpen,
+      msg.payload.correlationId,
+    );
   }
 
   /* handleHeartbeat(msg: Message<EnvPingEvent>) {

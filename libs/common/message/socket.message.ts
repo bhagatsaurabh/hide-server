@@ -1,4 +1,9 @@
-import { EnvPing, EnvUserDisconnect, InSocketMessageEnv } from "./env.message";
+import {
+  EnvPayload,
+  EnvUserDisconnect,
+  EnvWorkspaceOpen,
+  InSocketMessageEnv,
+} from "./env.message";
 import { FSClose, FSPayload, FSSyncIn } from "./filesystem.message";
 import { NotificationPayload } from "./notification.message";
 import { InSocketMessagePresence, PresencePing } from "./presence.message";
@@ -14,8 +19,10 @@ export type OutSocketMessageActionMap = {
   ssh: SSHPayload;
   notification: NotificationPayload;
   fs: FSPayload;
+  env: EnvPayload;
 };
 export type OutSocketMessagePayload = {
+  correlationId?: string;
   [key: string]: unknown;
 };
 
@@ -45,7 +52,7 @@ export type InSocketMessagePayloadMap =
       "ssh.closeall": SSHCloseAll;
       "fs.sync": FSSyncIn;
       "fs.close": FSClose;
-      ping: EnvPing;
+      "workspace.open": EnvWorkspaceOpen;
     };
     presence: {
       ping: PresencePing;
@@ -72,6 +79,7 @@ export type InSocketMessage<
       service: K;
       action: S;
       payload: InSocketMessagePayloadMap[K][S];
+      correlationId?: string;
     };
   }[keyof InSocketMessagePayloadMap[K]];
 }[T];
