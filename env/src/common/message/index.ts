@@ -32,10 +32,6 @@ export interface FSEventBatch extends SocketMessagePayload {
   events: FSEvent[];
 }
 
-export interface FSExtEvent extends FSEvent {
-  uids: string[];
-}
-
 export interface FSBlock extends SocketMessagePayload {
   path: string;
 }

@@ -1,27 +1,50 @@
 import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { CachedPresence, MembershipCheck, ServiceEvent, ServiceMessage, SocketSend } from 'hide-common';
+import {
+  CachedPresence,
+  MembershipCheck,
+  ServiceEvent,
+  ServiceMessage,
+  SocketSend,
+  StatDTO,
+} from 'hide-common';
 import { EnvWorkspaceOpen } from 'hide-common/message/env.message';
+import { FSClose, FSEvent, FSOpen } from 'hide-common/message/filesystem.message';
 import { RedisService } from 'hide-redis';
 import Redis from 'ioredis';
 import Redlock from 'redlock';
 import { firstValueFrom } from 'rxjs';
 import { CommonRef } from 'src/common/refs/common.ref';
 import { WSSharedDoc } from 'src/utils/shareddoc';
+import { FSService } from './fs.service';
+import { SyncService } from './sync.service';
+
+// uid
+export type UserState = Map<string, Sessions>;
+// sessionId
+export type Sessions = Map<string, SessionState>;
+export type SessionState = {
+  docs: ActiveDocs;
+};
+// path
+export type ActiveDocs = Map<string, WSSharedDoc>;
 
 @Injectable()
 export class WorkspaceService {
+  root = '/home/devuser/workspace';
   cache: Cache;
   redlock: Redlock;
   lockClient: Redis;
 
-  conns: Map<string, Map<string, Map<string, WSSharedDoc>>>;
+  conns: UserState;
 
   constructor(
     @Inject('ENV_SERVICE_REDIS') private readonly redis: ClientProxy,
     @Inject('ENV_SERVICE_RMQ') private readonly rmq: ClientProxy,
     private readonly cacheService: RedisService,
+    private readonly fsService: FSService,
+    private readonly syncService: SyncService,
   ) {
     this.cache = this.cacheService.get();
   }
@@ -97,5 +120,51 @@ export class WorkspaceService {
       void error;
       return null;
     }
+  }
+
+  async setWorkspaceActive(uid: string, sessionId: string) {
+    const active = await this.cache.get<1 | 0>(`affinity:${uid}:${sessionId}`);
+    if (active === 0) {
+      await this.cache.set<1 | 0>(`affinity:${uid}:${sessionId}`, 1);
+    }
+  }
+
+  async getStat(wsUuid: string, path: string) {
+    const res = await fetch(`http://workspace-${wsUuid}/api/stat?path=${path}`, {
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    });
+    return (await res.json()) as StatDTO;
+  }
+
+  async handleOpen(uid: string, msg: FSOpen) {
+    const path = this.root + msg.path;
+    try {
+      const stat = await this.getStat(msg.uuid, path);
+      if (stat.isDir) {
+        return await this.fsService.openDir(uid, path);
+      }
+      return this.syncService.openFile(uid, path);
+    } catch (err) {
+      console.log(err);
+      return [];
+    }
+  }
+
+  async handleClose(uid: string, msg: FSClose) {
+    const path = this.root + msg.path;
+    try {
+      const stat = await this.getStat(msg.uuid, path);
+      if (stat.isDir) {
+        return this.fsService.closeDir(uid, path);
+      }
+      return this.syncService.closeFile(uid, path);
+    } catch (err) {
+      console.log(err);
+      return;
+    }
+  }
+
+  async handleWatchEvent(uid: string, sessionId: string, event: FSEvent) {
+    // TODO
   }
 }

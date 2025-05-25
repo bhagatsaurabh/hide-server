@@ -17,7 +17,7 @@ export class SocketController {
   }
 
   @EventPattern('__keyevent@1__:expired', Transport.REDIS)
-  async handleUserPresenceExpiry(data: string) {
-    await this.socketGateway.handleUserPresenceExpiry(data);
+  async handleUserPresenceExpiry(key: string) {
+    await this.socketGateway.handleUserPresenceExpiry(key);
   }
 }

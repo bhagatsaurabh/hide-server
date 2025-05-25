@@ -13,10 +13,10 @@ export interface EnvPing extends InSocketMessageEnv {}
 
 export interface EnvUserDisconnect extends InSocketMessageEnv {
   uid: string;
-  socketId: string;
+  sessionId: string;
 }
 export interface EnvWorkspaceOpen extends InSocketMessageEnv {
-  socketId: string;
+  sessionId: string;
 }
 
 ////////////////
