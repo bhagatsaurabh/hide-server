@@ -24,6 +24,7 @@ export interface FSBlock extends OutSocketMessagePayload {
   path: string;
 }
 export type FSResume = FSBlock;
+export type FSLost = FSBlock;
 export interface FSSync extends OutSocketMessagePayload {
   uuid: string;
   path: string;
@@ -35,6 +36,7 @@ export type FSResponseMap = {
   block: FSBlock;
   resume: FSResume;
   sync: FSSync;
+  lost: FSLost;
 };
 export type FSPayload = {
   [K in keyof FSResponseMap]: {
@@ -50,6 +52,13 @@ export interface FSSyncIn extends InSocketMessageEnv {
   buf: string;
 }
 
-export interface FSClose extends InSocketMessageEnv {
+export interface FSOpen extends InSocketMessageEnv {
   path: string;
 }
+
+export type FSClose = FSOpen;
+export type FSSave = FSOpen;
+
+/////
+
+export type InternalWorkspaceWatch = FSEvent;

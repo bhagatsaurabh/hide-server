@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+    spec:
+      containers:
+        - name: nats
+          image: nats:alpine
+          ports:
+            - name: client
+              containerPort: 4222
+            - name: cluster
+              containerPort: 6222
+            - name: management
+              containerPort: 8222
+          volumeMounts:
+            - mountPath: /data
+              name: nats-data
+      volumes:
+        - name: nats-data
+          persistentVolumeClaim:
+            claimName: nats-pvc

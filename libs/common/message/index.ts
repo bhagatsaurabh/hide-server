@@ -5,6 +5,7 @@ import { OutSocketMessage, OutSocketMessageActionMap } from "./socket.message";
 export * from "./notification.message";
 export * from "./socket.message";
 export * from "./workspace.message";
+export * from "./gateway.message";
 
 export enum ExtTransport {
   HTTP = 998,
@@ -48,11 +49,12 @@ export interface ServiceEvent<T extends ServiceEventPayload> {
     requestId?: string;
     timestamp?: number;
     uid?: string;
+    sessionId?: string;
     route?: string;
   };
   payload: T;
 }
-export type ServiceEventPayload = {};
+export type ServiceEventPayload = Record<string, unknown>;
 
 export interface SocketSend<K extends keyof OutSocketMessageActionMap>
   extends ServiceEventPayload {

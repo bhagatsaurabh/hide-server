@@ -2,21 +2,13 @@ import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common
 import { ClientProxy } from '@nestjs/microservices';
 import { promises as fs } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
-import {
-  FSExtEvent,
-  FSBlock,
-  FSResume,
-  FSEventBatch,
-  FSEvent,
-  ServiceEvent,
-  SocketSend,
-} from 'src/common/message';
+import { FSBlock, FSResume, FSEventBatch, FSEvent, ServiceEvent, SocketSend } from 'src/common/message';
 import { debounce } from 'src/utils';
 import { SyncService } from './sync.service';
 
 type EventCache = {
-  events: Array<FSExtEvent>;
-  buffer: Array<FSExtEvent>;
+  events: Array<FSEvent>;
+  buffer: Array<FSEvent>;
   isProcessing: boolean;
   timer?: NodeJS.Timeout;
 };
@@ -34,7 +26,7 @@ export class FSService {
   idleTimeout: NodeJS.Timeout;
   cache: EventCache = { events: [], buffer: [], isProcessing: false };
   debounceTime = 250;
-  busy: { uids: string[]; path: string } | null = null;
+  busy: { path: string } | null = null;
   process = debounce(async () => await this._process(), this.debounceTime);
 
   setIdleTimeout() {
@@ -65,7 +57,7 @@ export class FSService {
     this.redis.emit('remove-watch', { uid, path });
   }
 
-  handleEvent(event: FSExtEvent) {
+  handleEvent(event: FSEvent) {
     if (this.busy) return;
     this.cache[this.cache.isProcessing ? 'buffer' : 'events'].push(event);
     this.busy = this.burstProtection(this.cache);
@@ -75,31 +67,26 @@ export class FSService {
     const threshold = parseInt(process.env.EVENT_QUEUE_SIZE || '100');
     if (cache.events.length >= threshold || cache.buffer.length >= threshold) {
       const paths = new Set<string>();
-      const uids = new Set<string>();
-      let events: FSExtEvent[];
+      let events: FSEvent[];
       if (cache.events.length >= threshold) events = cache.events;
       else events = cache.buffer;
+
       for (const event of events) {
         paths.add(event.watchedPath);
-        event.uids.forEach((uid) => uids.add(uid));
       }
       const blockedPath = this.commonParent(Array.from(paths));
-      for (const uid of uids) {
-        this.redis.emit<any, ServiceEvent<SocketSend<FSBlock>>>('socket.send', {
-          payload: { uid, pattern: 'fs', msg: { action: 'block', path: blockedPath } },
-        });
-      }
-      return { uids: Array.from(uids), path: blockedPath };
+      /* this.redis.emit<any, ServiceEvent<SocketSend<FSBlock>>>('socket.send', {
+        payload: { uid, pattern: 'fs', msg: { action: 'block', path: blockedPath } },
+      }); */
+      return { path: blockedPath };
     }
     return null;
   }
   async _process() {
     if (this.busy) {
-      for (const uid of this.busy.uids) {
-        this.redis.emit<any, ServiceEvent<SocketSend<FSResume>>>('socket.send', {
-          payload: { uid, pattern: 'fs', msg: { action: 'resume', path: this.busy.path } },
-        });
-      }
+      /* this.redis.emit<any, ServiceEvent<SocketSend<FSResume>>>('socket.send', {
+        payload: { uid, pattern: 'fs', msg: { action: 'resume', path: this.busy.path } },
+      }); */
       this.busy = null;
       return;
     }
@@ -109,8 +96,7 @@ export class FSService {
     this.cache.buffer = [];
     this.cache.isProcessing = false;
   }
-  async sync(events: FSExtEvent[]) {
-    const uidEvents = new Map<string, FSEvent[]>();
+  async sync(events: FSEvent[]) {
     for (const event of events) {
       const doc = this.syncService.docs.get(event.path);
       if (event.type === 'file' && event.action === 'write' && doc) {
@@ -141,7 +127,7 @@ export class FSService {
       });
     }
   }
-  cleanPaths(event: FSExtEvent) {
+  cleanPaths(event: FSEvent) {
     event.path = event.path.replace(this.root, '');
     if (event.path === '') event.path = '/';
     event.watchedPath = event.watchedPath.replace(this.root, '');

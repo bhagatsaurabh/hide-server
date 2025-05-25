@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Cache } from '@nestjs/cache-manager';
-import { User } from 'hide-common/dto/user';
 import { RedisService } from 'hide-redis';
 import { MembershipCheck, MembersModified, ServiceMessage, WorkspaceDeleted } from 'hide-common';
 import { ClientProxy } from '@nestjs/microservices';
@@ -19,21 +18,21 @@ export class CommonService {
     this.cache = this.redisService.get();
   }
 
-  async checkMembership(user: User, workspaceUUID: string) {
-    const cachedMemberships = await this.cache.get<CachedMembership>(`membership:${user.uid}`);
+  async checkMembership(uid: string, workspaceUUID: string) {
+    const cachedMemberships = await this.cache.get<CachedMembership>(`membership:${uid}`);
     if (cachedMemberships && cachedMemberships[workspaceUUID] !== undefined) {
       return cachedMemberships[workspaceUUID];
     }
 
-    return await this.fetchMembership(user, workspaceUUID, cachedMemberships);
+    return await this.fetchMembership(uid, workspaceUUID, cachedMemberships);
   }
-  async fetchMembership(user: User, workspaceUUID: string, cache: CachedMembership | null) {
+  async fetchMembership(uid: string, workspaceUUID: string, cache: CachedMembership | null) {
     const observable = this.rmq.send<boolean, ServiceMessage<MembershipCheck>>('workspace.membership.check', {
-      payload: { uid: user.uid, uuid: workspaceUUID },
+      payload: { uid, uuid: workspaceUUID },
     });
     const isMember = await firstValueFrom(observable);
 
-    await this.cacheMembership(user.uid, workspaceUUID, isMember, cache);
+    await this.cacheMembership(uid, workspaceUUID, isMember, cache);
     return isMember;
   }
   async cacheMembership(

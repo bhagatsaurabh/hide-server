@@ -1,0 +1,11 @@
+services:
+  nats:
+    image: nats:alpine
+    container_name: nats
+    expose:
+      - 4222
+      - 6222
+    ports:
+      - 8222:8222
+    volumes:
+      - ./.nats-data:/data

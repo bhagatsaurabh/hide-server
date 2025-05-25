@@ -17,15 +17,6 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
   cache: Cache;
   instanceId: string;
 
-  /* root = '/home/devuser/workspace';
-  uuid = process.env.WS_UUID!;
-  channels = [
-    `env.${this.uuid}.ping`,
-    `env.${this.uuid}.fs.watch`,
-    `env.${this.uuid}.fs.sync`,
-    `env.${this.uuid}.fs.save`,
-  ]; */
-
   constructor(
     @Inject('ENV_SERVICE_REDIS') private readonly redis: ClientProxy,
     private readonly sshService: SSHProxyService,
@@ -41,38 +32,64 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
     this.redisServer = RedisRef.get();
     const sub = this.redisServer[1];
 
-    await sub.subscribe(`env.${this.instanceId}`);
-    sub.on('message', (_chan, message) => {
-      const parsed = JSON.parse(message) as ServiceEvent<InSocketMessage<'env' | 'internal'>>;
-      if (!parsed.meta?.uid) return;
+    const channel = `env.${this.instanceId}`;
+    await sub.subscribe(channel);
+    sub.on('message', (chan, message) => {
+      if (chan !== channel) return;
 
-      switch (parsed.payload.action) {
-        case 'workspace.open': {
-          void this.workspaceService.handleWorkspaceOpen(
-            parsed.meta.uid,
-            parsed.payload.payload,
-            parsed.payload.correlationId,
-          );
-          break;
-        }
+      const evt = JSON.parse(message) as ServiceEvent<InSocketMessage<'env' | 'internal'>>;
+      if (!evt.meta?.uid || !evt.meta.sessionId) return;
+
+      const uid = evt.meta.uid;
+      const sessionId = evt.meta.sessionId;
+
+      // User sent message
+      if (evt.payload.service === 'env') {
+        // TODO: Verify if wsUuid is handled by this instance & uid:sessionId is active here
+        void this.workspaceService.setWorkspaceActive(uid, sessionId);
+      }
+
+      switch (evt.payload.action) {
         case 'ssh.request': {
-          this.sshService.handleRequest(parsed.meta.uid, parsed.payload.payload);
+          this.sshService.handleRequest(uid, evt.payload.payload);
           break;
         }
         case 'ssh.data': {
-          this.sshService.handleSSHData(parsed.meta.uid, parsed.payload.payload);
+          this.sshService.handleSSHData(uid, evt.payload.payload);
           break;
         }
         case 'ssh.close': {
-          this.sshService.handleSSHClose(parsed.meta.uid, parsed.payload.payload);
+          this.sshService.handleSSHClose(uid, evt.payload.payload);
           break;
         }
         case 'ssh.closeall': {
-          this.sshService.handleSSHCloseAll(parsed.meta.uid, parsed.payload.payload);
+          this.sshService.handleSSHCloseAll(uid, evt.payload.payload);
           break;
         }
-        case 'user.disconnect': {
-          // TODO
+        case 'fs.open': {
+          void this.workspaceService.handleOpen(uid, evt.payload.payload);
+          break;
+        }
+        case 'fs.close': {
+          break;
+        }
+        case 'fs.sync': {
+          break;
+        }
+        case 'workspace.watch': {
+          void this.workspaceService.handleWatchEvent(uid, sessionId, evt.payload.payload);
+          break;
+        }
+        case 'session.disconnect': {
+          // TODO: Verify if wsUuid is handled by this instance & uid:sessionId is active here
+          const msg = evt.payload.payload;
+          void this.cache.set<1 | 0>(`presence:${msg.uid}:${msg.sessionId}:${msg.uuid}`, 0, 150000);
+          break;
+        }
+        case 'session.ping': {
+          // TODO: Verify if wsUuid is handled by this instance & uid:sessionId is active here
+          const msg = evt.payload.payload;
+          void this.cache.set<1 | 0>(`presence:${msg.uid}:${msg.sessionId}:${msg.uuid}`, 1, 30000);
           break;
         }
         default:
@@ -93,50 +110,11 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  /* handleHeartbeat(msg: Message<EnvPingEvent>) {
-    this.fsService.handleHeartbeat(msg.meta.uid);
-  }
-  handleWatchEvent(event: FSExtEvent) {
-    this.fsService.handleEvent(event);
-  }
+  /*
   handleSyncEvent(msg: Message<FSDocSyncEvent>) {
     this.syncService.handleFSUpdate(msg);
   }
   async handleSaveEvent(msg: Message<FSSaveRequest>) {
     await this.syncService.handleFSSave(msg);
-  } */
-
-  // TODO
-  /* @MessagePattern(`env.shutdown`, Transport.RMQ)
-  shutdown() {
-    this.fsService.dispose();
-  }
-  @MessagePattern('env.fs.open', Transport.REDIS)
-  async fsOpen(@Payload() msg: Message<FSOpenRequest>) {
-    const path = this.root + msg.payload.path;
-    try {
-      const stat = await fs.stat(path);
-      if (stat.isDirectory()) {
-        return await this.fsService.openDir(msg.meta.uid, path);
-      }
-      return this.syncService.openFile(msg.meta.uid, path);
-    } catch (err) {
-      console.log(err);
-      return [];
-    }
-  }
-  @MessagePattern('env.fs.close', Transport.REDIS)
-  async fsClose(@Payload() msg: Message<FSCloseRequest>) {
-    const path = this.root + msg.payload.path;
-    try {
-      const stat = await fs.stat(path);
-      if (stat.isDirectory()) {
-        return this.fsService.closeDir(msg.meta.uid, path);
-      }
-      return this.syncService.closeFile(msg.meta.uid, path);
-    } catch (err) {
-      console.log(err);
-      return;
-    }
   } */
 }

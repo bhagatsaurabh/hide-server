@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, OnModuleInit, Inject } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, OnModuleInit, Inject, Get } from '@nestjs/common';
 import { ClientProxy, EventPattern, MessagePattern, Transport } from '@nestjs/microservices';
 import { AppService } from './app.service';
 import {
@@ -41,6 +41,11 @@ export class AppController implements OnModuleInit {
   @MessagePattern('notification.read', Transport.RMQ)
   async handleReadNotification(msg: ServiceMessage<NotificationRead>) {
     await this.appService.handleReadNotification(msg.payload.uid, { id: msg.payload.notificationId }, false);
+  }
+
+  @Get('all')
+  async getAllNotifications(@UserHeader() user: User) {
+    return await this.appService.getAllNotifications(user.uid);
   }
 
   @Post('read')

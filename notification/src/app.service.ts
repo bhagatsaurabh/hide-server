@@ -70,4 +70,15 @@ export class AppService {
 
     await docRef.delete();
   }
+
+  async getAllNotifications(uid: string) {
+    const snap = await this.db
+      .collection('notifications')
+      .doc(uid)
+      .collection('messages')
+      .withConverter(notificationConverter)
+      .get();
+
+    return snap.docs.map((doc) => doc.data());
+  }
 }

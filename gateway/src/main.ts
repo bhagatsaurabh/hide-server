@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filter/http-exception.filter';
+import { RedisRef } from './common/refs/redis.ref';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -19,7 +20,7 @@ async function bootstrap() {
       exchangeType: 'topic',
     },
   });
-  app.connectMicroservice<MicroserviceOptions>({
+  const microservice = app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.REDIS,
     options: {
       host: process.env.REDIS_HOST!,
@@ -31,6 +32,7 @@ async function bootstrap() {
     },
   });
   await app.startAllMicroservices();
+  RedisRef.set(microservice.unwrap());
   await app.listen(process.env.PORT ?? 80);
 }
 void bootstrap();
