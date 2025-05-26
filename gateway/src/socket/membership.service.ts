@@ -8,7 +8,7 @@ import { firstValueFrom } from 'rxjs';
 export type CachedMembership = Record<string, boolean>;
 
 @Injectable()
-export class CommonService {
+export class MembershipService {
   private cache: Cache;
 
   constructor(

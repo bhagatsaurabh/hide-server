@@ -22,6 +22,7 @@ export type HttpMethod =
 export interface ServiceMessage<T extends ServiceMessagePayload> {
   meta?: {
     uid: string;
+    sessionId?: string;
     requestId?: string;
     timestamp?: number;
     route?: string;
@@ -59,12 +60,14 @@ export type ServiceEventPayload = Record<string, unknown>;
 export interface SocketSend<K extends keyof OutSocketMessageActionMap>
   extends ServiceEventPayload {
   uid: string;
+  sessionId: string;
   pattern: K;
   msg: OutSocketMessage<K>;
 }
 export interface SocketBroadcast<K extends keyof OutSocketMessageActionMap>
   extends ServiceEventPayload {
   uids: string[];
+  sessionIds: string[];
   pattern: string;
   msg: OutSocketMessage<K>;
 }
@@ -94,3 +97,4 @@ export interface EnvShutdown extends ServiceEventPayload {
 export interface EnvDeprovision extends ServiceEventPayload {
   uuid: string;
 }
+export interface HealthCheck extends ServiceEventPayload {}

@@ -25,10 +25,16 @@ export type CachedSession = {
 // wsUuid =>
 export type CachedWorkspace = {
   state: "active" | "inactive";
+  // uids
   dirs: {
     [path: string]: string[];
   };
+  // envInstanceId
   docs: {
     [docId: string]: string;
+  };
+  // envInstanceId
+  sshs: {
+    [sessionId: string]: string;
   };
 };

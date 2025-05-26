@@ -27,12 +27,10 @@ import {
   CachedPresence,
   ServiceMessage,
   GatewayPayload,
-  CachedSession,
   CachedWorkspace,
+  HealthCheck,
 } from 'hide-common';
-import { CommonService } from './common.service';
 import { FirestoreService } from 'hide-firebase';
-import { getHashedKey } from 'hide-common/utils';
 import { Firestore } from '@google-cloud/firestore';
 import { firstValueFrom, timeout } from 'rxjs';
 import { CommonRef } from 'src/common/refs/common.ref';
@@ -40,6 +38,8 @@ import { randomUUID } from 'node:crypto';
 import Redis from 'ioredis';
 import { RedisRef } from 'src/common/refs/redis.ref';
 import Redlock from 'redlock';
+import { MembershipService } from './membership.service';
+import { PresenceService } from './presence.service';
 
 export interface ClientEvents {
   ssh: (msg: OutSocketMessage<'ssh'>) => void;
@@ -70,11 +70,12 @@ export class SocketGateway
 
   constructor(
     @Inject('GATEWAY_SERVICE_REDIS') private redis: ClientProxy,
-    @Inject('GATEWAY_SERVICE_RMQ') private rmq: ClientProxy,
     @Inject('GATEWAY_SERVICE_NATS') private nats: ClientProxy,
+    @Inject('GATEWAY_SERVICE_RMQ') private rmq: ClientProxy,
     private readonly redisService: RedisService,
     private readonly firestore: FirestoreService,
-    private readonly service: CommonService,
+    private readonly membershipService: MembershipService,
+    private readonly presenceService: PresenceService,
   ) {
     this.cache = this.redisService.get();
     this.db = this.firestore.db;
@@ -95,7 +96,6 @@ export class SocketGateway
       socket.client.conn.close();
     }
   }
-
   async setupInstanceListener() {
     const sub = this.redisClients[1];
     const channel = `gateway.${this.instanceId}`;
@@ -151,13 +151,10 @@ export class SocketGateway
       });
     }
 
-    await this.cache.set<CachedPresence>(`presence:${uid}`, presence);
-    await this.cache.set(`presence:${uid}:${sessionId}`, 1, 20000);
+    await this.presenceService.setSessionState(presence, uid, sessionId, 'active');
     const workspace = await this.cache.get<CachedWorkspace>(`workspace:${wsUuid}`);
     if (workspace) {
-      workspace.state = 'active';
-      await this.cache.set<CachedWorkspace>(`workspace:${wsUuid}`, workspace);
-      await this.cache.set(`presence:${uid}:${sessionId}:${wsUuid}`, 1, 20000);
+      await this.presenceService.setWorkspaceState(workspace, uid, sessionId, wsUuid, 'active');
     }
     await lock.release();
   }
@@ -169,15 +166,10 @@ export class SocketGateway
     if (!presence) presence = {};
     const { wsUuid } = presence[sessionId];
 
-    presence[sessionId].state = 'inactive';
-    await this.cache.set(`presence:${uid}`, presence);
-    await this.cache.set(`presence:${uid}:${sessionId}`, 0, 360000);
-
+    await this.presenceService.setSessionState(presence, uid, sessionId, 'inactive');
     const workspace = await this.cache.get<CachedWorkspace>(`workspace:${wsUuid}`);
     if (workspace) {
-      workspace.state = 'inactive';
-      await this.cache.set<CachedWorkspace>(`workspace:${wsUuid}`, workspace);
-      await this.cache.set(`presence:${uid}:${sessionId}:${wsUuid}`, 0, 300000);
+      await this.presenceService.setWorkspaceState(workspace, uid, sessionId, wsUuid, 'inactive');
     }
 
     await lock.release();
@@ -228,36 +220,60 @@ export class SocketGateway
     if (msg.service === 'env') {
       await this.handleEnvMessage(uid, sessionId, msg);
     } else if (msg.service === 'presence') {
-      await this.handlePresenceMessage(uid, sessionId, presence, msg);
+      await this.presenceService.handlePresenceMessage(uid, sessionId, presence, msg);
     }
   }
 
+  stickyActions = ['fs.sync', 'fs.save', 'ssh.data', 'ssh.close'];
   async handleEnvMessage(uid: string, sessionId: string, msg: InSocketMessage<'env'>) {
     const workspace = await this.cache.get<CachedWorkspace>(`workspace:${msg.payload.uuid}`);
     if (!workspace) return;
-    const isAuthZ = await this.service.checkMembership(uid, msg.payload.uuid);
-    if (!isAuthZ) return;
+    const isAuthZ = await this.membershipService.checkMembership(uid, msg.payload.uuid);
+    if (!isAuthZ) {
+      this.redis.emit<any, ServiceEvent<SocketSend<'env'>>>('socket.send', {
+        payload: {
+          uid,
+          sessionId,
+          pattern: 'env',
+          msg: { action: 'error', payload: { correlationId: msg.correlationId, code: 'NOT_A_MEMBER' } },
+        },
+      });
+      return;
+    }
 
     // Sticky route
-    if (msg.action === 'fs.sync' || msg.action === 'fs.save') {
-      const envInstanceId = workspace.docs[msg.payload.path];
+    if (this.stickyActions.includes(msg.action)) {
+      let envInstanceId: string;
+      if (msg.action === 'fs.sync' || msg.action === 'fs.save') {
+        envInstanceId = workspace.docs[msg.payload.path];
+      } else {
+        envInstanceId = workspace.sshs[sessionId];
+      }
 
       let healthy = false;
       try {
-        await firstValueFrom(this.redis.send(`env.${envInstanceId}`, {}).pipe(timeout(1000)));
+        await firstValueFrom(
+          this.redis
+            .send<any, ServiceEvent<HealthCheck>>(`env.${envInstanceId}.health`, { payload: {} })
+            .pipe(timeout(500)),
+        );
         healthy = true;
       } catch (error) {
         void error;
       }
 
       if (!healthy) {
-        delete workspace.docs[msg.payload.path];
-        await this.cache.set<CachedWorkspace>(`workspace:${msg.payload.uuid}`, workspace);
-        await this.send({
-          uid,
-          pattern: 'fs',
-          msg: { action: 'lost', payload: { path: msg.payload.path } },
-        });
+        if (msg.action === 'fs.sync' || msg.action === 'fs.save') {
+          await this.handleFSLoss(workspace, uid, sessionId, msg.payload.uuid, msg.payload.path);
+        } else {
+          await this.handleSSHSLoss(
+            workspace,
+            uid,
+            sessionId,
+            msg.payload.uuid,
+            msg.payload.sshSessionId as string,
+          );
+        }
       } else {
         this.redis.emit<any, ServiceEvent<InSocketMessage<'env'>>>(`env.${envInstanceId}`, {
           payload: msg,
@@ -270,81 +286,62 @@ export class SocketGateway
       });
     }
   }
-  async handlePresenceMessage(
+  async handleFSLoss(
+    workspace: CachedWorkspace,
     uid: string,
     sessionId: string,
-    presence: CachedPresence,
-    msg: InSocketMessage<'presence'>,
+    wsUuid: string,
+    path: string,
   ) {
-    if (msg.action === 'session.ping') {
-      presence[sessionId].state = 'active';
-      await this.cache.set<CachedPresence>(`presence:${uid}`, presence);
-      await this.cache.set(`presence:${uid}:${sessionId}`, 1, 20000);
-
-      const { wsUuid } = presence[sessionId];
-      const workspace = await this.cache.get<CachedWorkspace>(`workspace:${wsUuid}`);
-      if (
-        wsUuid &&
-        workspace &&
-        wsUuid === msg.payload.uuid &&
-        (await this.service.checkMembership(uid, msg.payload.uuid))
-      ) {
-        workspace.state = 'active';
-        await this.cache.set<CachedWorkspace>(`workspace:${wsUuid}`, workspace);
-        await this.cache.set(`presence:${uid}:${sessionId}:${wsUuid}`, 1, 20000);
-      }
-    }
+    delete workspace.docs[path];
+    await this.cache.set<CachedWorkspace>(`workspace:${wsUuid}`, workspace);
+    await this.send({
+      uid,
+      sessionId,
+      pattern: 'fs',
+      msg: { action: 'lost', payload: { path: path } },
+    });
   }
-  /* async handleSessionLoss(uid: string, presence: CachedPresence, socketId: string, wsUuid: string) {
-    await this.send<'env'>({ uid, pattern: 'env', msg: { action: 'session.lost', payload: {} } });
-    presence.sockets[socketId] = 'none';
-    delete presence.workspaces[`${socketId}:${wsUuid}`];
-    await this.cache.set(`presence:${uid}`, presence);
-    await this.cache.set(`presence:${uid}:${socketId}`, 'none', 20000);
-    await this.cache.del(`presence:${uid}:${socketId}:${wsUuid}`);
-  } */
-  async handleUserPresenceExpiry(key: string) {
-    const lock = await this.acquireLock([this.lockClient], key, 10 * 1000, 2);
+  async handleSSHSLoss(
+    workspace: CachedWorkspace,
+    uid: string,
+    sessionId: string,
+    wsUuid: string,
+    sshSessionId: string,
+  ) {
+    delete workspace.sshs[sessionId];
+    await this.cache.set<CachedWorkspace>(`workspace:${wsUuid}`, workspace);
+    await this.send({
+      uid,
+      sessionId,
+      pattern: 'ssh',
+      msg: { action: 'closed', payload: { sshSessionId, all: true } },
+    });
+  }
+
+  async handleCacheExpiry(key: string) {
+    const lock = await this.acquireLock([this.lockClient], key, 10 * 1000, 0);
 
     const [type, ...parts] = key.split(':');
     if (type === 'presence') {
-      const [uid, sessionId, wsUuid] = parts;
-      if (wsUuid) {
-        const workspace = await this.cache.get<CachedWorkspace>(`workspace:${wsUuid}`);
-        if (!workspace) return;
-        if (workspace.state === 'active') {
-          workspace.state = 'inactive';
-          await this.cache.set<CachedWorkspace>(`workspace:${wsUuid}`, workspace);
-          await this.cache.set(`presence:${uid}:${sessionId}:${wsUuid}`, 0, 300000);
-        } else {
-          // TODO: Workspace expired, cleanup ?
-        }
-      } else {
-        const presence = await this.cache.get<CachedPresence>(`presence:${uid}:${sessionId}`);
-        if (!presence) return;
-        if (presence[sessionId].state === 'active') {
-          presence[sessionId].state = 'inactive';
-          await this.cache.set<CachedPresence>(`presence:${uid}:${sessionId}`, presence);
-          await this.cache.set(`presence:${uid}:${sessionId}`, 0, 400000);
-        } else {
-          // TODO: Session expired, cleanup ?
-        }
-      }
+      await this.presenceService.handlePresenceExpiry(parts);
     }
 
     await lock.release();
   }
 
   async send<T extends keyof OutSocketMessageActionMap>(data: SocketSend<T>) {
-    const socketId = await this.cache.get<CachedPresence>(`presence:${data.uid}`);
+    const presence = await this.cache.get<CachedPresence>(`presence:${data.uid}`);
+    const socketId = presence?.[data.sessionId]?.socketId;
     if (socketId) {
       this.server.to(socketId).emit(data.pattern as any, data.msg);
     }
   }
   async broadcast<T extends keyof OutSocketMessageActionMap>(data: SocketBroadcast<T>) {
-    const socketIds = await Promise.all(
+    const presenceAll = await Promise.all(
       data.uids.map((uid) => this.cache.get<CachedPresence>(`presence:${uid}`)),
     );
+    const socketIds = presenceAll.map((presence, idx) => presence?.[data.sessionIds[idx]].socketId);
     for (const socketId of socketIds) {
       if (socketId) {
         this.server.to(socketId).emit(data.pattern as any, data.msg);
