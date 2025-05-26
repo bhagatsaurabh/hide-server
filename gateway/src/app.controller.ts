@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { EventPattern, Transport } from '@nestjs/microservices';
 import { MembersModified, ServiceEvent, WorkspaceDeleted } from 'hide-common';
-import { CommonService } from './socket/common.service';
+import { CommonService } from './socket/membership';
 
 @Controller()
 export class AppController {

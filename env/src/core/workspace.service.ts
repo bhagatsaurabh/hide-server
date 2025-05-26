@@ -1,34 +1,20 @@
 import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import {
-  CachedPresence,
-  MembershipCheck,
-  ServiceEvent,
-  ServiceMessage,
-  SocketSend,
-  StatDTO,
-} from 'hide-common';
-import { EnvWorkspaceOpen } from 'hide-common/message/env.message';
+import { InSocketMessage, StatDTO } from 'hide-common';
 import { FSClose, FSEvent, FSOpen } from 'hide-common/message/filesystem.message';
 import { RedisService } from 'hide-redis';
 import Redis from 'ioredis';
 import Redlock from 'redlock';
-import { firstValueFrom } from 'rxjs';
-import { CommonRef } from 'src/common/refs/common.ref';
 import { WSSharedDoc } from 'src/utils/shareddoc';
 import { FSService } from './fs.service';
 import { SyncService } from './sync.service';
+import { SSHProxyService } from './sshproxy.service';
 
-// uid
-export type UserState = Map<string, Sessions>;
-// sessionId
-export type Sessions = Map<string, SessionState>;
-export type SessionState = {
-  docs: ActiveDocs;
-};
-// path
+// docId
 export type ActiveDocs = Map<string, WSSharedDoc>;
+// wsUuid
+export type WorkspaceState = Map<string, ActiveDocs>;
 
 @Injectable()
 export class WorkspaceService {
@@ -36,8 +22,9 @@ export class WorkspaceService {
   cache: Cache;
   redlock: Redlock;
   lockClient: Redis;
+  stickyActions = ['fs.sync', 'fs.save', 'ssh.data', 'ssh.close'];
 
-  conns: UserState;
+  state: WorkspaceState;
 
   constructor(
     @Inject('ENV_SERVICE_REDIS') private readonly redis: ClientProxy,
@@ -45,70 +32,79 @@ export class WorkspaceService {
     private readonly cacheService: RedisService,
     private readonly fsService: FSService,
     private readonly syncService: SyncService,
+    private readonly sshService: SSHProxyService,
   ) {
     this.cache = this.cacheService.get();
   }
 
-  async handleWorkspaceOpen(uid: string, msg: EnvWorkspaceOpen, correlationId?: string) {
-    const lock = await this.handleAffinity(msg.uuid);
-    if (!lock) {
-      this.redis.emit<any, ServiceEvent<SocketSend<'env'>>>('socket.send', {
-        payload: { uid, pattern: 'env', msg: { action: 'workspace.open.wait', payload: { correlationId } } },
-      });
-      return;
-    } else {
-      await this.cache.set(`workspace:${msg.uuid}`, CommonRef.getInstanceId());
-      await lock.release();
-    }
+  handleEnvMessage(uid: string, sessionId: string, msg: InSocketMessage<'env'>) {
+    if (this.stickyActions.includes(msg.action)) return;
 
-    try {
-      const observable = this.rmq.send<boolean, ServiceMessage<MembershipCheck>>(
-        'workspace.membership.check',
-        {
-          payload: { uid, uuid: msg.uuid },
-        },
-      );
-      if (!(await firstValueFrom(observable))) {
-        this.redis.emit<any, ServiceEvent<SocketSend<'env'>>>('socket.send', {
-          payload: {
-            uid,
-            pattern: 'env',
-            msg: { action: 'error', payload: { correlationId, code: 'NOT_A_MEMBER' } },
-          },
-        });
-        return;
+    switch (msg.action) {
+      case 'ssh.request': {
+        this.sshService.handleRequest(uid, sessionId, msg.payload);
+        break;
       }
-
-      const presence = await this.cache.get<CachedPresence>(`presence:${uid}`);
-      if (!presence) {
-        this.redis.emit<any, ServiceEvent<SocketSend<'env'>>>('socket.send', {
-          payload: {
-            uid,
-            pattern: 'env',
-            msg: { action: 'error', payload: { correlationId, code: 'WORKSPACE_NOT_OPENED' } },
-          },
-        });
-        return;
+      case 'fs.open': {
+        // TODO
+        break;
       }
-
-      const instanceId = CommonRef.getInstanceId();
-      presence.sockets[msg.socketId] = msg.uuid;
-      presence.workspaces[`${msg.socketId}:${msg.uuid}`] = instanceId;
-      await this.cache.set(`presence:${uid}`, presence);
-      await this.cache.set(`presence:${uid}:${msg.socketId}`, msg.uuid, 20000);
-      await this.cache.set(`presence:${uid}:${msg.socketId}:${msg.uuid}`, instanceId, 30000);
-      return null;
-    } catch (error) {
-      void error;
-      this.redis.emit<any, ServiceEvent<SocketSend<'env'>>>('socket.send', {
-        payload: {
-          uid,
-          pattern: 'env',
-          msg: { action: 'error', payload: { correlationId, code: 'UNKNOWN' } },
-        },
-      });
+      case 'fs.close': {
+        // TODO
+        break;
+      }
+      default:
+        break;
     }
   }
+  async handleStickyEnvMessage(uid: string, sessionId: string, msg: InSocketMessage<'env' | 'internal'>) {
+    if (!this.stickyActions.includes(msg.action)) return;
+
+    switch (msg.action) {
+      case 'ssh.data': {
+        this.sshService.handleSSHData(uid, sessionId, msg.payload);
+        break;
+      }
+      case 'ssh.close': {
+        await this.sshService.handleSSHClose(uid, sessionId, msg.payload);
+        break;
+      }
+      case 'ssh.closeall': {
+        await this.sshService.handleSSHCloseAll(uid, sessionId, msg.payload);
+        break;
+      }
+      case 'fs.sync': {
+        // TODO
+        break;
+      }
+      case 'fs.save': {
+        // TODO
+        break;
+      }
+
+      /*
+      case 'workspace.watch': {
+        void this.workspaceService.handleWatchEvent(uid, sessionId, msg.payload);
+        break;
+      }
+      case 'session.disconnect': {
+        // TODO: Verify if wsUuid is handled by this instance & uid:sessionId is active here
+        const msg = msg.payload;
+        void this.cache.set<1 | 0>(`presence:${msg.uid}:${msg.sessionId}:${msg.uuid}`, 0, 150000);
+        break;
+      }
+      case 'session.ping': {
+        // TODO: Verify if wsUuid is handled by this instance & uid:sessionId is active here
+        const msg = msg.payload;
+        void this.cache.set<1 | 0>(`presence:${msg.uid}:${msg.sessionId}:${msg.uuid}`, 1, 30000);
+        break;
+      } */
+      default:
+        break;
+    }
+  }
+
+  //////////////////////
 
   async handleAffinity(uuid: string) {
     this.lockClient = new Redis(parseInt(process.env.REDIS_PORT!), process.env.REDIS_HOST!);
@@ -119,13 +115,6 @@ export class WorkspaceService {
     } catch (error) {
       void error;
       return null;
-    }
-  }
-
-  async setWorkspaceActive(uid: string, sessionId: string) {
-    const active = await this.cache.get<1 | 0>(`affinity:${uid}:${sessionId}`);
-    if (active === 0) {
-      await this.cache.set<1 | 0>(`affinity:${uid}:${sessionId}`, 1);
     }
   }
 

@@ -15,8 +15,12 @@ export interface EnvUserDisconnect extends InSocketMessageEnv {
   uid: string;
   sessionId: string;
 }
-export interface EnvWorkspaceOpen extends InSocketMessageEnv {
+export interface InternalWorkspaceOpen extends InSocketMessageEnv {
   sessionId: string;
+}
+export interface InternalWorkspaceClose extends InSocketMessageEnv {
+  sessionId: string;
+  uid: string;
 }
 
 ////////////////

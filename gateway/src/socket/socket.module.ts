@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { SocketGateway } from './socket.gateway';
 import { SharedModule } from '../common/shared.module';
-import { CommonService } from './common.service';
+import { CommonService } from './membership';
 import { SocketController } from './socket.controller';
 
 @Module({

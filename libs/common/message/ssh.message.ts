@@ -11,11 +11,11 @@ export interface SSHRequest extends InSocketMessageEnv {
   privateKey: string;
 }
 export interface SSHData extends InSocketMessageEnv {
-  sessionId: string;
+  sshSessionId: string;
   input: string;
 }
 export interface SSHClose extends InSocketMessageEnv {
-  sessionId: string;
+  sshSessionId: string;
 }
 export type SSHCloseAll = InSocketMessageEnv;
 
@@ -35,15 +35,16 @@ export type SSHPayload = {
 }[keyof SSHResponseMap];
 
 export interface SSHOpen extends OutSocketMessagePayload {
-  sessionId: string;
+  sshSessionId: string;
 }
 export interface SSHOutput extends OutSocketMessagePayload {
-  sessionId: string;
+  sshSessionId: string;
   output: string;
 }
 export interface SSHError extends OutSocketMessagePayload {
   message: string;
 }
 export interface SSHClosed extends OutSocketMessagePayload {
-  sessionId: string;
+  sshSessionId: string;
+  all?: boolean;
 }

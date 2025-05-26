@@ -1,8 +1,9 @@
 import {
   EnvPayload,
   EnvUserDisconnect,
-  EnvWorkspaceOpen,
+  InternalWorkspaceOpen,
   InSocketMessageEnv,
+  InternalWorkspaceClose,
 } from "./env.message";
 import {
   FSClose,
@@ -65,8 +66,9 @@ export type InSocketMessagePayloadMap =
       "session.ping": PresencePing;
     };
     internal: {
-      "workspace.open": EnvWorkspaceOpen;
+      "workspace.open": InternalWorkspaceOpen;
       "workspace.watch": InternalWorkspaceWatch;
+      "workspace.close": InternalWorkspaceClose;
       "session.disconnect": EnvUserDisconnect;
       "session.ping": InternalPresencePing;
     };
