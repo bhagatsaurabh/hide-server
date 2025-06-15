@@ -3,6 +3,7 @@ import { applyUpdate, Doc, Transaction } from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as syncProtocol from 'y-protocols/sync';
 import * as encoding from 'lib0/encoding';
+import { debounce } from 'hide-common';
 
 export type AwarenessUpdate = { added: number[]; updated: number[]; removed: number[] };
 export enum YMessage {
@@ -15,11 +16,15 @@ export class WSSharedDoc extends Doc {
   awareness: awarenessProtocol.Awareness;
   users: Map<string, Set<number>>;
   whenInitialized: Promise<void>;
+  debounceTime = 3000;
+  _flush: (...args: any[]) => void;
 
   constructor(
     public name: string,
-    public send: (uids: string[], path: string, buf: Uint8Array) => void,
-    public init: (doc: WSSharedDoc) => Promise<void>,
+    public uuid: string,
+    content: string,
+    public send: (uids: string[], uuid: string, path: string, buf: Uint8Array) => Promise<void>,
+    flush: (uuid: string, path: string) => Promise<void>,
   ) {
     super({ gc: true });
     this.users = new Map();
@@ -33,9 +38,11 @@ export class WSSharedDoc extends Doc {
       this.updateHandler(update, origin, doc, tran),
     );
 
-    this.init(this)
-      .then(() => this.computeHash())
-      .catch((err) => console.log(err));
+    const yText = this.getText('monaco');
+    const text = content;
+    yText.insert(0, text);
+    this.computeHash();
+    this._flush = debounce(async (uuid: string, path: string) => await flush(uuid, path), this.debounceTime);
   }
 
   awarenessChangeHandler({ added, updated, removed }: AwarenessUpdate, uid: string) {
@@ -59,7 +66,7 @@ export class WSSharedDoc extends Doc {
       awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients),
     );
     const buf = encoding.toUint8Array(encoder);
-    this.send(Array.from(this.users.keys()), this.name, buf);
+    void this.send(Array.from(this.users.keys()), this.uuid, this.name, buf);
   }
   updateHandler(update: Uint8Array, _origin: unknown, doc: WSSharedDoc, _tr: unknown) {
     const encoder = encoding.createEncoder();
@@ -68,7 +75,8 @@ export class WSSharedDoc extends Doc {
     const buf = encoding.toUint8Array(encoder);
 
     applyUpdate(doc, buf, this);
-    this.send(Array.from(doc.users.keys()), doc.name, buf);
+    void this.send(Array.from(doc.users.keys()), doc.uuid, doc.name, buf);
+    this._flush(this.uuid, this.name);
   }
 
   computeHash(content?: string) {

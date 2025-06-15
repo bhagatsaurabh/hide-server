@@ -4,24 +4,18 @@ import {
   InternalWorkspaceOpen,
   InSocketMessageEnv,
   InternalWorkspaceClose,
+  InternalDocHash,
 } from "./env.message";
 import {
   FSClose,
   FSOpen,
   FSPayload,
-  FSSave,
   FSSyncIn,
   InternalWorkspaceWatch,
 } from "./filesystem.message";
 import { NotificationPayload } from "./notification.message";
 import { InternalPresencePing, PresencePing } from "./presence.message";
-import {
-  SSHClose,
-  SSHCloseAll,
-  SSHData,
-  SSHPayload,
-  SSHRequest,
-} from "./ssh.message";
+import { SSHClose, SSHData, SSHPayload, SSHRequest } from "./ssh.message";
 
 export type OutSocketMessageActionMap = {
   ssh: SSHPayload;
@@ -31,6 +25,7 @@ export type OutSocketMessageActionMap = {
 };
 export type OutSocketMessagePayload = {
   correlationId?: string;
+  error?: { code: string };
   [key: string]: unknown;
 };
 
@@ -56,10 +51,8 @@ export type InSocketMessagePayloadMap =
       "ssh.request": SSHRequest;
       "ssh.data": SSHData;
       "ssh.close": SSHClose;
-      "ssh.closeall": SSHCloseAll;
       "fs.open": FSOpen;
       "fs.sync": FSSyncIn;
-      "fs.save": FSSave;
       "fs.close": FSClose;
     };
     presence: {
@@ -68,6 +61,7 @@ export type InSocketMessagePayloadMap =
     internal: {
       "workspace.open": InternalWorkspaceOpen;
       "workspace.watch": InternalWorkspaceWatch;
+      "doc.hash": InternalDocHash;
       "workspace.close": InternalWorkspaceClose;
       "session.disconnect": EnvUserDisconnect;
       "session.ping": InternalPresencePing;

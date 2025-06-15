@@ -1,4 +1,4 @@
-import { OutSocketMessagePayload } from './socket.message';
+/* import { OutSocketMessagePayload } from './socket.message';
 
 export type FSEventType = 'create' | 'remove' | 'rename' | 'write';
 export type FSEvent = {
@@ -36,3 +36,4 @@ export type FSPayload = {
     payload: FSResponseMap[K];
   };
 }[keyof FSResponseMap];
+ */

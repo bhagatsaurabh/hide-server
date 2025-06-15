@@ -1,10 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { Controller, Inject, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ClientProxy, MessagePattern, Transport } from '@nestjs/microservices';
-import { InSocketMessage, ServiceEvent, ServiceMessage } from 'hide-common';
+import { ClientProxy, MessagePattern, RpcException, Transport } from '@nestjs/microservices';
+import {
+  EnvOpenRequest,
+  HealthCheck,
+  InSocketMessage,
+  InternalMessage,
+  RpcError,
+  ServiceEvent,
+  ServiceMessage,
+  ServiceMessagePayload,
+} from 'hide-common';
 import Redis from 'ioredis';
 import { RedisRef } from 'src/common/refs/redis.ref';
-import { SSHProxyService } from './sshproxy.service';
 import { Cache } from '@nestjs/cache-manager';
 import { RedisService } from 'hide-redis';
 import { WorkspaceService } from './workspace.service';
@@ -19,7 +27,6 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject('ENV_SERVICE_REDIS') private readonly redis: ClientProxy,
-    private readonly sshService: SSHProxyService,
     private readonly cacheService: RedisService,
     private readonly workspaceService: WorkspaceService,
   ) {
@@ -38,15 +45,29 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
       if (!this.channels.includes(chan)) return;
 
       if (chan.endsWith('.health')) {
-        const evt = JSON.parse(message) as { id: string };
+        const evt = JSON.parse(message) as InternalMessage<ServiceEvent<HealthCheck>>;
         void pub.publish(`${chan}.reply`, JSON.stringify({ id: evt.id, data: {}, pattern: `${chan}.reply` }));
         return;
       }
 
-      const evt = JSON.parse(message) as { data: ServiceEvent<InSocketMessage<'env' | 'internal'>> };
-      const { uid, sessionId } = evt.data.meta || {};
+      const evt = JSON.parse(message) as InternalMessage<ServiceEvent<InSocketMessage<'env' | 'internal'>>>;
+      let { uid, sessionId } = evt.data.meta || {};
+      if (evt.data.payload.action === 'workspace.watch' || evt.data.payload.action === 'doc.hash') {
+        uid = '#';
+        sessionId = '#';
+      }
       if (!uid || !sessionId) return;
-      void this.workspaceService.handleStickyEnvMessage(uid, sessionId, evt.data.payload);
+      this.workspaceService
+        .handleStickyEnvMessage(uid, sessionId, evt, chan)
+        .then(({ evt: event, value, chan: channel }) => {
+          if (value) {
+            void pub.publish(
+              `${channel}.reply`,
+              JSON.stringify({ id: event.id, data: value, pattern: `${channel}.reply` }),
+            );
+          }
+        })
+        .catch((err) => void err);
     });
   }
   async onModuleDestroy() {
@@ -54,17 +75,26 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
   }
 
   @MessagePattern('env.msg', Transport.NATS)
-  async handleEnvMessage(msg: ServiceMessage<InSocketMessage<'env'>>) {
+  async handleEnvMessage(msg: ServiceMessage<ServiceMessagePayload>) {
     const { uid, sessionId } = msg.meta || {};
-    if (!uid || !sessionId) return;
-    await this.workspaceService.handleEnvMessage(uid, sessionId, msg.payload);
-  }
 
-  /*
-  handleSyncEvent(msg: Message<FSDocSyncEvent>) {
-    this.syncService.handleFSUpdate(msg);
+    if (msg.payload.reqAction === 'open') {
+      if (!uid) {
+        throw new RpcException({ statusCode: 400, message: 'Invalid request, missing uid' });
+      }
+
+      try {
+        await this.workspaceService.handleEnvOpen(uid, msg.payload as EnvOpenRequest);
+      } catch (error: unknown) {
+        throw new RpcException({
+          statusCode: (error as RpcError).statusCode || 400,
+          message: (error as RpcError).message,
+        });
+      }
+      return;
+    }
+
+    if (!uid || !sessionId) return;
+    await this.workspaceService.handleEnvMessage(uid, sessionId, msg.payload as InSocketMessage<'env'>);
   }
-  async handleSaveEvent(msg: Message<FSSaveRequest>) {
-    await this.syncService.handleFSSave(msg);
-  } */
 }

@@ -1,132 +1,222 @@
-import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { promises as fs } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
-import { FSBlock, FSResume, FSEventBatch, FSEvent, ServiceEvent, SocketSend } from 'src/common/message';
 import { debounce } from 'src/utils';
 import { SyncService } from './sync.service';
+import Redlock from 'redlock';
+import Redis from 'ioredis';
+import {
+  CachedPresence,
+  CachedWorkspace,
+  CACHEKEY_SESSIONS,
+  CACHEKEY_WORKSPACE,
+  FSOpenDTO,
+  InSocketMessage,
+  ServiceEvent,
+  SocketSend,
+} from 'hide-common';
+import { RedisService } from 'hide-redis';
+import { Cache } from '@nestjs/cache-manager';
+import { FSEvent, FSOpen, InternalWorkspaceWatch } from 'hide-common/message/filesystem.message';
+import { CommonRef } from 'src/common/refs/common.ref';
+import { firstValueFrom } from 'rxjs';
 
-type EventCache = {
+type WatchEventState = {
+  uuid: string;
   events: Array<FSEvent>;
   buffer: Array<FSEvent>;
   isProcessing: boolean;
+  busy: { path: string } | null;
+  process: (wsUuid: string) => void;
   timer?: NodeJS.Timeout;
 };
 
 @Injectable()
 export class FSService {
+  root = '/home/devuser/workspace';
+  idleTimeout: NodeJS.Timeout;
+  state: Record<string, WatchEventState> = {};
+  debounceTime = 250;
+  redlock: Redlock;
+  lockClient: Redis;
+  cache: Cache;
+
   constructor(
     @Inject('FILESYSTEM_SERVICE_REDIS') private redis: ClientProxy,
     private readonly syncService: SyncService,
+    private readonly cacheService: RedisService,
   ) {
-    this.setIdleTimeout();
+    this.cache = this.cacheService.get();
   }
 
-  root = '/home/devuser/workspace';
-  idleTimeout: NodeJS.Timeout;
-  cache: EventCache = { events: [], buffer: [], isProcessing: false };
-  debounceTime = 250;
-  busy: { path: string } | null = null;
-  process = debounce(async () => await this._process(), this.debounceTime);
-
-  setIdleTimeout() {
-    if (this.idleTimeout) clearTimeout(this.idleTimeout);
-    this.idleTimeout = setTimeout(() => this.handleCold(), parseInt(process.env.IDLE_TIMEOUT!) || 1800000);
+  setWorkspace(wsUuid: string) {
+    this.state[wsUuid] = {
+      uuid: wsUuid,
+      events: [],
+      buffer: [],
+      isProcessing: false,
+      busy: null,
+      process: debounce(async (wsUuid: string) => await this._process(wsUuid), this.debounceTime),
+    };
   }
-
-  async openDir(uid: string, path: string) {
-    this.redis.emit('add-watch', { uid, path });
+  async openDir(uid: string, sessionId: string, { uuid, path }: FSOpen, correlationId?: string) {
+    this.redis.emit(`workspace.${uuid}.watch.add`, { path });
 
     try {
-      const entries = await fs.readdir(path, { withFileTypes: true });
-      const ids = (await Promise.all(entries.map((entry) => fs.lstat(join(path, entry.name))))).map(
-        (stat) => stat.ino,
-      );
-      return entries.map((entry, idx) => ({
-        name: entry.name,
-        path: join(path, entry.name),
-        type: entry.isDirectory() ? 'dir' : 'file',
-        id: ids[idx],
-      }));
+      const res = await fetch(`http://workspace-${uuid}/api/dir?path=${path}`, {
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      });
+      const entries = (await res.json()) as unknown as FSOpenDTO[];
+      this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+        meta: { uid, sessionId },
+        payload: {
+          pattern: 'fs',
+          uid,
+          sessionId,
+          msg: { action: 'open.reply', payload: { entries, correlationId } },
+        },
+      });
+
+      await this.updateCache(uid, uuid, path, true);
     } catch (error) {
-      console.log(error);
-      throw new InternalServerErrorException('Failed to read directory');
+      void error;
+      this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+        meta: { uid, sessionId },
+        payload: {
+          pattern: 'fs',
+          uid,
+          sessionId,
+          msg: { action: 'open.reply', payload: { correlationId, error: { code: 'ERR_FETCH_DIRECTORY' } } },
+        },
+      });
     }
   }
-  closeDir(uid: string, path: string) {
-    this.redis.emit('remove-watch', { uid, path });
+  async closeDir(uid: string, wsUuid: string, path: string) {
+    await this.updateCache(uid, wsUuid, path, false);
+  }
+  async updateCache(uid: string, wsUuid: string, path: string, add: boolean) {
+    const workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(wsUuid));
+    if (!workspace) return;
+    let watchers = workspace.dirs[path];
+    if (add) {
+      if (!watchers) watchers = [];
+      watchers = Array.from(new Set([...watchers, uid]));
+      workspace.dirs[path] = watchers;
+    } else if (watchers && watchers.includes(uid)) {
+      watchers.splice(watchers.indexOf(uid), 1);
+      if (watchers.length === 0) {
+        delete workspace.dirs[path];
+        this.redis.emit(`workspace.${wsUuid}.watch.remove`, { path });
+      }
+    }
+    await this.cache.set(CACHEKEY_WORKSPACE(wsUuid), workspace);
   }
 
-  handleEvent(event: FSEvent) {
-    if (this.busy) return;
-    this.cache[this.cache.isProcessing ? 'buffer' : 'events'].push(event);
-    this.busy = this.burstProtection(this.cache);
-    this.process();
+  async handleWatchEvent(msg: InternalWorkspaceWatch) {
+    const { uuid, event } = msg;
+    const wState = this.state[uuid];
+    if (!wState || wState.busy) return;
+    wState[wState.isProcessing ? 'buffer' : 'events'].push(event);
+
+    wState.busy = await this.burstProtection(wState);
+    wState.process(uuid);
   }
-  burstProtection(cache: EventCache) {
+  async burstProtection(wState: WatchEventState) {
     const threshold = parseInt(process.env.EVENT_QUEUE_SIZE || '100');
-    if (cache.events.length >= threshold || cache.buffer.length >= threshold) {
+    if (wState.events.length >= threshold || wState.buffer.length >= threshold) {
       const paths = new Set<string>();
       let events: FSEvent[];
-      if (cache.events.length >= threshold) events = cache.events;
-      else events = cache.buffer;
+      if (wState.events.length >= threshold) events = wState.events;
+      else events = wState.buffer;
 
       for (const event of events) {
         paths.add(event.watchedPath);
       }
       const blockedPath = this.commonParent(Array.from(paths));
-      /* this.redis.emit<any, ServiceEvent<SocketSend<FSBlock>>>('socket.send', {
-        payload: { uid, pattern: 'fs', msg: { action: 'block', path: blockedPath } },
-      }); */
+      const { uids, sessionIds } = await this.getWatchingUsersFromPath(wState.uuid, blockedPath);
+      sessionIds.forEach((sessionId, idx) => {
+        if (!sessionId) return;
+        this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+          meta: { uid: uids[idx], sessionId },
+          payload: {
+            uid: uids[idx],
+            pattern: 'fs',
+            sessionId,
+            msg: { action: 'block', payload: { path: blockedPath } },
+          },
+        });
+      });
+
       return { path: blockedPath };
     }
     return null;
   }
-  async _process() {
-    if (this.busy) {
-      /* this.redis.emit<any, ServiceEvent<SocketSend<FSResume>>>('socket.send', {
-        payload: { uid, pattern: 'fs', msg: { action: 'resume', path: this.busy.path } },
-      }); */
-      this.busy = null;
+  async _process(wsUuid: string) {
+    const wState = this.state[wsUuid];
+    if (!wState) return;
+    if (wState.busy) {
+      const { uids, sessionIds } = await this.getWatchingUsersFromPath(wsUuid, wState.busy.path);
+      for (let idx = 0; idx < sessionIds.length; idx += 1) {
+        const sessionId = sessionIds[idx];
+        if (!sessionId) continue;
+        this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+          payload: {
+            uid: uids[idx],
+            pattern: 'fs',
+            sessionId,
+            msg: { action: 'resume', payload: { path: wState.busy.path } },
+          },
+        });
+      }
+      wState.busy = null;
       return;
     }
-    this.cache.isProcessing = true;
-    await this.sync(this.cache.events);
-    this.cache.events = this.cache.buffer;
-    this.cache.buffer = [];
-    this.cache.isProcessing = false;
+
+    wState.isProcessing = true;
+    await this.sync(wState);
+    wState.events = wState.buffer;
+    wState.buffer = [];
+    wState.isProcessing = false;
   }
-  async sync(events: FSEvent[]) {
+  async sync({ events, uuid }: WatchEventState) {
+    const wCache = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(uuid));
+    if (!wCache) return;
+
+    const batches: { [uid: string]: FSEvent[] } = {};
     for (const event of events) {
-      const doc = this.syncService.docs.get(event.path);
-      if (event.type === 'file' && event.action === 'write' && doc) {
-        const fileHash = await this.syncService.getHashFromFile(event.path);
-        const docHash = doc.computeHash();
+      if (event.type === 'file' && event.action === 'write') {
+        const docHash = await this.getDocHash(uuid, event.path, wCache);
+        if (!docHash) {
+          continue;
+        }
+        const fileHash = await this.getFileHash(uuid, event.path);
         if (fileHash === docHash) {
           continue;
         }
       }
 
-      for (const uid of event.uids) {
-        if (!uidEvents.has(uid)) uidEvents.set(uid, []);
-        this.cleanPaths(event);
-        uidEvents.get(uid)?.push({
-          action: event.action,
-          path: event.path,
-          timestamp: event.timestamp,
-          watchedPath: event.watchedPath,
-          ino: event.ino,
-          oldPath: event.oldPath,
-          type: event.type,
-        });
+      this.cleanPaths(event);
+      for (const uid of wCache.dirs[event.watchedPath]) {
+        if (!batches[uid]) batches[uid] = [];
+        batches[uid].push(event);
       }
     }
-    for (const uid of uidEvents.keys()) {
-      this.redis.emit<any, ServiceEvent<SocketSend<FSEventBatch>>>('socket.send', {
-        payload: { uid, pattern: 'fs', msg: { action: 'batch', events: uidEvents.get(uid) || [] } },
+
+    const { uids, sessionIds } = await this.getWatchingUsersFromUid(uuid, Object.keys(batches));
+    sessionIds.forEach((sessionId, idx) => {
+      if (!sessionId) return;
+      this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+        meta: { uid: uids[idx], sessionId },
+        payload: {
+          uid: uids[idx],
+          pattern: 'fs',
+          sessionId,
+          msg: { action: 'batch', payload: { events: batches[uids[idx]] || [] } },
+        },
       });
-    }
+    });
   }
+
   cleanPaths(event: FSEvent) {
     event.path = event.path.replace(this.root, '');
     if (event.path === '') event.path = '/';
@@ -154,16 +244,64 @@ export class FSService {
 
     return sep + join(...common);
   }
+  async getWatchingUsersFromPath(uuid: string, path: string, cachedWorkspace?: CachedWorkspace) {
+    let wCache: CachedWorkspace;
+    if (cachedWorkspace) {
+      wCache = cachedWorkspace;
+    } else {
+      const cache = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(uuid));
+      if (!cache) return { uids: [], sessionIds: [] };
+      wCache = cache;
+    }
 
-  handleHeartbeat(_uid: string) {
-    this.setIdleTimeout();
+    const uids = wCache.dirs[path];
+    const presences = await Promise.allSettled(
+      uids.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_SESSIONS(uid))),
+    );
+    const sessionIds = presences.map((presence) => {
+      if (presence.status === 'rejected' || !presence.value) return;
+
+      const entries = Object.entries(presence.value);
+      const [sid, _session] = entries.find(([_sid, session]) => session.wsUuid === uuid) ?? [];
+      return sid;
+    });
+    return { uids, sessionIds };
   }
-  handleCold() {
-    this.dispose();
-    this.redis.emit('provisioner.deprovision', { uuid: process.env.WS_UUID! });
+  async getWatchingUsersFromUid(uuid: string, uids: string[]) {
+    const presences = await Promise.allSettled(
+      uids.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_SESSIONS(uid))),
+    );
+    const sessionIds = presences.map((presence) => {
+      if (presence.status === 'rejected' || !presence.value) return;
+
+      const entries = Object.entries(presence.value);
+      const [sid, _session] = entries.find(([_sid, session]) => session.wsUuid === uuid) ?? [];
+      return sid;
+    });
+    return { uids, sessionIds };
   }
-  dispose() {
-    this.syncService.dispose();
-    // TODO
+  async getFileHash(uuid: string, path: string) {
+    const res = await fetch(`http://workspace-${uuid}/api/hash?path=${path}`, {
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    });
+    const { hash } = (await res.json()) as { hash: string };
+    return hash;
+  }
+  async getDocHash(uuid: string, path: string, wCache: CachedWorkspace) {
+    let hash: string | undefined;
+    if (!wCache.docs[path]) return hash;
+
+    const envInstanceId = wCache.docs[path];
+    if (CommonRef.getInstanceId() === envInstanceId) {
+      hash = this.syncService.docs.get(uuid)?.get(path)?.computeHash();
+    } else {
+      hash = await firstValueFrom(
+        this.redis.send<string, ServiceEvent<InSocketMessage<'internal'>>>(`env.${envInstanceId}`, {
+          payload: { service: 'internal', action: 'doc.hash', payload: { uuid, path } },
+        }),
+      );
+    }
+
+    return hash;
   }
 }

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { Client, ClientChannel, Client as SSHClient } from 'ssh2';
 import { CachedWorkspace, ServiceEvent, SocketSend } from 'hide-common';
-import { SSHClose, SSHCloseAll, SSHData, SSHRequest } from 'hide-common/message/ssh.message';
+import { SSHClose, SSHData, SSHRequest } from 'hide-common/message/ssh.message';
 import { ClientProxy } from '@nestjs/microservices';
 import { RedisService } from 'hide-redis';
 import { Cache } from '@nestjs/cache-manager';
@@ -138,18 +138,19 @@ export class SSHProxyService {
     }
   }
   async handleSSHClose(uid: string, sessionId: string, msg: SSHClose) {
+    if (msg.sshSessionId === '#all') {
+      for (const sshSessionId in this.conns[uid][msg.uuid]?.sessions || {}) {
+        this.conns[uid][msg.uuid].sessions?.[sshSessionId]?.close();
+      }
+      this.conns[uid]?.[msg.uuid].conn?.end();
+      await this.updateConnCache(sessionId, msg.uuid, false);
+      return;
+    }
+
     this.conns[uid]?.[msg.uuid].sessions?.[msg.sshSessionId]?.close();
     if (Object.keys(this.conns[uid]?.[msg.uuid].sessions || {}).length === 0) {
       await this.updateConnCache(sessionId, msg.uuid, false);
     }
-  }
-
-  async handleSSHCloseAll(uid: string, sessionId: string, msg: SSHCloseAll) {
-    for (const sshSessionId in this.conns[uid][msg.uuid]?.sessions || {}) {
-      this.conns[uid][msg.uuid].sessions?.[sshSessionId]?.close();
-    }
-    this.conns[uid]?.[msg.uuid].conn?.end();
-    await this.updateConnCache(sessionId, msg.uuid, false);
   }
 
   async updateConnCache(sessionId: string, wsUuid: string, add: boolean) {

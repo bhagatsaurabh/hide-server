@@ -29,7 +29,10 @@ export interface ServiceMessage<T extends ServiceMessagePayload> {
   };
   payload: T;
 }
-export type ServiceMessagePayload = {};
+export type ServiceMessagePayload = {
+  reqAction?: string;
+  [key: string]: unknown;
+};
 
 export const createMessage = <T extends ServiceMessagePayload>(
   uid: string,
@@ -85,6 +88,9 @@ export interface MembershipCheck extends ServiceMessagePayload {
   uid: string;
   uuid: string;
 }
+export interface EnvOpenRequest extends ServiceMessagePayload {
+  uuid: string;
+}
 
 export interface UserOnline extends ServiceEventPayload {
   uid: string;
@@ -98,3 +104,5 @@ export interface EnvDeprovision extends ServiceEventPayload {
   uuid: string;
 }
 export interface HealthCheck extends ServiceEventPayload {}
+
+export type InternalMessage<T> = { id: string; data: T };

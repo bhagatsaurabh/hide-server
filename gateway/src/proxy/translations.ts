@@ -5,6 +5,7 @@ export type Translation = {
   sourceProtocol: Transport | ExtTransport;
   targetProtocol: Transport | ExtTransport;
   pattern?: string;
+  action?: string;
 };
 export type Methods = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS';
 type Paths = Record<string, Partial<Record<Methods, Translation>>>;
@@ -89,10 +90,11 @@ export const rules: Rules = [
     service: 'env',
     paths: {
       open: {
-        GET: {
+        POST: {
           sourceProtocol: ExtTransport.HTTP,
-          targetProtocol: Transport.RMQ,
-          pattern: 'open',
+          targetProtocol: Transport.NATS,
+          pattern: 'env.msg',
+          action: 'open',
         },
       },
     },
