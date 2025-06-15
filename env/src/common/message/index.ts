@@ -1,4 +1,4 @@
-import { OutSocketMessage, OutSocketMessageActionMap, SocketMessagePayload } from './socket.message';
+/* import { SocketMessagePayload } from './socket.message';
 
 export interface Message<T = any> {
   meta: {
@@ -54,29 +54,4 @@ export type EnvPayload = {
 };
 
 export type EnvPingEvent = EnvPayload;
-
-///////////////////
-
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export type ServiceEventPayload = {};
-export interface ServiceEvent<T extends ServiceEventPayload> {
-  meta?: {
-    requestId?: string;
-    timestamp?: number;
-    uid?: string;
-    route?: string;
-  };
-  payload: T;
-}
-
-export interface SocketSend<K extends keyof OutSocketMessageActionMap> extends ServiceEventPayload {
-  uid: string;
-  pattern: string;
-  msg: OutSocketMessage<K>;
-}
-
-export interface SocketBroadcast<K extends keyof OutSocketMessageActionMap> extends ServiceEventPayload {
-  uids: string[];
-  pattern: string;
-  msg: OutSocketMessage<K>;
-}
+ */

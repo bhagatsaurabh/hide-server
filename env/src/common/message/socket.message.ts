@@ -1,4 +1,4 @@
-import { FSPayload } from './filesystem.message';
+/* import { FSPayload } from './filesystem.message';
 
 export type SocketMessagePayload = {
   action: string;
@@ -12,3 +12,4 @@ export type OutSocketMessagePayload = {
 };
 
 export type OutSocketMessage<K extends keyof OutSocketMessageActionMap> = OutSocketMessageActionMap[K];
+ */

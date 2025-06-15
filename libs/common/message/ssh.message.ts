@@ -15,9 +15,8 @@ export interface SSHData extends InSocketMessageEnv {
   input: string;
 }
 export interface SSHClose extends InSocketMessageEnv {
-  sshSessionId: string;
+  sshSessionId: "#all" | string;
 }
-export type SSHCloseAll = InSocketMessageEnv;
 
 ///////////
 

@@ -224,19 +224,17 @@ export class SocketGateway
     }
   }
 
-  stickyActions = ['fs.sync', 'fs.save', 'ssh.data', 'ssh.close'];
+  stickyActions = ['fs.sync', 'ssh.data', 'ssh.close'];
   async handleEnvMessage(uid: string, sessionId: string, msg: InSocketMessage<'env'>) {
     const workspace = await this.cache.get<CachedWorkspace>(`workspace:${msg.payload.uuid}`);
     if (!workspace) return;
     const isAuthZ = await this.membershipService.checkMembership(uid, msg.payload.uuid);
     if (!isAuthZ) {
-      this.redis.emit<any, ServiceEvent<SocketSend<'env'>>>('socket.send', {
-        payload: {
-          uid,
-          sessionId,
-          pattern: 'env',
-          msg: { action: 'error', payload: { correlationId: msg.correlationId, code: 'NOT_A_MEMBER' } },
-        },
+      await this.send({
+        uid,
+        sessionId,
+        pattern: 'env',
+        msg: { action: 'error', payload: { correlationId: msg.correlationId, code: 'NOT_A_MEMBER' } },
       });
       return;
     }
@@ -244,7 +242,7 @@ export class SocketGateway
     // Sticky route
     if (this.stickyActions.includes(msg.action)) {
       let envInstanceId: string;
-      if (msg.action === 'fs.sync' || msg.action === 'fs.save') {
+      if (msg.action === 'fs.sync') {
         envInstanceId = workspace.docs[msg.payload.path];
       } else {
         envInstanceId = workspace.sshs[sessionId];
@@ -263,7 +261,7 @@ export class SocketGateway
       }
 
       if (!healthy) {
-        if (msg.action === 'fs.sync' || msg.action === 'fs.save') {
+        if (msg.action === 'fs.sync') {
           await this.handleFSLoss(workspace, uid, sessionId, msg.payload.uuid, msg.payload.path);
         } else {
           await this.handleSSHSLoss(
@@ -281,7 +279,7 @@ export class SocketGateway
       }
     } else {
       this.nats.send<any, ServiceMessage<InSocketMessage<'env'>>>('env.msg', {
-        meta: { uid },
+        meta: { uid, sessionId },
         payload: msg,
       });
     }
@@ -344,7 +342,7 @@ export class SocketGateway
     const socketIds = presenceAll.map((presence, idx) => presence?.[data.sessionIds[idx]].socketId);
     for (const socketId of socketIds) {
       if (socketId) {
-        this.server.to(socketId).emit(data.pattern as any, data.msg);
+        this.server.to(socketId)?.emit(data.pattern as any, data.msg);
       }
     }
   }

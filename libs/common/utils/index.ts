@@ -15,3 +15,18 @@ export const debounce = <C extends (...args: any[]) => any>(
 export const getHashedKey = (...parts: string[]) => {
   return createHash("sha256").update(parts.join(":")).digest("hex");
 };
+
+export const isRpcPayloadError = (err: unknown): err is RpcError => {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "message" in err &&
+    "statusCode" in err
+  );
+};
+
+export class RpcError extends Error {
+  constructor(public statusCode: number, public message: string) {
+    super(message);
+  }
+}

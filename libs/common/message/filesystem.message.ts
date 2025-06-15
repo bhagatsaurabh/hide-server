@@ -1,8 +1,6 @@
+import { FSOpenDTO } from "dto";
 import { InSocketMessageEnv } from "./env.message";
-import {
-  InSocketMessagePayload,
-  OutSocketMessagePayload,
-} from "./socket.message";
+import { OutSocketMessagePayload } from "./socket.message";
 
 export type FSAction = "fs.sync" | "fs.close";
 
@@ -20,9 +18,16 @@ export type FSEvent = {
 export interface FSEventBatch extends OutSocketMessagePayload {
   events: FSEvent[];
 }
+export interface FSDirEntries extends OutSocketMessagePayload {
+  entries: FSOpenDTO[];
+}
+export interface FSFile extends OutSocketMessagePayload {
+  content: string;
+}
 export interface FSBlock extends OutSocketMessagePayload {
   path: string;
 }
+export type FSNoop = OutSocketMessagePayload;
 export type FSResume = FSBlock;
 export type FSLost = FSBlock;
 export interface FSSync extends OutSocketMessagePayload {
@@ -32,6 +37,7 @@ export interface FSSync extends OutSocketMessagePayload {
 }
 
 export type FSResponseMap = {
+  "open.reply": FSDirEntries | FSFile | FSNoop;
   batch: FSEventBatch;
   block: FSBlock;
   resume: FSResume;
@@ -57,8 +63,10 @@ export interface FSOpen extends InSocketMessageEnv {
 }
 
 export type FSClose = FSOpen;
-export type FSSave = FSOpen;
 
 /////
 
-export type InternalWorkspaceWatch = FSEvent;
+export type InternalWorkspaceWatch = {
+  event: FSEvent;
+  uuid: string;
+};
