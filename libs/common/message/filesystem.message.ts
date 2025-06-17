@@ -24,10 +24,10 @@ export interface FSDirEntries extends OutSocketMessagePayload {
 export interface FSFile extends OutSocketMessagePayload {
   content: string;
 }
+export type FSNoop = OutSocketMessagePayload;
 export interface FSBlock extends OutSocketMessagePayload {
   path: string;
 }
-export type FSNoop = OutSocketMessagePayload;
 export type FSResume = FSBlock;
 export type FSLost = FSBlock;
 export interface FSSync extends OutSocketMessagePayload {
@@ -37,7 +37,6 @@ export interface FSSync extends OutSocketMessagePayload {
 }
 
 export type FSResponseMap = {
-  "open.reply": FSDirEntries | FSFile | FSNoop;
   batch: FSEventBatch;
   block: FSBlock;
   resume: FSResume;
