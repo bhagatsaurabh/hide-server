@@ -8,6 +8,9 @@ import {
 } from "./env.message";
 import {
   FSClose,
+  FSDirEntries,
+  FSFile,
+  FSNoop,
   FSOpen,
   FSPayload,
   FSSyncIn,
@@ -22,10 +25,16 @@ export type OutSocketMessageActionMap = {
   notification: NotificationPayload;
   fs: FSPayload;
   env: EnvPayload;
+} & {
+  [key: string]: {
+    action: "success" | "error";
+    payload: FSDirEntries | FSFile | FSNoop | OutSocketMessagePayload;
+  };
 };
+export type OutSocketMessagePayloadError = { code: string };
 export type OutSocketMessagePayload = {
   correlationId?: string;
-  error?: { code: string };
+  error?: OutSocketMessagePayloadError;
   [key: string]: unknown;
 };
 

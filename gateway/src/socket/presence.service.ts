@@ -3,6 +3,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   CachedPresence,
   CachedWorkspace,
+  CACHEKEY_PRESENCE,
+  CACHEKEY_PRESENCE_SESSION,
+  CACHEKEY_PRESENCE_WORKSPACE,
+  CACHEKEY_WORKSPACE,
   GatewayPayload,
   InSocketMessage,
   ServiceEvent,
@@ -36,61 +40,68 @@ export class PresenceService {
       await this.setSessionState(presence, uid, sessionId, 'active');
 
       const { wsUuid } = presence[sessionId];
-      const workspace = await this.cache.get<CachedWorkspace>(`workspace:${wsUuid}`);
       if (
         wsUuid &&
-        workspace &&
         wsUuid === msg.payload.uuid &&
         (await this.membershipService.checkMembership(uid, msg.payload.uuid))
       ) {
+        const workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(wsUuid));
         await this.setWorkspaceState(workspace, uid, sessionId, wsUuid, 'active');
       }
     }
   }
 
-  async handlePresenceExpiry(parts: string[]) {
+  async handleStalePresence(parts: string[]) {
     const [uid, sessionId, wsUuid] = parts;
-    const presence = await this.cache.get<CachedPresence>(`presence:${uid}`);
-    if (!presence) return;
-    const workspace = await this.cache.get<CachedWorkspace>(`workspace:${wsUuid}`);
-
     if (!wsUuid) {
-      if (presence[sessionId].state === 'active') {
-        await this.setSessionState(presence, uid, sessionId, 'inactive');
-        await this.setWorkspaceState(workspace, uid, sessionId, wsUuid, 'inactive');
-      } else {
-        await this.handleSessionExpiry(presence, workspace, uid, sessionId);
-      }
+      await this.handleStaleSession(uid, sessionId);
     } else {
-      if (!workspace) return;
-      if (workspace.state === 'active') {
-        await this.setWorkspaceState(workspace, uid, sessionId, wsUuid, 'inactive');
-      } else {
-        await this.handleWorkspaceExpiry(uid, sessionId, wsUuid);
-      }
+      await this.handleStaleWorkspace(uid, sessionId, wsUuid);
     }
   }
-  async handleSessionExpiry(
-    presence: CachedPresence,
-    workspace: CachedWorkspace | null,
-    uid: string,
-    sessionId: string,
-  ) {
+  async handleStaleSession(uid: string, sessionId: string) {
+    const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
+    if (!presence) return;
+    const session = presence[sessionId];
+    if (!session) return;
+
+    if (session.state === 'active') {
+      if (session.wsUuid) {
+        const workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(session.wsUuid));
+        await this.setWorkspaceState(workspace, uid, sessionId, session.wsUuid, 'inactive');
+      }
+      await this.setSessionState(presence, uid, sessionId, 'inactive');
+    } else {
+      await this.handleSessionExpiry(presence, uid, sessionId);
+    }
+  }
+  async handleStaleWorkspace(uid: string, sessionId: string, wsUuid: string) {
+    const workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(wsUuid));
+    if (!workspace) return;
+    if (workspace.state === 'active') {
+      await this.setWorkspaceState(workspace, uid, sessionId, wsUuid, 'inactive');
+    } else {
+      await this.handleWorkspaceExpiry(uid, sessionId, wsUuid);
+    }
+  }
+  async handleSessionExpiry(presence: CachedPresence, uid: string, sessionId: string) {
     const { gatewayId, socketId, wsUuid } = presence[sessionId];
     this.redis.emit<any, ServiceEvent<GatewayPayload>>(`gateway.${gatewayId}`, {
       payload: { action: 'socket.close', payload: { socketId } },
     });
-    if (workspace) {
-      await this.handleWorkspaceExpiry(uid, sessionId, wsUuid!);
+    if (wsUuid) {
+      delete presence[sessionId].wsUuid;
+      await this.handleWorkspaceExpiry(uid, sessionId, wsUuid);
     }
     delete presence[sessionId];
     if (Object.keys(presence).length === 0) {
-      await this.cache.del(`presence:${uid}`);
+      await this.cache.del(CACHEKEY_PRESENCE(uid));
     } else {
-      await this.cache.set<CachedPresence>(`presence:${uid}`, presence);
+      await this.cache.set<CachedPresence>(CACHEKEY_PRESENCE(uid), presence);
     }
   }
   async handleWorkspaceExpiry(uid: string, sessionId: string, wsUuid: string) {
+    await this.cache.del(CACHEKEY_WORKSPACE(wsUuid));
     const observable = this.nats.send<any, ServiceMessage<InSocketMessage<'internal'>>>('env.msg', {
       meta: { uid },
       payload: {
@@ -109,12 +120,12 @@ export class PresenceService {
     state: 'active' | 'inactive',
   ) {
     presence[sessionId].state = state;
-    await this.cache.set<CachedPresence>(`presence:${uid}`, presence);
+    await this.cache.set(CACHEKEY_PRESENCE(uid), presence);
 
     if (state === 'inactive') {
-      await this.cache.set(`presence:${uid}:${sessionId}`, 0, 360000);
+      await this.cache.set(CACHEKEY_PRESENCE_SESSION(uid, sessionId), 0, 360000);
     } else {
-      await this.cache.set(`presence:${uid}:${sessionId}`, 1, 20000);
+      await this.cache.set(CACHEKEY_PRESENCE_SESSION(uid, sessionId), 1, 20000);
     }
   }
   async setWorkspaceState(
@@ -126,12 +137,12 @@ export class PresenceService {
   ) {
     if (!workspace || !wsUuid) return;
     workspace.state = state;
-    await this.cache.set<CachedWorkspace>(`workspace:${wsUuid}`, workspace);
+    await this.cache.set(CACHEKEY_WORKSPACE(wsUuid), workspace);
 
     if (workspace.state === 'inactive') {
-      await this.cache.set(`presence:${uid}:${sessionId}:${wsUuid}`, 0, 300000);
+      await this.cache.set(CACHEKEY_PRESENCE_WORKSPACE(uid, sessionId, wsUuid), 0, 300000);
     } else {
-      await this.cache.set(`presence:${uid}:${sessionId}:${wsUuid}`, 1, 20000);
+      await this.cache.set(CACHEKEY_PRESENCE_WORKSPACE(uid, sessionId, wsUuid), 1, 20000);
     }
   }
 }

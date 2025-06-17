@@ -11,6 +11,7 @@ import {
   RpcError,
   ServiceEvent,
   ServiceMessage,
+  SocketSend,
   StatDTO,
 } from 'hide-common';
 import { FSClose, FSOpen } from 'hide-common/message/filesystem.message';
@@ -131,20 +132,6 @@ export class WorkspaceService {
         value = await this.syncService.handleSync(uid, sessionId, msg.payload);
         break;
       }
-
-      /*
-      case 'session.disconnect': {
-        // TODO: Verify if wsUuid is handled by this instance & uid:sessionId is active here
-        const msg = msg.payload;
-        void this.cache.set<1 | 0>(`presence:${msg.uid}:${msg.sessionId}:${msg.uuid}`, 0, 150000);
-        break;
-      }
-      case 'session.ping': {
-        // TODO: Verify if wsUuid is handled by this instance & uid:sessionId is active here
-        const msg = msg.payload;
-        void this.cache.set<1 | 0>(`presence:${msg.uid}:${msg.sessionId}:${msg.uuid}`, 1, 30000);
-        break;
-      } */
       default:
         break;
     }
@@ -169,6 +156,17 @@ export class WorkspaceService {
       return await this.syncService.openFile(uid, sessionId, msg, correlationId);
     } catch (err) {
       console.log(err);
+      if (correlationId) {
+        this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
+          meta: { uid, sessionId },
+          payload: {
+            uid,
+            sessionId,
+            pattern: correlationId,
+            msg: { action: 'error', payload: { error: { code: 'UNKNOWN' } } },
+          },
+        });
+      }
     }
   }
   async handleClose(uid: string, msg: FSClose) {

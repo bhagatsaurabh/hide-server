@@ -10,7 +10,7 @@ import { Cache } from '@nestjs/cache-manager';
 import {
   CachedPresence,
   CachedWorkspace,
-  CACHEKEY_SESSIONS,
+  CACHEKEY_PRESENCE,
   CACHEKEY_WORKSPACE,
   ServiceEvent,
   SocketBroadcast,
@@ -58,15 +58,15 @@ export class SyncService {
       doc.users.set(uid, new Set());
       await this.initialSync(uid, path, doc, sessionId);
 
-      this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+      this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
         meta: { uid, sessionId },
         payload: {
-          pattern: 'fs',
+          pattern: correlationId!,
           uid,
           sessionId,
           msg: {
-            action: 'open.reply',
-            payload: { content: doc.getText('monaco').toJSON(), correlationId },
+            action: 'success',
+            payload: { content: doc.getText('monaco').toJSON() },
           },
         },
       });
@@ -74,15 +74,17 @@ export class SyncService {
       await this.updateCache(uuid, path, true);
     } catch (error) {
       void error;
-      this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
-        meta: { uid, sessionId },
-        payload: {
-          pattern: 'fs',
-          uid,
-          sessionId,
-          msg: { action: 'open.reply', payload: { correlationId, error: { code: 'ERR_FETCH_FILE' } } },
-        },
-      });
+      if (correlationId) {
+        this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
+          meta: { uid, sessionId },
+          payload: {
+            pattern: correlationId,
+            uid,
+            sessionId,
+            msg: { action: 'error', payload: { error: { code: 'ERR_FETCH_FILE' } } },
+          },
+        });
+      }
     }
   }
   async closeFile(uid: string, uuid: string, path: string) {
@@ -226,7 +228,7 @@ export class SyncService {
     });
   }
   async getSessionId(uid: string, uuid: string) {
-    const presence = await this.cache.get<CachedPresence>(CACHEKEY_SESSIONS(uid));
+    const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
     if (!presence) return;
     const sessions = Object.entries(presence);
     const [sessionId, _session] = sessions.find(([_sessionId, session]) => session.wsUuid === uuid) ?? [];

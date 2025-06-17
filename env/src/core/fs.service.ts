@@ -8,7 +8,7 @@ import Redis from 'ioredis';
 import {
   CachedPresence,
   CachedWorkspace,
-  CACHEKEY_SESSIONS,
+  CACHEKEY_PRESENCE,
   CACHEKEY_WORKSPACE,
   FSOpenDTO,
   InSocketMessage,
@@ -67,28 +67,30 @@ export class FSService {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       });
       const entries = (await res.json()) as unknown as FSOpenDTO[];
-      this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+      this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
         meta: { uid, sessionId },
         payload: {
-          pattern: 'fs',
+          pattern: correlationId!,
           uid,
           sessionId,
-          msg: { action: 'open.reply', payload: { entries, correlationId } },
+          msg: { action: 'success', payload: { entries, correlationId } },
         },
       });
 
       await this.updateCache(uid, uuid, path, true);
     } catch (error) {
       void error;
-      this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
-        meta: { uid, sessionId },
-        payload: {
-          pattern: 'fs',
-          uid,
-          sessionId,
-          msg: { action: 'open.reply', payload: { correlationId, error: { code: 'ERR_FETCH_DIRECTORY' } } },
-        },
-      });
+      if (correlationId) {
+        this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
+          meta: { uid, sessionId },
+          payload: {
+            pattern: correlationId,
+            uid,
+            sessionId,
+            msg: { action: 'error', payload: { error: { code: 'ERR_FETCH_DIRECTORY' } } },
+          },
+        });
+      }
     }
   }
   async closeDir(uid: string, wsUuid: string, path: string) {
@@ -256,7 +258,7 @@ export class FSService {
 
     const uids = wCache.dirs[path];
     const presences = await Promise.allSettled(
-      uids.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_SESSIONS(uid))),
+      uids.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid))),
     );
     const sessionIds = presences.map((presence) => {
       if (presence.status === 'rejected' || !presence.value) return;
@@ -269,7 +271,7 @@ export class FSService {
   }
   async getWatchingUsersFromUid(uuid: string, uids: string[]) {
     const presences = await Promise.allSettled(
-      uids.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_SESSIONS(uid))),
+      uids.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid))),
     );
     const sessionIds = presences.map((presence) => {
       if (presence.status === 'rejected' || !presence.value) return;

@@ -2,7 +2,14 @@ import { Firestore } from '@google-cloud/firestore';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Cache } from '@nestjs/cache-manager';
-import { NotifyUser, ServiceEvent, ServiceMessage, SocketSend, UserNotificationPayload } from 'hide-common';
+import {
+  CACHEKEY_PRESENCE,
+  NotifyUser,
+  ServiceEvent,
+  ServiceMessage,
+  SocketSend,
+  UserNotificationPayload,
+} from 'hide-common';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
 import { notificationConverter } from './utils/converter';
@@ -30,16 +37,20 @@ export class AppService {
       .doc(data.payload.notification.id)
       .set(data.payload.notification);
 
-    const presence = await this.cache.get<boolean>(`presence:${data.payload.uid}`);
-    if (presence) {
+    const presence = await this.cache.get<boolean>(CACHEKEY_PRESENCE(data.payload.uid));
+    if (!presence) return;
+
+    Object.keys(presence).forEach((sessionId) => {
       this.redis.emit<any, ServiceEvent<SocketSend<'notification'>>>('socket.send', {
+        meta: { uid: data.payload.uid, sessionId },
         payload: {
           uid: data.payload.uid,
+          sessionId,
           pattern: 'notification',
           msg: { action: 'new', payload: data.payload.notification },
         },
       });
-    }
+    });
   }
 
   async pushAllPendingNotifications(uid: string) {
@@ -51,12 +62,19 @@ export class AppService {
       .get();
 
     const pendingNtfns = snap.docs.map((doc) => doc.data());
-    this.redis.emit<any, ServiceEvent<SocketSend<'notification'>>>('socket.send', {
-      payload: {
-        uid,
-        pattern: 'notification',
-        msg: { action: 'pending', payload: pendingNtfns },
-      },
+    const presence = await this.cache.get<boolean>(CACHEKEY_PRESENCE(uid));
+    if (!presence) return;
+
+    Object.keys(presence).forEach((sessionId) => {
+      this.redis.emit<any, ServiceEvent<SocketSend<'notification'>>>('socket.send', {
+        meta: { uid, sessionId },
+        payload: {
+          uid,
+          sessionId,
+          pattern: 'notification',
+          msg: { action: 'pending', payload: pendingNtfns },
+        },
+      });
     });
   }
 
