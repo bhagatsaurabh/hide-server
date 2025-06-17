@@ -2,8 +2,12 @@ import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import {
+  CachedPresence,
   CachedWorkspace,
+  CACHEKEY_PRESENCE,
+  CACHEKEY_PRESENCE_WORKSPACE,
   CACHEKEY_WORKSPACE,
+  EnvCloseRequest,
   EnvOpenRequest,
   InSocketMessage,
   InternalMessage,
@@ -72,6 +76,48 @@ export class WorkspaceService {
         this.redis.emit(`workspace.${msg.uuid}.affine`, { envInstanceId: CommonRef.getInstanceId() });
         this.fsService.setWorkspace(msg.uuid);
         await this.cache.set(CACHEKEY_WORKSPACE(msg.uuid), workspace);
+      }
+    } finally {
+      await lock.release();
+    }
+  }
+  async handleEnvClose(uid: string, msg: EnvCloseRequest) {
+    if (!(await this.isAMember(uid, msg.uuid))) return;
+
+    const lock = await this.acquireLock(msg.uuid);
+    if (!lock) return;
+
+    try {
+      const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
+      if (!presence) return;
+
+      const entries = Object.entries(presence);
+      const [sessionId, _] = entries.find(([_, session]) => session.wsUuid === msg.uuid) || [];
+      if (!sessionId) return;
+
+      delete presence[sessionId].wsUuid;
+      await this.cache.set(CACHEKEY_PRESENCE(uid), presence);
+
+      let workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(msg.uuid));
+      if (!workspace) return;
+
+      // Close all user ssh sessions
+      await this.sshService.handleSSHClose(uid, sessionId, { uuid: msg.uuid, sshSessionId: '#all' });
+
+      // TODO: Batch Optimization
+      // Close all user opened dirs
+      const dirs = Object.entries(workspace.dirs)
+        .map(([path, uids]) => (uids.includes(uid) ? path : null))
+        .filter((path) => !!path) as string[];
+      await Promise.allSettled(dirs.map((dir) => this.fsService.closeDir(uid, msg.uuid, dir)));
+
+      // Fetch updated workspace
+      workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(msg.uuid));
+      if (!workspace) return;
+      if (Object.keys(workspace.dirs).length === 0) {
+        // Mark for immediate de-provisioning
+        workspace.state = 'inactive';
+        await this.cache.set(CACHEKEY_PRESENCE_WORKSPACE(uid, sessionId, msg.uuid), 0, 200);
       }
     } finally {
       await lock.release();

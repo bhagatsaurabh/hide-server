@@ -15,31 +15,25 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
-	"k8s.io/client-go/kubernetes"
 )
 
-type CommitRequest struct {
-	Uuid      string `json:"uuid"`
-	BaseImage string `json:"baseImage"`
-}
+func CommitK8sImage(uuid string, baseImage string, devEnv string) error {
+	_config, err := config.LoadK8sConfig()
 
-func CommitK8sImage(req CommitRequest, devEnv string) error {
-	config, err := config.LoadK8sConfig()
-
-	clientset, err := kubernetes.NewForConfig(config)
+	/* clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Println("Error creating Kubernetes client:", err)
 		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	defer cancel() */
 
 	return err
 }
 
 // Development-only
-func CommitDockerImage(req CommitRequest) error {
+func CommitDockerImage(uuid string, baseImage string) error {
 	cli, err := config.LoadDockerConfig()
 
 	if err != nil {
@@ -50,15 +44,15 @@ func CommitDockerImage(req CommitRequest) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	tempDir := fmt.Sprintf("./temp_%s", req.Uuid)
+	tempDir := fmt.Sprintf("./temp_%s", uuid)
 	os.MkdirAll(tempDir, os.ModePerm)
 
-	err = copyWorkspaceFromContainer(ctx, cli, req.Uuid, tempDir)
+	err = copyWorkspaceFromContainer(ctx, cli, uuid, tempDir)
 	if err != nil {
 		return err
 	}
 
-	_, err = generateDockerfile(req.BaseImage, tempDir)
+	_, err = generateDockerfile(baseImage, tempDir)
 	if err != nil {
 		return err
 	}
@@ -68,7 +62,7 @@ func CommitDockerImage(req CommitRequest) error {
 		return err
 	}
 
-	return buildAndPushImage(ctx, cli, tarCtx, req.Uuid)
+	return buildAndPushImage(ctx, cli, tarCtx, uuid)
 }
 
 func copyWorkspaceFromContainer(ctx context.Context, cli *client.Client, containerId string, tempDir string) error {

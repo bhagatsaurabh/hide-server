@@ -68,12 +68,8 @@ export type InSocketMessagePayloadMap =
       "session.ping": PresencePing;
     };
     internal: {
-      "workspace.open": InternalWorkspaceOpen;
       "workspace.watch": InternalWorkspaceWatch;
       "doc.hash": InternalDocHash;
-      "workspace.close": InternalWorkspaceClose;
-      "session.disconnect": EnvUserDisconnect;
-      "session.ping": InternalPresencePing;
     };
   }>;
 

@@ -1,11 +1,7 @@
 import { InSocketMessageEnv } from "./env.message";
 import { OutSocketMessagePayload } from "./socket.message";
 
-export type SSHAction =
-  | "ssh.request"
-  | "ssh.data"
-  | "ssh.close"
-  | "ssh.closeall";
+export type SSHAction = "ssh.request" | "ssh.data" | "ssh.close";
 
 export interface SSHRequest extends InSocketMessageEnv {
   privateKey: string;

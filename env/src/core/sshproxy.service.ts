@@ -8,10 +8,12 @@ import { RedisService } from 'hide-redis';
 import { Cache } from '@nestjs/cache-manager';
 import { CommonRef } from 'src/common/refs/common.ref';
 
+// wsUuid
 type ActiveSSHSessions = Record<
   string,
   { conn: Client; sessionId: string; sessions: Record<string, ClientChannel> }
 >;
+// uid
 type ActiveWorkspaces = Record<string, ActiveSSHSessions>;
 
 @Injectable()

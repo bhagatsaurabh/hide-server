@@ -1,8 +1,6 @@
 package commithndl
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"hideserver/provisioner/services/commitsvc"
 	"hideserver/provisioner/util"
 	"log"
@@ -24,36 +22,18 @@ func CommitHandler(w http.ResponseWriter, r *http.Request) {
 		util.SendAPIErr(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
-	var req commitsvc.CommitRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	uuid := r.URL.Query().Get("uuid")
+	baseImage := r.URL.Query().Get("baseImage")
+	if uuid == "" || baseImage == "" {
 		util.SendAPIErr(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
-	if req.Uuid == "" {
-		util.SendAPIErr(w, http.StatusBadRequest, "Missing field: uuid")
-		return
-	}
-	userHeader := r.Header.Get("x-auth-user")
-	if userHeader == "" {
-		util.SendAPIErr(w, http.StatusBadRequest, "Missing x-auth-user header")
-		return
-	}
-	decodedBytes, err := base64.StdEncoding.DecodeString(userHeader)
-	if err != nil {
-		util.SendAPIErr(w, http.StatusBadRequest, "Invalid Base64 encoding in x-auth-user header")
-		return
-	}
-	var user UserHeader
-	err = json.Unmarshal(decodedBytes, &user)
-	if err != nil {
-		util.SendAPIErr(w, http.StatusBadRequest, "Invalid JSON in x-auth-user header")
-		return
-	}
 
+	var err error
 	if devEnv, exists := os.LookupEnv("DEV_PLATFORM"); exists && devEnv == "docker" {
-		err = commitsvc.CommitDockerImage(req)
+		err = commitsvc.CommitDockerImage(uuid, baseImage)
 	} else {
-		err = commitsvc.CommitK8sImage(req, devEnv)
+		err = commitsvc.CommitK8sImage(uuid, baseImage, devEnv)
 	}
 	if err != nil {
 		log.Println(err.Error())
@@ -61,5 +41,5 @@ func CommitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusAccepted)
 }
