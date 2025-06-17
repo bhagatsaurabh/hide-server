@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Controller, Inject, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ClientProxy, MessagePattern, RpcException, Transport } from '@nestjs/microservices';
 import {
+  EnvCloseRequest,
   EnvOpenRequest,
   HealthCheck,
   InSocketMessage,
@@ -91,6 +92,10 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
           message: (error as RpcError).message,
         });
       }
+      return;
+    } else if (msg.payload.reqAction === 'close') {
+      if (!uid) return;
+      await this.workspaceService.handleEnvClose(uid, msg.payload as EnvCloseRequest);
       return;
     }
 

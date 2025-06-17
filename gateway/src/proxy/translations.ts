@@ -97,6 +97,14 @@ export const rules: Rules = [
           action: 'open',
         },
       },
+      close: {
+        POST: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: Transport.NATS,
+          pattern: 'env.msg',
+          action: 'close',
+        },
+      },
     },
   },
 ];

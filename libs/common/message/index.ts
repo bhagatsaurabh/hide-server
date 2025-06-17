@@ -92,6 +92,9 @@ export interface MembershipCheck extends ServiceMessagePayload {
 export interface EnvOpenRequest extends ServiceMessagePayload {
   uuid: string;
 }
+export interface EnvCloseRequest extends ServiceMessagePayload {
+  uuid: string;
+}
 
 export interface UserOnline extends ServiceEventPayload {
   uid: string;

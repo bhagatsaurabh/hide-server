@@ -37,9 +37,6 @@ export interface EnvError extends OutSocketMessagePayload {
 }
 
 export type EnvResponseMap = {
-  "session.lost": EnvSessionLost;
-  "workspace.opened": EnvWorkspaceOpened;
-  "workspace.open.wait": EnvWorkspaceOpenWait;
   error: EnvError;
 };
 export type EnvPayload = {

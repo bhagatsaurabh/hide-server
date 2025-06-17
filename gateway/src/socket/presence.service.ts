@@ -10,12 +10,10 @@ import {
   GatewayPayload,
   InSocketMessage,
   ServiceEvent,
-  ServiceMessage,
 } from 'hide-common';
 import { RedisService } from 'hide-redis';
 import { MembershipService } from './membership.service';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class PresenceService {
@@ -100,17 +98,12 @@ export class PresenceService {
       await this.cache.set<CachedPresence>(CACHEKEY_PRESENCE(uid), presence);
     }
   }
-  async handleWorkspaceExpiry(uid: string, sessionId: string, wsUuid: string) {
+  async handleWorkspaceExpiry(_uid: string, _sessionId: string, wsUuid: string) {
     await this.cache.del(CACHEKEY_WORKSPACE(wsUuid));
-    const observable = this.nats.send<any, ServiceMessage<InSocketMessage<'internal'>>>('env.msg', {
-      meta: { uid },
-      payload: {
-        service: 'internal',
-        action: 'workspace.close',
-        payload: { uid, uuid: wsUuid, sessionId },
-      },
+    await fetch(`http://provisioner/api/commit?uuid=${wsUuid}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     });
-    await firstValueFrom(observable);
   }
 
   async setSessionState(
