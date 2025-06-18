@@ -3,7 +3,6 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,9 +17,11 @@ import { MembershipDTO, WorkspaceDTO } from 'src/common/dto/workspace.dto';
 import { InviteService } from 'src/invite/invite.service';
 import { ClientProxy } from '@nestjs/microservices';
 import {
+  CachedPresence,
+  CACHEKEY_PRESENCE,
+  CACHEKEY_PRESENCE_WORKSPACE,
+  CACHEKEY_WORKSPACE,
   createMessage,
-  EnvDeprovision,
-  EnvShutdown,
   ExclusionData,
   MembersModified,
   NotifyUser,
@@ -30,9 +31,12 @@ import {
 } from 'hide-common';
 import { randomUUID } from 'node:crypto';
 import { RmqService } from 'hide-rmq';
+import { Cache, RedisService } from 'hide-redis';
 
 @Injectable()
 export class ManageService {
+  cache: Cache;
+
   constructor(
     @InjectRepository(Workspace) private wsRepository: Repository<Workspace>,
     @InjectRepository(Membership) private msRepository: Repository<Membership>,
@@ -40,7 +44,10 @@ export class ManageService {
     @Inject('WORKSPACE_SERVICE_REDIS') private redis: ClientProxy,
     private readonly inviteService: InviteService,
     private dataSource: DataSource,
-  ) {}
+    private cacheService: RedisService,
+  ) {
+    this.cache = this.cacheService.get();
+  }
 
   async createWorkspace(user: User, data: Partial<CreateDTO>) {
     let err: string | undefined;
@@ -219,7 +226,7 @@ export class ManageService {
     if (!membership) {
       throw new ForbiddenException('User is not a member of the workspace');
     }
-    return true;
+    return { image: workspace.image };
   }
 
   async deleteWorkspace(uid: string, workspaceUUID: string) {
@@ -244,21 +251,7 @@ export class ManageService {
       (membership) => membership.userId,
     );
 
-    const shutdownSignal = new Promise<void>((res, rej) => {
-      const observable = this.rmq.send<ServiceEvent<EnvShutdown>>(`env.${workspaceUUID}.shutdown`, {
-        payload: { uid },
-      });
-      observable.subscribe({
-        error: (err) => rej(err as Error),
-        complete: () => res(),
-      });
-    });
-
-    try {
-      await shutdownSignal;
-    } catch (err) {
-      throw new InternalServerErrorException(err);
-    }
+    await this.clearCacheOnDelete(members, workspaceUUID);
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.startTransaction();
@@ -273,11 +266,32 @@ export class ManageService {
       await queryRunner.release();
     }
 
+    void fetch(`http://provisioner/api/dispose?uuid=${workspaceUUID}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    });
+
     this.redis.emit<any, ServiceEvent<WorkspaceDeleted>>('workspace.deleted', {
       payload: { uuid: workspaceUUID, members },
     });
-    this.rmq.send<ServiceEvent<EnvDeprovision>>('provisioner.deprovision', {
-      payload: { uuid: workspaceUUID },
+  }
+
+  async clearCacheOnDelete(members: string[], wsUuid: string) {
+    const uids = await Promise.allSettled(
+      members.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid))),
+    );
+    members.forEach((uid, idx) => {
+      if (uids[idx].status === 'fulfilled' && uids[idx].value) {
+        const presence = uids[idx].value;
+        const entries = Object.entries(presence);
+        const [sessionId, _session] = entries.find(([_, session]) => session.wsUuid === wsUuid) || [];
+        if (sessionId) {
+          void this.cache.del(CACHEKEY_PRESENCE_WORKSPACE(uid, sessionId, wsUuid));
+          delete presence[sessionId].wsUuid;
+          void this.cache.set(CACHEKEY_PRESENCE(uid), presence);
+        }
+      }
     });
+    await this.cache.del(CACHEKEY_WORKSPACE(wsUuid));
   }
 }

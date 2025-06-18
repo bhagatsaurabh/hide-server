@@ -100,7 +100,7 @@ export class PresenceService {
   }
   async handleWorkspaceExpiry(_uid: string, _sessionId: string, wsUuid: string) {
     await this.cache.del(CACHEKEY_WORKSPACE(wsUuid));
-    await fetch(`http://provisioner/api/commit?uuid=${wsUuid}`, {
+    await fetch(`http://provisioner/api/dispose?uuid=${wsUuid}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     });

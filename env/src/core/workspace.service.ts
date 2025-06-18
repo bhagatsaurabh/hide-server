@@ -47,15 +47,26 @@ export class WorkspaceService {
     this.cache = this.cacheService.get();
   }
   async handleEnvOpen(uid: string, msg: EnvOpenRequest) {
-    let member = false;
+    let workspace: { image: string } | null;
     try {
-      member = await this.isAMember(uid, msg.uuid);
+      workspace = await this.isAMember(uid, msg.uuid);
     } catch (error) {
       void error;
       throw new RpcError(500, 'Could not check membership');
     }
-    if (!member) {
+    if (!workspace) {
       throw new RpcError(401, 'Not a workspace member');
+    }
+
+    try {
+      await fetch('http://provisioner/api/provision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ image: workspace.image, uuid: msg.uuid }),
+      });
+    } catch (error) {
+      void error;
+      throw new RpcError(401, 'Failed to open workspace');
     }
 
     const lock = await this.acquireLock(msg.uuid);
@@ -241,9 +252,17 @@ export class WorkspaceService {
     }
   }
   async isAMember(uid: string, wsUuid: string) {
-    const observable = this.rmq.send<boolean, ServiceMessage<MembershipCheck>>('workspace.membership.check', {
-      payload: { uid, uuid: wsUuid },
-    });
-    return await firstValueFrom(observable);
+    try {
+      const observable = this.rmq.send<{ image: string }, ServiceMessage<MembershipCheck>>(
+        'workspace.membership.check',
+        {
+          payload: { uid, uuid: wsUuid },
+        },
+      );
+      return await firstValueFrom(observable);
+    } catch (error) {
+      void error;
+    }
+    return null;
   }
 }

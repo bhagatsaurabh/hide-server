@@ -15,6 +15,7 @@ services:
       RMQ_URL: "amqp://rabbitmq:5672"
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      NATS_URL: "nats://nats:4222"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: admin
