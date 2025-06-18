@@ -13,6 +13,9 @@ export class Workspace {
     if (data.uuid) {
       this.uuid = data.uuid;
     }
+    if (data.image) {
+      this.image = data.image;
+    }
   }
 
   @PrimaryGeneratedColumn({ type: 'bigint' })
@@ -21,6 +24,9 @@ export class Workspace {
   @Column({ type: 'uuid', unique: true })
   @Generated('uuid')
   uuid: string;
+
+  @Column({ nullable: false, length: 50 })
+  image: string;
 
   @Column({ nullable: false, length: 30 })
   name: string;

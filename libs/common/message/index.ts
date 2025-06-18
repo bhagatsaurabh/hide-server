@@ -101,12 +101,6 @@ export interface UserOnline extends ServiceEventPayload {
 }
 export type UserOffline = UserOnline;
 
-export interface EnvShutdown extends ServiceEventPayload {
-  uid: string;
-}
-export interface EnvDeprovision extends ServiceEventPayload {
-  uuid: string;
-}
 export interface HealthCheck extends ServiceEventPayload {}
 
 export type InternalMessage<T> = { id: string; data: T };

@@ -1,4 +1,4 @@
-package commitsvc
+package services
 
 import (
 	"archive/tar"
@@ -18,7 +18,8 @@ import (
 )
 
 func CommitK8sImage(uuid string, baseImage string, devEnv string) error {
-	_config, err := config.LoadK8sConfig()
+	// TODO
+	_, err := config.LoadK8sConfig()
 
 	/* clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {

@@ -1,21 +1,12 @@
-package commithndl
+package handlers
 
 import (
-	"hideserver/provisioner/services/commitsvc"
+	"hideserver/provisioner/services"
 	"hideserver/provisioner/util"
 	"log"
 	"net/http"
 	"os"
 )
-
-type UserHeader struct {
-	Uid      string `json:"uid"`
-	Name     string `json:"name"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Picture  string `json:"picture"`
-	Issuer   string `json:"issuer"`
-}
 
 func CommitHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -31,9 +22,9 @@ func CommitHandler(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	if devEnv, exists := os.LookupEnv("DEV_PLATFORM"); exists && devEnv == "docker" {
-		err = commitsvc.CommitDockerImage(uuid, baseImage)
+		err = services.CommitDockerImage(uuid, baseImage)
 	} else {
-		err = commitsvc.CommitK8sImage(uuid, baseImage, devEnv)
+		err = services.CommitK8sImage(uuid, baseImage, devEnv)
 	}
 	if err != nil {
 		log.Println(err.Error())

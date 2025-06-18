@@ -13,6 +13,13 @@ import { RmqModule } from 'hide-rmq';
           port: parseInt(process.env.REDIS_PORT!),
         },
       },
+      {
+        name: 'WORKSPACE_SERVICE_NATS',
+        transport: Transport.NATS,
+        options: {
+          servers: [process.env.NATS_URL!],
+        },
+      },
     ]),
     RmqModule.forRoot({ urls: [process.env.RMQ_URL!] }),
   ],

@@ -1,9 +1,9 @@
-package provisionhndl
+package handlers
 
 import (
 	"encoding/base64"
 	"encoding/json"
-	"hideserver/provisioner/services/provisionsvc"
+	"hideserver/provisioner/services"
 	"hideserver/provisioner/util"
 	"log"
 	"net/http"
@@ -11,17 +11,9 @@ import (
 )
 
 type ProvisionDTO struct {
-	PrivateKey string                    `json:"privateKey"`
-	Message    string                    `json:"message"`
-	Workspace  provisionsvc.WorkspaceDTO `json:"workspace"`
-}
-type UserHeader struct {
-	Uid      string `json:"uid"`
-	Name     string `json:"name"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Picture  string `json:"picture"`
-	Issuer   string `json:"issuer"`
+	PrivateKey string                `json:"privateKey"`
+	Message    string                `json:"message"`
+	Workspace  services.WorkspaceDTO `json:"workspace"`
 }
 
 func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +21,7 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 		util.SendAPIErr(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
-	var req provisionsvc.ProvisionRequest
+	var req services.ProvisionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.SendAPIErr(w, http.StatusBadRequest, "Invalid request")
 		return
@@ -55,21 +47,36 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var privateKey string
-	var workspaceUUID string
-	if devEnv, exists := os.LookupEnv("DEV_PLATFORM"); exists && devEnv == "docker" {
-		privateKey, workspaceUUID, err = provisionsvc.CreateDockerContainer(req)
+	devEnv, _ := os.LookupEnv("DEV_PLATFORM")
+
+	if req.Uuid != "" {
+		var devCont *services.DevContainerSummary
+		if devCont, err = services.DevContainerExists(req.Uuid, devEnv); err != nil {
+			util.SendAPIErr(w, http.StatusBadRequest, "Could not check container existence")
+			return
+		}
+		if devCont == nil {
+			util.SendAPIErr(w, http.StatusNotFound, "Workspace not found")
+		} else if devCont.Running {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			start(w, req.Uuid, devCont.Id, devEnv)
+		}
 	} else {
-		privateKey, workspaceUUID, err = provisionsvc.CreateK8sPod(req, devEnv)
+		provision(req, w, userHeader, devEnv)
 	}
+}
+
+func provision(req services.ProvisionRequest, w http.ResponseWriter, userHeader string, devEnv string) {
+	privateKey, workspaceUUID, err := services.CreateDevContainer(req, devEnv)
 	if err != nil {
 		log.Println(err.Error())
 		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to provision pod")
 		return
 	}
 
-	var workspace provisionsvc.WorkspaceDTO
-	err = provisionsvc.CreateWorkspace(req, userHeader, workspaceUUID, &workspace)
+	var workspace services.WorkspaceDTO
+	err = services.CreateWorkspace(req, userHeader, workspaceUUID, &workspace)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -78,4 +85,11 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 		PrivateKey: privateKey,
 		Workspace:  workspace,
 	})
+}
+func start(w http.ResponseWriter, uuid string, id string, devEnv string) {
+	err := services.StartDevContainer(uuid, id, devEnv)
+	if err != nil {
+		log.Println(err.Error())
+		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to start pod")
+	}
 }
