@@ -3,6 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: typesense-pvc
 spec:
+  volumeName: typesense-pv
   accessModes:
     - ReadWriteOnce
   resources:

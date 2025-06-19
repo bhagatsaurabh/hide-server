@@ -3,6 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: rabbitmq-pvc
 spec:
+  volumeName: rmq-pv
   accessModes:
     - ReadWriteOnce
   resources:

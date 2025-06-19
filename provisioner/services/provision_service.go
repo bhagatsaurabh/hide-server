@@ -221,7 +221,8 @@ func DockerVolumeExists(uuid string) (bool, error) {
 	return true, nil
 }
 func K8sVolumeExists(uuid string) (bool, error) {
-	config, err := config.LoadK8sConfig()
+	// cost
+	/* config, err := config.LoadK8sConfig()
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Println("Error creating Kubernetes client:", err)
@@ -248,7 +249,7 @@ func K8sVolumeExists(uuid string) (bool, error) {
 			return false, nil
 		}
 		return false, err
-	}
+	} */
 	return true, nil
 }
 
@@ -423,8 +424,7 @@ func CreateDockerVolume(cli *client.Client, ctx context.Context, wsUuid string) 
 	}
 	return nil
 }
-
 func CreateK8sVolume(clientset *kubernetes.Clientset, ctx context.Context, wsUuid string) error {
-	// TODO
+	// cost 😬
 	return nil
 }

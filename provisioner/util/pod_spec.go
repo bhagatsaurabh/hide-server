@@ -7,13 +7,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GetPodSpec(workspaceUUID string, image string, publicKey string, devEnv string) *v1.Pod {
-	// TODO
+func GetPodSpec(wsUuid string, image string, publicKey string, devEnv string) *v1.Pod {
 	envs := []v1.EnvVar{
-		{
-			Name:  "SSH_PUBLIC_KEY",
-			Value: publicKey,
-		},
 		{
 			Name:  "SERVICE_PORT",
 			Value: "80",
@@ -24,7 +19,13 @@ func GetPodSpec(workspaceUUID string, image string, publicKey string, devEnv str
 		},
 	}
 
-	// Development-only
+	if publicKey != "" {
+		envs = append(envs, v1.EnvVar{
+			Name:  "SSH_PUBLIC_KEY",
+			Value: publicKey,
+		})
+	}
+
 	if devEnv == "k8s" {
 		envs = append(envs, v1.EnvVar{
 			Name:  "NODE_ENV",
@@ -46,17 +47,35 @@ func GetPodSpec(workspaceUUID string, image string, publicKey string, devEnv str
 		})
 	}
 
+	hostPathType := v1.HostPathDirectoryOrCreate
 	podSpec := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("workspace-%s", workspaceUUID),
+			Name: fmt.Sprintf("workspace-%s", wsUuid),
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
 					Name:            "dev",
 					Image:           image,
-					ImagePullPolicy: v1.PullNever,
+					ImagePullPolicy: v1.PullNever, // revisit
 					Env:             envs,
+					VolumeMounts: []v1.VolumeMount{
+						{
+							MountPath: "/home/devuser/workspace",
+							Name:      fmt.Sprintf("workspace-volume-%s", wsUuid),
+						},
+					},
+				},
+			},
+			Volumes: []v1.Volume{
+				{
+					Name: fmt.Sprintf("workspace-volume-%s", wsUuid),
+					VolumeSource: v1.VolumeSource{
+						HostPath: &v1.HostPathVolumeSource{
+							Path: fmt.Sprintf("/data/%s", wsUuid),
+							Type: &hostPathType,
+						},
+					},
 				},
 			},
 		},

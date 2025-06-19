@@ -45,7 +45,6 @@ func DisposeDockerContainer(uuid string) error {
 }
 
 func DisposeK8sPod(uuid string) error {
-	// TODO
 	config, err := config.LoadK8sConfig()
 
 	clientset, err := kubernetes.NewForConfig(config)
@@ -59,8 +58,13 @@ func DisposeK8sPod(uuid string) error {
 
 	deletePolicy := metav1.DeletePropagationForeground
 	gracePeriod := int64(20)
-	return clientset.CoreV1().Pods("default").Delete(ctx, fmt.Sprintf("workspace-%s", uuid), metav1.DeleteOptions{
+	err = clientset.CoreV1().Pods("default").Delete(ctx, fmt.Sprintf("workspace-%s", uuid), metav1.DeleteOptions{
 		PropagationPolicy:  &deletePolicy,
 		GracePeriodSeconds: &gracePeriod,
 	})
+	if err != nil {
+		return err
+	}
+	err = clientset.CoreV1().Services("default").Delete(ctx, fmt.Sprintf("workspace-service-%s", uuid), metav1.DeleteOptions{})
+	return err
 }
