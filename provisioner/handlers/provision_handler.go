@@ -55,41 +55,47 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 			util.SendAPIErr(w, http.StatusBadRequest, "Could not check container existence")
 			return
 		}
-		if devCont == nil {
-			util.SendAPIErr(w, http.StatusNotFound, "Workspace not found")
-		} else if devCont.Running {
-			w.WriteHeader(http.StatusOK)
+		if devCont != nil {
+			if devCont.Running {
+				w.WriteHeader(http.StatusOK)
+			} else {
+				start(w, req.Uuid, devCont.Id, devEnv)
+			}
+			return
 		} else {
-			start(w, req.Uuid, devCont.Id, devEnv)
+			provision(req, w, userHeader, false, devEnv)
 		}
-	} else {
-		provision(req, w, userHeader, devEnv)
 	}
+
+	provision(req, w, userHeader, true, devEnv)
 }
 
-func provision(req services.ProvisionRequest, w http.ResponseWriter, userHeader string, devEnv string) {
-	privateKey, workspaceUUID, err := services.CreateDevContainer(req, devEnv)
+func provision(req services.ProvisionRequest, w http.ResponseWriter, userHeader string, isNew bool, devEnv string) {
+	privateKey, workspaceUUID, err := services.CreateDevContainer(req, isNew, devEnv)
 	if err != nil {
 		log.Println(err.Error())
 		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to provision pod")
 		return
 	}
 
-	var workspace services.WorkspaceDTO
-	err = services.CreateWorkspace(req, userHeader, workspaceUUID, &workspace)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(ProvisionDTO{
-		Message:    "Pod created successfully",
-		PrivateKey: privateKey,
-		Workspace:  workspace,
-	})
+	if isNew {
+		var workspace services.WorkspaceDTO
+		err = services.CreateWorkspace(req, userHeader, workspaceUUID, &workspace)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(ProvisionDTO{
+			Message:    "Pod created successfully",
+			PrivateKey: privateKey,
+			Workspace:  workspace,
+		})
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
 }
 func start(w http.ResponseWriter, uuid string, id string, devEnv string) {
 	err := services.StartDevContainer(uuid, id, devEnv)
 	if err != nil {
 		log.Println(err.Error())
-		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to start pod")
+		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to boot workspace")
 	}
 }

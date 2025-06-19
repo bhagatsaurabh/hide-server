@@ -11,17 +11,17 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
+	v1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -60,13 +60,23 @@ type DevContainerSummary struct {
 	Id      string
 }
 
-func CreateDevContainer(req ProvisionRequest, devEnv string) (string, string, error) {
+func CreateDevContainer(req ProvisionRequest, isNew bool, devEnv string) (string, string, error) {
+	var err error = nil
+	if !isNew {
+		volumeExists, err := VolumeExists(req.Uuid, devEnv)
+		if err != nil {
+			return "", "", err
+		}
+		if !volumeExists {
+			return "", "", errors.New("Volume not found for existing workspace")
+		}
+	}
+
 	var privateKey, workspaceUuid string
-	var err error
 	if devEnv == "docker" {
-		privateKey, workspaceUuid, err = CreateDockerContainer(req)
+		privateKey, workspaceUuid, err = CreateDockerContainer(req, isNew)
 	} else {
-		privateKey, workspaceUuid, err = CreateK8sPod(req, devEnv)
+		privateKey, workspaceUuid, err = CreateK8sPod(req, isNew, devEnv)
 	}
 
 	err = waitOnDevContainerReady(workspaceUuid, 10*time.Second)
@@ -76,100 +86,101 @@ func CreateDevContainer(req ProvisionRequest, devEnv string) (string, string, er
 
 	return privateKey, workspaceUuid, nil
 }
-func CreateK8sPod(req ProvisionRequest, devEnv string) (string, string, error) {
+func CreateK8sPod(req ProvisionRequest, isNew bool, devEnv string) (string, string, error) {
 	config, err := config.LoadK8sConfig()
-
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Println("Error creating Kubernetes client:", err)
 		return "", "", err
 	}
-
-	workspaceUUID := uuid.New().String()
-	if workspaceUUID == "" {
-		log.Println("Cannot generate UUID")
-		return "", "", errors.New("Error creating Kubernetes client")
-	}
-
-	privateKey, publicKey, err := util.GenSSHKeyPair(4096)
-	if err != nil {
-		log.Println("Failed to generate SSH key pair")
-		return "", "", err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	pod := util.GetPodSpec(workspaceUUID, req.Image, publicKey, devEnv)
-	_, err = clientset.CoreV1().Pods("default").Create(ctx, pod, metav1.CreateOptions{})
-	if err != nil {
-		return "", "", err
+	wsUuid := req.Uuid
+	if isNew {
+		wsUuid = uuid.New().String()
 	}
-
-	service := util.GetServiceSpec(workspaceUUID)
-	_, err = clientset.CoreV1().Services("default").Create(ctx, service, metav1.CreateOptions{})
-	if err != nil {
-		clientset.CoreV1().Pods("default").Delete(ctx, fmt.Sprintf("workspace-%s", workspaceUUID), metav1.DeleteOptions{})
-		return "", "", err
-	}
-
-	return privateKey, workspaceUUID, err
-}
-func CreateDockerContainer(req ProvisionRequest) (string, string, error) {
-	cli, err := config.LoadDockerConfig()
-
-	if err != nil {
-		log.Println("Error creating docker client:", err)
-		return "", "", err
-	}
-
-	workspaceUUID := uuid.New().String()
-	if workspaceUUID == "" {
+	if wsUuid == "" {
 		log.Println("Cannot generate UUID")
 		return "", "", errors.New("Cannot generate UUID")
 	}
 
-	privateKey, publicKey, err := util.GenSSHKeyPair(4096)
+	privateKey, publicKey, err := "", "", nil
+	if isNew {
+		privateKey, publicKey, err = util.GenSSHKeyPair(4096)
+	}
 	if err != nil {
 		log.Println("Failed to generate SSH key pair")
 		return "", "", err
 	}
 
+	if isNew {
+		err = CreateK8sVolume(clientset, ctx, wsUuid)
+	}
+	if err != nil {
+		return "", "", err
+	}
+
+	pod := util.GetPodSpec(wsUuid, req.Image, publicKey, devEnv)
+	_, err = clientset.CoreV1().Pods("default").Create(ctx, pod, metav1.CreateOptions{})
+	if err != nil {
+		return "", "", err
+	}
+	service := util.GetServiceSpec(wsUuid)
+	_, err = clientset.CoreV1().Services("default").Create(ctx, service, metav1.CreateOptions{})
+	if err != nil {
+		gracePeriod := int64(0)
+		clientset.CoreV1().Pods("default").Delete(ctx, fmt.Sprintf("workspace-%s", wsUuid), metav1.DeleteOptions{
+			GracePeriodSeconds: &gracePeriod,
+		})
+		return "", "", err
+	}
+
+	return privateKey, wsUuid, err
+}
+func CreateDockerContainer(req ProvisionRequest, isNew bool) (string, string, error) {
+	cli, err := config.LoadDockerConfig()
+	if err != nil {
+		log.Println("Error creating docker client:", err)
+		return "", "", err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	var hostConfig *container.HostConfig = nil
-	if sourcePath, exists := os.LookupEnv("DEV_FS_SOURCE"); exists {
-		log.Println(strings.ReplaceAll(sourcePath, `\`, `\`))
-		hostConfig = &container.HostConfig{
-			Mounts: []mount.Mount{
-				{
-					Type:   mount.TypeBind,
-					Source: fmt.Sprintf("%s\\%s", sourcePath, "filesystem"),
-					Target: "/app/filesystem",
-				},
-				{
-					Type:   mount.TypeVolume,
-					Target: "/app/filesystem/.build",
-				},
-			},
-		}
+	wsUuid := req.Uuid
+	if isNew {
+		wsUuid = uuid.New().String()
+	}
+	if wsUuid == "" {
+		log.Println("Cannot generate UUID")
+		return "", "", errors.New("Cannot generate UUID")
 	}
 
-	err = CreateDockerVolume(cli, ctx, workspaceUUID)
+	privateKey, publicKey, err := "", "", nil
+	if isNew {
+		privateKey, publicKey, err = util.GenSSHKeyPair(4096)
+	}
+	if err != nil {
+		log.Println("Failed to generate SSH key pair")
+		return "", "", err
+	}
+
+	if isNew {
+		err = CreateDockerVolume(cli, ctx, wsUuid)
+	}
 	if err != nil {
 		return "", "", err
 	}
 
 	resp, err := cli.ContainerCreate(
 		ctx,
-		util.GetContainerSpec(workspaceUUID, req.Image, publicKey),
-		hostConfig,
+		util.GetContainerSpec(wsUuid, req.Image, publicKey),
+		util.GetHostConfig(wsUuid),
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
 				"hide-server_hide-network": {},
 			},
-		}, nil, fmt.Sprintf("workspace-%s", workspaceUUID),
+		}, nil, fmt.Sprintf("workspace-%s", wsUuid),
 	)
 	if err != nil {
 		log.Println("Failed to create container", err)
@@ -180,33 +191,69 @@ func CreateDockerContainer(req ProvisionRequest) (string, string, error) {
 		return "", "", err
 	}
 
-	return privateKey, workspaceUUID, err
+	return privateKey, wsUuid, err
 }
 
-func CreateDockerVolume(cli *client.Client, ctx context.Context, workspaceUuid string) error {
-	volumeName := fmt.Sprintf("workspace-volume-%s", workspaceUuid)
-	args := filters.NewArgs()
-	args.Add("name", volumeName)
-
-	volumes, err := cli.VolumeList(ctx, volume.ListOptions{Filters: args})
+func VolumeExists(uuid string, devEnv string) (bool, error) {
+	if devEnv == "docker" {
+		return DockerVolumeExists(uuid)
+	} else {
+		return K8sVolumeExists(uuid)
+	}
+}
+func DockerVolumeExists(uuid string) (bool, error) {
+	cli, err := config.LoadDockerConfig()
 	if err != nil {
-		return err
+		return false, err
 	}
+	defer cli.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
 
-	if len(volumes.Volumes) > 0 {
-		return nil
-	}
-
-	_, err = cli.VolumeCreate(ctx, volume.CreateOptions{
-		Name: volumeName,
-	})
+	_, err = cli.VolumeInspect(ctx, fmt.Sprintf("workspace-volume-%s", uuid))
 	if err != nil {
-		return err
+		if client.IsErrNotFound(err) {
+			return false, nil
+		}
+		return false, err
 	}
-	return nil
+
+	return true, nil
+}
+func K8sVolumeExists(uuid string) (bool, error) {
+	config, err := config.LoadK8sConfig()
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Println("Error creating Kubernetes client:", err)
+		return false, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err = clientset.CoreV1().
+		PersistentVolumeClaims("default").
+		Get(ctx, fmt.Sprintf("workspace-pvc-%s", uuid), metav1.GetOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	_, err = clientset.CoreV1().
+		PersistentVolumes().
+		Get(ctx, fmt.Sprintf("workspace-volume-%s", uuid), metav1.GetOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
-func DevContainerExists(containerName string, devEnv string) (*DevContainerSummary, error) {
+func DevContainerExists(wsUuid string, devEnv string) (*DevContainerSummary, error) {
+	containerName := fmt.Sprintf("workspace-%s", wsUuid)
 	if devEnv == "docker" {
 		return DockerContainerExists(containerName)
 	} else {
@@ -219,7 +266,6 @@ func DockerContainerExists(containerName string) (*DevContainerSummary, error) {
 		return nil, err
 	}
 	defer cli.Close()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
@@ -241,22 +287,35 @@ outer:
 		}
 	}
 
+	if devCont == nil {
+		return nil, nil
+	}
 	return &DevContainerSummary{
 		Running: devCont.State == "running",
 		Id:      devCont.ID,
 	}, nil
 }
 func K8sPodExists(containerName string) (*DevContainerSummary, error) {
-	cli, err := config.LoadDockerConfig()
+	config, err := config.LoadK8sConfig()
+	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
+		log.Println("Error creating Kubernetes client:", err)
 		return nil, err
 	}
-	defer cli.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// TODO
+	pod, err := clientset.CoreV1().Pods("default").Get(ctx, containerName, metav1.GetOptions{})
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
 
 	return &DevContainerSummary{
-		Running: false,
+		Running: pod.Status.Phase == v1.PodRunning,
 		Id:      "",
 	}, nil
 }
@@ -287,15 +346,7 @@ func StartDockerContainer(id string) error {
 	return nil
 }
 func StartK8sPod(id string) error {
-	cli, err := config.LoadDockerConfig()
-	if err != nil {
-		return err
-	}
-	defer cli.Close()
-
-	// TODO
-
-	return nil
+	return errors.New("Workspace provisioned but not running")
 }
 
 func CreateWorkspace(req ProvisionRequest, userHeader string, workspaceUUID string, workspace *WorkspaceDTO) error {
@@ -348,4 +399,32 @@ func waitOnDevContainerReady(uuid string, timeout time.Duration) error {
 	}
 
 	return errors.New("Workspace timed-out during boot")
+}
+
+func CreateDockerVolume(cli *client.Client, ctx context.Context, wsUuid string) error {
+	volumeName := fmt.Sprintf("workspace-volume-%s", wsUuid)
+	args := filters.NewArgs()
+	args.Add("name", volumeName)
+
+	volumes, err := cli.VolumeList(ctx, volume.ListOptions{Filters: args})
+	if err != nil {
+		return err
+	}
+
+	if len(volumes.Volumes) > 0 {
+		return nil
+	}
+
+	_, err = cli.VolumeCreate(ctx, volume.CreateOptions{
+		Name: volumeName,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func CreateK8sVolume(clientset *kubernetes.Clientset, ctx context.Context, wsUuid string) error {
+	// TODO
+	return nil
 }
