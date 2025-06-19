@@ -8,8 +8,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func GetServiceSpec(workspaceUUID string) *v1.Service {
-	name := fmt.Sprintf("workspace-%s", workspaceUUID)
+func GetServiceSpec(wsUuid string) *v1.Service {
+	name := fmt.Sprintf("workspace-service-%s", wsUuid)
 	serviceSpec := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

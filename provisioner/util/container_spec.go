@@ -30,12 +30,17 @@ func GetContainerSpec(workspaceUUID, image, publicKey string) *container.Config 
 	return containerSpec
 }
 
-func GetHostConfig(uuid string) *container.HostConfig {
+func GetHostConfig(wsUuid string) *container.HostConfig {
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeVolume,
-			Source: fmt.Sprintf("workspace-volume-%s", uuid),
+			Source: fmt.Sprintf("workspace-volume-%s", wsUuid),
 			Target: "/home/devuser/workspace",
+		},
+		{
+			Type:   mount.TypeVolume,
+			Source: fmt.Sprintf("workspaceconfig-volume-%s", wsUuid),
+			Target: "/devconfig",
 		},
 	}
 
