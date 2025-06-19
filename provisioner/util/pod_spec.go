@@ -8,6 +8,7 @@ import (
 )
 
 func GetPodSpec(workspaceUUID string, image string, publicKey string, devEnv string) *v1.Pod {
+	// TODO
 	envs := []v1.EnvVar{
 		{
 			Name:  "SSH_PUBLIC_KEY",
