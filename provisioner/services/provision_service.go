@@ -166,7 +166,11 @@ func CreateDockerContainer(req ProvisionRequest, isNew bool) (string, string, er
 	}
 
 	if isNew {
-		err = CreateDockerVolume(cli, ctx, wsUuid)
+		err = CreateDockerVolume(cli, ctx, fmt.Sprintf("workspace-volume-%s", wsUuid))
+		if err != nil {
+			return "", "", err
+		}
+		err = CreateDockerVolume(cli, ctx, fmt.Sprintf("workspaceconfig-volume-%s", wsUuid))
 	}
 	if err != nil {
 		return "", "", err
@@ -402,8 +406,7 @@ func waitOnDevContainerReady(uuid string, timeout time.Duration) error {
 	return errors.New("Workspace timed-out during boot")
 }
 
-func CreateDockerVolume(cli *client.Client, ctx context.Context, wsUuid string) error {
-	volumeName := fmt.Sprintf("workspace-volume-%s", wsUuid)
+func CreateDockerVolume(cli *client.Client, ctx context.Context, volumeName string) error {
 	args := filters.NewArgs()
 	args.Add("name", volumeName)
 
@@ -424,7 +427,7 @@ func CreateDockerVolume(cli *client.Client, ctx context.Context, wsUuid string) 
 	}
 	return nil
 }
-func CreateK8sVolume(clientset *kubernetes.Clientset, ctx context.Context, wsUuid string) error {
+func CreateK8sVolume(clientset *kubernetes.Clientset, ctx context.Context, volumeName string) error {
 	// cost 😬
 	return nil
 }

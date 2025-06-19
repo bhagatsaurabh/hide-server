@@ -64,6 +64,10 @@ func GetPodSpec(wsUuid string, image string, publicKey string, devEnv string) *v
 							MountPath: "/home/devuser/workspace",
 							Name:      fmt.Sprintf("workspace-volume-%s", wsUuid),
 						},
+						{
+							MountPath: "/devconfig",
+							Name:      fmt.Sprintf("workspaceconfig-volume-%s", wsUuid),
+						},
 					},
 				},
 			},
@@ -73,6 +77,15 @@ func GetPodSpec(wsUuid string, image string, publicKey string, devEnv string) *v
 					VolumeSource: v1.VolumeSource{
 						HostPath: &v1.HostPathVolumeSource{
 							Path: fmt.Sprintf("/data/%s", wsUuid),
+							Type: &hostPathType,
+						},
+					},
+				},
+				{
+					Name: fmt.Sprintf("workspaceconfig-volume-%s", wsUuid),
+					VolumeSource: v1.VolumeSource{
+						HostPath: &v1.HostPathVolumeSource{
+							Path: fmt.Sprintf("/data/devconfig/%s", wsUuid),
 							Type: &hostPathType,
 						},
 					},
