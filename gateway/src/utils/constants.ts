@@ -1,1 +1,1 @@
-export const usernameRegex = /^.[^!@#$%^&*()+={}[\]`~:;"?/<>]{3,}$/;
+export const usernameRegex = /^[^!@#$%^&*()+={}[\]`~:;"?/<>\s]{3,}$/;

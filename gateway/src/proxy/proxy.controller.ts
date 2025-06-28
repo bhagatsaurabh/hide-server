@@ -1,4 +1,14 @@
-import { All, Controller, NotFoundException, Param, Query, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  All,
+  Controller,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 import { User } from 'hide-common/model/user';
 import { minimatch } from 'minimatch';
@@ -20,7 +30,7 @@ export class ProxyController {
     @Param('path') path: string[],
     @Query() queries: Record<string, string>,
     @Req() req: Request,
-    @Res() _res: Response,
+    @Res() res: Response,
     @Authenticate() user: User,
   ) {
     let matchedRule: Rule | null = null;
@@ -42,6 +52,6 @@ export class ProxyController {
     } else {
       data = await this.proxyService.sendMessage(translation, req, user, queries);
     }
-    return data;
+    res.status(HttpStatus.OK).send(data);
   }
 }

@@ -1,0 +1,29 @@
+FROM node:20-alpine AS base
+RUN apk add jq
+WORKDIR /app
+
+FROM base AS development
+COPY env ./env
+COPY libs ./libs
+RUN cd ./env && npm ci
+RUN for dir in $(jq ".references[].path" ./env/tsconfig.json); do \
+  (cd "${dir:2:-1}" && npm ci); \
+  done
+CMD ["/bin/sh", "-c", "cd env && npm run start:dev"]
+
+FROM base AS builder
+COPY env ./env
+COPY libs ./libs
+RUN cd ./env && npm ci
+RUN for dir in $(jq ".references[].path" ./env/tsconfig.json); do \
+  (cd "${dir:2:-1}" && npm ci); \
+  done
+RUN npm run build --prefix env
+
+FROM base AS production
+COPY --from=builder /app/env/dist ./env/dist
+COPY --from=builder /app/env/package.json ./env/package.json
+COPY --from=builder /app/env/package-lock.json ./env/package-lock.json
+COPY --from=builder /app/env/node_modules ./env/node_modules
+COPY --from=builder /app/libs ./libs
+CMD ["/bin/sh", "-c", "cd env && npm run start:prod"]

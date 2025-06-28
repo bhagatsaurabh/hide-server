@@ -14,7 +14,7 @@ export class SearchController implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    const [pub, sub] = RedisRef.get();
+    /* const [pub, sub] = RedisRef.get();
 
     await sub.subscribe('test.pattern');
     sub.on('message', (chan, message) => {
@@ -27,7 +27,7 @@ export class SearchController implements OnModuleInit {
           JSON.stringify({ id: parsed.id, data: { beep: 'boop' }, pattern: `${chan}.reply` }),
         );
       }
-    });
+    }); */
   }
 
   @Get('search')

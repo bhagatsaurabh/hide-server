@@ -1,9 +1,11 @@
 import { Controller, Get } from "@nestjs/common";
 
-@Controller()
+@Controller("api")
 export class HealthController {
+  constructor() {}
+
   @Get("health")
   healthcheck() {
-    return;
+    return { status: "UP" };
   }
 }

@@ -30,6 +30,7 @@ import {
   CachedWorkspace,
   HealthCheck,
   CACHEKEY_PRESENCE,
+  CachedSession,
 } from 'hide-common';
 import { FirestoreService } from 'hide-firebase';
 import { Firestore } from '@google-cloud/firestore';
@@ -82,13 +83,14 @@ export class SocketGateway
   ) {
     this.cache = this.redisService.get();
     this.db = this.firestore.db;
-    this.redisClients = RedisRef.get();
     this.lockClient = new Redis(parseInt(process.env.REDIS_PORT!), process.env.REDIS_HOST!);
   }
 
   async onModuleInit() {
     CommonRef.setInstanceId(randomUUID());
+    console.log('Instance: ', CommonRef.getInstanceId());
     this.instanceId = CommonRef.getInstanceId();
+    this.redisClients = RedisRef.get();
     await this.setupInstanceListener();
   }
   async onModuleDestroy() {
@@ -122,18 +124,22 @@ export class SocketGateway
   }
 
   async handleConnection(@ConnectedSocket() socket: TypedSocket) {
+    console.log('New', socket.id);
     if (!this.allowConnections) {
       return socket.client.conn.close();
     }
+    console.log('Allowed');
 
     const token = socket.handshake.auth?.token as string;
     if (!token) {
       return socket.disconnect();
     }
+    console.log('Token');
     const user = await this.handleAuthentication(token);
     if (!user) {
       return socket.disconnect();
     }
+    console.log('Authenticated');
 
     const sessionId = socket.handshake.auth.sessionId as string;
     const uid = user.uid;
@@ -144,6 +150,7 @@ export class SocketGateway
     const newSocketId = socket.id;
     let presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
     if (!presence) presence = {};
+    if (!presence[sessionId]) presence[sessionId] = {} as CachedSession;
     const { socketId: oldSocketId, gatewayId: oldGatewayId, wsUuid } = presence[sessionId];
     presence[sessionId] = { socketId: newSocketId, gatewayId: this.instanceId, wsUuid, state: 'active' };
 
@@ -160,16 +167,17 @@ export class SocketGateway
       await this.presenceService.setWorkspaceState(workspace, uid, sessionId, wsUuid, 'active');
     }
     await lock.release();
+    console.log('Done');
   }
   async handleDisconnect(@ConnectedSocket() socket: TypedSocket) {
     const uid = socket.data.user.uid;
     const sessionId = socket.data.sessionId;
     const lock = await this.acquireLock([this.lockClient], `${uid}:${sessionId}`, 10 * 1000, 5);
-    let presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
-    if (!presence) presence = {};
-    const { wsUuid } = presence[sessionId];
+    const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
+    if (!presence || !presence[sessionId]) return;
 
     await this.presenceService.setSessionState(presence, uid, sessionId, 'inactive');
+    const { wsUuid } = presence[sessionId];
     const workspace = await this.cache.get<CachedWorkspace>(`workspace:${wsUuid}`);
     if (workspace) {
       await this.presenceService.setWorkspaceState(workspace, uid, sessionId, wsUuid, 'inactive');
@@ -190,7 +198,7 @@ export class SocketGateway
       const user = (await response.json()) as User;
 
       let isProfileCreated = await this.cache.get<boolean>(`profile:${user.uid}`);
-      if (isProfileCreated === null) {
+      if (!isProfileCreated) {
         const profileSnap = await this.db.collection('users').where('uid', '==', user.uid).get();
         isProfileCreated = profileSnap.docs.length > 0;
         await this.cache.set(`profile:${user.uid}`, isProfileCreated);

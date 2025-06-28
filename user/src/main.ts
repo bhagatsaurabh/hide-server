@@ -16,7 +16,7 @@ async function bootstrap() {
 
   await app.startAllMicroservices();
   RedisRef.set(micoservice.unwrap<[Redis, Redis]>());
-  await app.listen(process.env.PORT ?? 3003);
+  await app.listen(process.env.PORT ?? 80);
 }
 
 void bootstrap();

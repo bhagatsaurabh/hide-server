@@ -1,4 +1,4 @@
-import { FSOpenDTO } from "dto";
+import { FSOpenDTO } from "../dto";
 import { InSocketMessageEnv } from "./env.message";
 import { OutSocketMessagePayload } from "./socket.message";
 
