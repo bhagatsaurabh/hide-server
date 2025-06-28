@@ -34,6 +34,7 @@ export class ProxyService {
         'x-auth-user': Buffer.from(JSON.stringify(user)).toString('base64'),
       },
     });
+    if (response.status === 204) return;
     return (await response.json()) as unknown;
   }
 

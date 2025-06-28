@@ -1,18 +1,18 @@
 import { Controller } from '@nestjs/common';
 import { EventPattern, Transport } from '@nestjs/microservices';
 import { MembersModified, ServiceEvent, WorkspaceDeleted } from 'hide-common';
-import { CommonService } from './socket/membership';
+import { MembershipService } from './socket/membership.service';
 
 @Controller()
 export class AppController {
-  constructor(private readonly commonService: CommonService) {}
+  constructor(private readonly membershipService: MembershipService) {}
 
   @EventPattern('workspace.members.modified', Transport.REDIS)
   async handleMembersModified(msg: ServiceEvent<MembersModified>) {
-    await this.commonService.handleMembersModified(msg.payload);
+    await this.membershipService.handleMembersModified(msg.payload);
   }
   @EventPattern('workspace.deleted', Transport.REDIS)
   async handleWorkspaceDeleted(msg: ServiceEvent<WorkspaceDeleted>) {
-    await this.commonService.handleWorkspaceDeleted(msg.payload);
+    await this.membershipService.handleWorkspaceDeleted(msg.payload);
   }
 }

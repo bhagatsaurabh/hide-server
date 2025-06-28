@@ -25,6 +25,23 @@ export const rules: Rules = [
     },
   },
   {
+    service: 'notification',
+    paths: {
+      all: {
+        GET: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
+      },
+      read: {
+        POST: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
+      },
+    },
+  },
+  {
     service: 'workspace-*',
     paths: {
       'dir/open': {

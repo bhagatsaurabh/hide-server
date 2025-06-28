@@ -36,8 +36,10 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.14.0",
     "reflect-metadata": "^0.2.2",
+    "nats": "^2.29.3",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.21"
+    "typeorm": "^0.3.21",
+    "ioredis": "^5.6.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

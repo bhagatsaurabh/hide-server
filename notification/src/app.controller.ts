@@ -19,13 +19,13 @@ export class AppController implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    setTimeout(() => {
+    /* setTimeout(() => {
       this.redis.emit('test.pattern', { hi: 'hello' }).subscribe({
         next: (val) => console.log('Received: ', val),
         error: (err) => console.log('Error: ', err),
         complete: () => console.log('Done'),
       });
-    }, 2000);
+    }, 2000); */
   }
 
   @MessagePattern('notification.send', Transport.RMQ)

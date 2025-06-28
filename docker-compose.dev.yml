@@ -16,6 +16,19 @@ services:
       service: gateway
     networks:
       - hide-network
+  env:
+    container_name: env
+    hostname: env
+    depends_on:
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
+    extends:
+      file: ./env/docker-compose.dev.yml
+      service: env
+    networks:
+      - hide-network
   user:
     container_name: user
     hostname: user
@@ -92,6 +105,12 @@ services:
     extends:
       file: ./redis/docker-compose.dev.yml
       service: redis
+    networks:
+      - hide-network
+  nats:
+    extends:
+      file: ./nats/docker-compose.dev.yml
+      service: nats
     networks:
       - hide-network
   rabbitmq:

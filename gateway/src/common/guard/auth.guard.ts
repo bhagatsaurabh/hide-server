@@ -44,6 +44,8 @@ export class AuthGuard implements CanActivate {
       const userData = (await response.json()) as User;
       request.user = userData;
 
+      if (request.path === '/api/user/register') return true;
+
       // Check profile validity
       let isProfileCreated = await this.cache.get<boolean>(`profile:${userData.uid}`);
       if (isProfileCreated === null) {

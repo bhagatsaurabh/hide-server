@@ -1,16 +1,25 @@
 import { Firestore } from '@google-cloud/firestore';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from 'hide-common/model/user';
 import { FirestoreService } from 'hide-firebase';
+import { RedisService } from 'hide-redis';
 import { CreateUserDTO } from 'src/common/dto';
 import { emailRegex, nameRegex, usernameRegex } from 'src/utils/constants';
+import { userConverter } from 'src/utils/converters';
 import { isObjEmpty } from 'src/utils/helpers';
+import { Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class ProfileService {
   private readonly db: Firestore;
-  constructor(private readonly firestore: FirestoreService) {
+  cache: Cache;
+
+  constructor(
+    private readonly firestore: FirestoreService,
+    private readonly cacheService: RedisService,
+  ) {
     this.db = this.firestore.db;
+    this.cache = this.cacheService.get();
   }
 
   async createUser(user: User, data: CreateUserDTO) {
@@ -19,15 +28,22 @@ export class ProfileService {
       throw new BadRequestException(err);
     }
 
-    await this.db
-      .collection('users')
-      .doc(user.uid)
-      .set({ ...user, name: data.name, username: data.username });
+    const countSnap = await this.db.collection('users').where('uid', '==', user.uid).count().get();
+    if (countSnap.data().count <= 0) {
+      await this.db
+        .collection('users')
+        .doc(data.username)
+        .set({ ...user, name: data.name, username: data.username });
+
+      await this.cache.set(`profile:${user.uid}`, true);
+    } else {
+      throw new BadRequestException('User is already registered');
+    }
   }
 
   async updateUser(uid: string, user: Partial<User>) {
     let err: string | undefined;
-    if ((err = this.validateUpdateUser(user))) {
+    if ((err = this.validateUpdateUser(uid, user))) {
       throw new BadRequestException(err);
     }
 
@@ -45,8 +61,22 @@ export class ProfileService {
       updatedUser.picture = user.picture;
     }
 
-    if (!isObjEmpty(updatedUser)) {
-      await this.db.collection('users').doc(uid).update(updatedUser);
+    if (isObjEmpty(updatedUser)) return;
+
+    const snap = await this.db.collection('users').withConverter(userConverter).where('uid', '==', uid).get();
+    if (snap.empty || !snap.docs.length) {
+      throw new NotFoundException('User not found');
+    } else {
+      const oldUser = snap.docs[0].data();
+
+      if (updatedUser.username && updatedUser.username !== oldUser.username) {
+        await this.db
+          .collection('users')
+          .doc(updatedUser.username)
+          .set({ ...oldUser, ...updatedUser });
+      } else {
+        await this.db.collection('users').doc(oldUser.username).update(updatedUser);
+      }
     }
   }
 
@@ -62,7 +92,7 @@ export class ProfileService {
     }
   }
 
-  private validateUpdateUser(user: Partial<User>) {
+  private validateUpdateUser(uid: string, user: Partial<User>) {
     if (user.name && !nameRegex.test(user.name)) {
       return 'Not a valid name';
     }
@@ -72,5 +102,6 @@ export class ProfileService {
     if (user.email && !emailRegex.test(user.email)) {
       return 'Not a valid email';
     }
+    if (user.uid !== uid) return 'Not a valid uid';
   }
 }

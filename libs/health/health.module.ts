@@ -1,6 +1,6 @@
 import { DynamicModule, Module } from "@nestjs/common";
 import { HealthService } from "./health.service";
-import { HealthController } from "health.controller";
+import { HealthController } from "./health.controller";
 
 @Module({})
 export class HealthModule {
