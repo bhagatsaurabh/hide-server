@@ -57,7 +57,8 @@ export type SocketData = {
 export type TypedSocket = Socket<DefaultEventsMap, ClientEvents, DefaultEventsMap, SocketData>;
 
 @WebSocketGateway({
-  cors: { origin: process.env.CORS_ORIGIN! },
+  cors: { origin: process.env.CORS_ORIGIN || '*' },
+  transports: ['polling', 'websocket'],
 })
 @Injectable()
 export class SocketGateway
@@ -124,22 +125,18 @@ export class SocketGateway
   }
 
   async handleConnection(@ConnectedSocket() socket: TypedSocket) {
-    console.log('New', socket.id);
     if (!this.allowConnections) {
       return socket.client.conn.close();
     }
-    console.log('Allowed');
 
     const token = socket.handshake.auth?.token as string;
     if (!token) {
       return socket.disconnect();
     }
-    console.log('Token');
     const user = await this.handleAuthentication(token);
     if (!user) {
       return socket.disconnect();
     }
-    console.log('Authenticated');
 
     const sessionId = socket.handshake.auth.sessionId as string;
     const uid = user.uid;
@@ -156,9 +153,13 @@ export class SocketGateway
 
     // Existing Session, re-connection
     if (oldSocketId && oldGatewayId) {
-      this.redis.emit<any, ServiceEvent<GatewayPayload>>(`gateway.${oldGatewayId}`, {
-        payload: { action: 'socket.close', payload: { socketId: oldSocketId } },
-      });
+      try {
+        this.redis.emit<any, ServiceEvent<GatewayPayload>>(`gateway.${oldGatewayId}`, {
+          payload: { action: 'socket.close', payload: { socketId: oldSocketId } },
+        });
+      } catch (error) {
+        console.log(error);
+      }
     }
 
     await this.presenceService.setSessionState(presence, uid, sessionId, 'active');
@@ -167,9 +168,9 @@ export class SocketGateway
       await this.presenceService.setWorkspaceState(workspace, uid, sessionId, wsUuid, 'active');
     }
     await lock.release();
-    console.log('Done');
   }
   async handleDisconnect(@ConnectedSocket() socket: TypedSocket) {
+    console.log('Disconnect');
     const uid = socket.data.user.uid;
     const sessionId = socket.data.sessionId;
     const lock = await this.acquireLock([this.lockClient], `${uid}:${sessionId}`, 10 * 1000, 5);
@@ -184,6 +185,7 @@ export class SocketGateway
     }
 
     await lock.release();
+    console.log('Disconnected');
   }
   async handleAuthentication(token: string) {
     try {

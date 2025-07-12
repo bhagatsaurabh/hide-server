@@ -1,9 +1,8 @@
 import { Body, Controller, Get, Inject, OnModuleInit, Param, Post, Query } from '@nestjs/common';
-import { UserHeader } from 'hide-common';
+import { ServiceMessage, UserHeader, UserProfileRequest } from 'hide-common';
 import { User } from 'hide-common/dto/user';
 import { SearchService } from './search.service';
-import { ClientProxy } from '@nestjs/microservices';
-import { RedisRef } from 'src/common/redis-ref';
+import { ClientProxy, MessagePattern, Transport } from '@nestjs/microservices';
 
 @Controller('api')
 export class SearchController implements OnModuleInit {
@@ -42,11 +41,17 @@ export class SearchController implements OnModuleInit {
 
   @Post('all')
   async all(@Body() ids: string[], @UserHeader() user: User) {
+    console.log(ids);
     return await this.searchService.getUsers(ids, user.uid);
   }
 
   @Get(':uid')
   async one(@Param('uid') uid: string, @UserHeader() user: User) {
     return await this.searchService.getProfile(uid, user.uid);
+  }
+
+  @MessagePattern('user.profile', Transport.NATS)
+  async getUserProfile(msg: ServiceMessage<UserProfileRequest>) {
+    return await this.searchService.getProfile(msg.payload.uid, msg.meta!.uid);
   }
 }

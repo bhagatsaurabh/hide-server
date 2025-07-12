@@ -6,11 +6,18 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
-	srv := server.NewServer()
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPort := os.Getenv("REDIS_PORT")
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:%s", redisHost, redisPort),
+	})
 
+	srv := server.NewServer(redisClient)
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {
 		port = "80"

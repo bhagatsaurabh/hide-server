@@ -8,7 +8,7 @@ async function bootstrap() {
     transport: Transport.RMQ,
     options: {
       urls: [process.env.RMQ_URL!],
-      queue: 'env',
+      queue: 'workspace',
       queueOptions: {
         durable: true,
       },

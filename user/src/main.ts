@@ -13,6 +13,13 @@ async function bootstrap() {
       port: parseInt(process.env.REDIS_PORT!),
     },
   });
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.NATS,
+    options: {
+      servers: [process.env.NATS_URL!],
+      queue: 'user',
+    },
+  });
 
   await app.startAllMicroservices();
   RedisRef.set(micoservice.unwrap<[Redis, Redis]>());

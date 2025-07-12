@@ -84,9 +84,13 @@ export class PresenceService {
   }
   async handleSessionExpiry(presence: CachedPresence, uid: string, sessionId: string) {
     const { gatewayId, socketId, wsUuid } = presence[sessionId];
-    this.redis.emit<any, ServiceEvent<GatewayPayload>>(`gateway.${gatewayId}`, {
-      payload: { action: 'socket.close', payload: { socketId } },
-    });
+    try {
+      this.redis.emit<any, ServiceEvent<GatewayPayload>>(`gateway.${gatewayId}`, {
+        payload: { action: 'socket.close', payload: { socketId } },
+      });
+    } catch (error) {
+      console.log(error);
+    }
     if (wsUuid) {
       delete presence[sessionId].wsUuid;
       await this.handleWorkspaceExpiry(uid, sessionId, wsUuid);

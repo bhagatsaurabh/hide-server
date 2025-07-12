@@ -27,11 +27,13 @@ import {
   NotifyUser,
   ServiceEvent,
   ServiceMessage,
+  UserProfileRequest,
   WorkspaceDeleted,
 } from 'hide-common';
 import { randomUUID } from 'node:crypto';
 import { RmqService } from 'hide-rmq';
 import { Cache, RedisService } from 'hide-redis';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class ManageService {
@@ -42,6 +44,7 @@ export class ManageService {
     @InjectRepository(Membership) private msRepository: Repository<Membership>,
     private readonly rmq: RmqService,
     @Inject('WORKSPACE_SERVICE_REDIS') private redis: ClientProxy,
+    @Inject('WORKSPACE_SERVICE_NATS') private nats: ClientProxy,
     private readonly inviteService: InviteService,
     private dataSource: DataSource,
     private cacheService: RedisService,
@@ -69,9 +72,15 @@ export class ManageService {
         role: 'owner',
       });
       const savedMembership = await queryRunner.manager.save<Membership>(newMembership);
-      (savedMembership as MembershipDTO).name = user.name;
-      (savedMembership as MembershipDTO).username = user.username;
-      (savedMembership as MembershipDTO).picture = user.picture;
+      const profile = await firstValueFrom<User>(
+        this.nats.send<User, ServiceMessage<UserProfileRequest>>('user.profile', {
+          meta: { uid: user.uid },
+          payload: { uid: user.uid },
+        }),
+      );
+      (savedMembership as MembershipDTO).name = profile.name;
+      (savedMembership as MembershipDTO).username = profile.username;
+      (savedMembership as MembershipDTO).picture = profile.picture;
       savedWorkspace.memberships = [savedMembership];
     } catch (err) {
       await queryRunner.rollbackTransaction();
