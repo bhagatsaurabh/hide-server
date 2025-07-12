@@ -18,4 +18,6 @@ services:
       - K8S_API_SERVER=https://kubernetes.docker.internal:6443
       - DOCKER_HOST=tcp://host.docker.internal:2375
       - DEV_PLATFORM=docker
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     command: [ "/bin/sh", "-c", "air -c .air.toml" ]

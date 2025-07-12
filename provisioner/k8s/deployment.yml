@@ -22,5 +22,9 @@ spec:
           env:
             - name: SERVICE_PORT
               value: "80"
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: 6379
       imagePullSecrets:
         - name: acr-secret

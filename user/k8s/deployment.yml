@@ -45,6 +45,8 @@ spec:
               value: 'redis'
             - name: REDIS_PORT
               value: '6379'
+            - nam: NATS_URL
+              value: nats://nats:4222
       imagePullSecrets:
         - name: acr-secret
       initContainers:

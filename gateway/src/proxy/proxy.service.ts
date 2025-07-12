@@ -34,8 +34,17 @@ export class ProxyService {
         'x-auth-user': Buffer.from(JSON.stringify(user)).toString('base64'),
       },
     });
-    if (response.status === 204) return;
-    return (await response.json()) as unknown;
+    if (response.status < 200 || response.status > 299) {
+      throw new HttpException('Unknow error', response.status);
+    }
+    if (response.status === 204) return null;
+    let data: unknown;
+    try {
+      data = (await response.json()) as unknown;
+    } catch (error) {
+      void error;
+    }
+    return data;
   }
 
   async sendMessage(translation: Translation, req: Request, user: User, queries: Record<string, string>) {

@@ -73,6 +73,7 @@ export class SearchService {
       return this.fetchUserFromDB(ids[idx]);
     });
     cachedUsers = await Promise.all(dbPromises);
+    console.log(cachedUsers);
 
     cachedUsers.forEach((user) => delete user?.issuer);
     return this.hideConfidentialFields(cachedUsers, uid);
@@ -92,9 +93,13 @@ export class SearchService {
   }
   private async fetchUserFromDB(uid: string): Promise<Partial<User> | null> {
     try {
-      const snap = await this.collection.doc(uid).get();
-      if (snap.exists) {
-        const data = snap.data()!;
+      const snap = await this.db
+        .collection('users')
+        .withConverter(userConverter)
+        .where('uid', '==', uid)
+        .get();
+      if (!snap.empty && snap.docs.length) {
+        const data = snap.docs[0].data();
         await this.cache.set(`users:${uid}`, data);
         return data;
       }

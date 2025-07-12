@@ -95,6 +95,9 @@ export interface EnvOpenRequest extends ServiceMessagePayload {
 export interface EnvCloseRequest extends ServiceMessagePayload {
   uuid: string;
 }
+export interface UserProfileRequest extends ServiceMessagePayload {
+  uid: string;
+}
 
 export interface UserOnline extends ServiceEventPayload {
   uid: string;

@@ -20,6 +20,7 @@ import (
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,9 +29,16 @@ import (
 
 type ProvisionRequest struct {
 	Image       string `json:"image"`
+	Uid         string `json:"uid"`
+	SessionId   string `json:"sessionId"`
 	Uuid        string `json:"uuid,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
+}
+type ProvisionDTO struct {
+	PrivateKey string       `json:"privateKey"`
+	Message    string       `json:"message"`
+	Workspace  WorkspaceDTO `json:"workspace"`
 }
 type CreateWorkspaceRequest struct {
 	Name        string `json:"name"`
@@ -50,6 +58,7 @@ type MembershipDTO struct {
 type WorkspaceDTO struct {
 	Id          int32           `json:"id"`
 	Uuid        string          `json:"uuid"`
+	Image       string          `json:"image"`
 	Name        string          `json:"name"`
 	Description string          `json:"description"`
 	CreatedAt   string          `json:"createdAt"`
@@ -59,8 +68,35 @@ type DevContainerSummary struct {
 	Running bool
 	Id      string
 }
+type ProvisionStatusDTO struct {
+	Message string `json:"message"`
+}
+type StatusPayload struct {
+	Message string `json:"message"`
+}
+type PayloadMessage[T any] struct {
+	Action  string `json:"action"`
+	Payload T      `json:"payload"`
+}
+type ServiceEventPayload[T any] struct {
+	Uid       string            `json:"uid"`
+	SessionId string            `json:"sessionId"`
+	Pattern   string            `json:"pattern"`
+	Msg       PayloadMessage[T] `json:"msg"`
+}
+type ServiceEvent[T any] struct {
+	Payload ServiceEventPayload[T] `json:"payload"`
+}
 
-func CreateDevContainer(req ProvisionRequest, isNew bool, devEnv string) (string, string, error) {
+func CreateDevContainer(req ProvisionRequest, isNew bool, devEnv string, redisClient *redis.Client) (string, string, error) {
+	sMsg, _ := json.Marshal(ServiceEvent[StatusPayload]{
+		Payload: ServiceEventPayload[StatusPayload]{
+			Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: PayloadMessage[StatusPayload]{
+				Action: "status", Payload: StatusPayload{Message: "Provisioning"},
+			}},
+	})
+	redisClient.Publish(context.Background(), "socket.send", sMsg)
+
 	var err error = nil
 	if !isNew {
 		volumeExists, err := VolumeExists(req.Uuid, devEnv)
@@ -79,7 +115,7 @@ func CreateDevContainer(req ProvisionRequest, isNew bool, devEnv string) (string
 		privateKey, workspaceUuid, err = CreateK8sPod(req, isNew, devEnv)
 	}
 
-	err = waitOnDevContainerReady(workspaceUuid, 10*time.Second)
+	err = waitOnDevContainerReady(req, workspaceUuid, 60*time.Second, redisClient)
 	if err != nil {
 		return "", "", err
 	}
@@ -325,7 +361,7 @@ func K8sPodExists(containerName string) (*DevContainerSummary, error) {
 	}, nil
 }
 
-func StartDevContainer(uuid string, id string, devEnv string) error {
+func StartDevContainer(req ProvisionRequest, uuid string, id string, devEnv string, redisClient *redis.Client) error {
 	var err error = nil
 	if devEnv == "docker" {
 		err = StartDockerContainer(id)
@@ -333,7 +369,7 @@ func StartDevContainer(uuid string, id string, devEnv string) error {
 		err = StartK8sPod(id)
 	}
 
-	err = waitOnDevContainerReady(uuid, 10*time.Second)
+	err = waitOnDevContainerReady(req, uuid, 60*time.Second, redisClient)
 	return err
 }
 func StartDockerContainer(id string) error {
@@ -389,14 +425,22 @@ func CreateWorkspace(req ProvisionRequest, userHeader string, workspaceUUID stri
 	return err
 }
 
-func waitOnDevContainerReady(uuid string, timeout time.Duration) error {
+func waitOnDevContainerReady(req ProvisionRequest, uuid string, timeout time.Duration, redisClient *redis.Client) error {
+	sMsg, _ := json.Marshal(ServiceEvent[StatusPayload]{
+		Payload: ServiceEventPayload[StatusPayload]{
+			Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: PayloadMessage[StatusPayload]{
+				Action: "status", Payload: StatusPayload{Message: "Booting up"},
+			}},
+	})
+	redisClient.Publish(context.Background(), "socket.send", sMsg)
+
 	deadline := time.Now().Add(timeout)
 	client := &http.Client{
 		Timeout: 1 * time.Second,
 	}
 
 	for time.Now().Before(deadline) {
-		resp, err := client.Get(fmt.Sprintf("http://workspace-%s", uuid))
+		resp, err := client.Get(fmt.Sprintf("http://workspace-%s/ready", uuid))
 		if err == nil && resp.StatusCode == http.StatusOK {
 			return nil
 		}

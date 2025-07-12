@@ -1,14 +1,4 @@
-import {
-  All,
-  Controller,
-  HttpStatus,
-  NotFoundException,
-  Param,
-  Query,
-  Req,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { All, Controller, NotFoundException, Param, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { User } from 'hide-common/model/user';
 import { minimatch } from 'minimatch';
@@ -52,6 +42,6 @@ export class ProxyController {
     } else {
       data = await this.proxyService.sendMessage(translation, req, user, queries);
     }
-    res.status(HttpStatus.OK).send(data);
+    res.send(data);
   }
 }

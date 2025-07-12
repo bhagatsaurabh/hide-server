@@ -27,3 +27,5 @@ COPY --from=builder /app/gateway/package-lock.json ./gateway/package-lock.json
 COPY --from=builder /app/gateway/node_modules ./gateway/node_modules
 COPY --from=builder /app/libs ./libs
 CMD ["/bin/sh", "-c", "cd gateway && npm run start:prod"]
+
+EXPOSE 80

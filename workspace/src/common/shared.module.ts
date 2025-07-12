@@ -21,7 +21,7 @@ import { RmqModule } from 'hide-rmq';
         },
       },
     ]),
-    RmqModule.forRoot({ urls: [process.env.RMQ_URL!] }),
+    RmqModule.forRoot({ urls: [process.env.RMQ_URL!], queueOptions: { durable: true } }),
   ],
   exports: [ClientsModule],
 })

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"hideserver/provisioner/services"
@@ -8,15 +9,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/redis/go-redis/v9"
 )
 
-type ProvisionDTO struct {
-	PrivateKey string                `json:"privateKey"`
-	Message    string                `json:"message"`
-	Workspace  services.WorkspaceDTO `json:"workspace"`
-}
-
-func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
+func ProvisionHandler(w http.ResponseWriter, r *http.Request, redisClient *redis.Client) {
 	if r.Method != http.MethodPost {
 		util.SendAPIErr(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -59,41 +56,53 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request) {
 			if devCont.Running {
 				w.WriteHeader(http.StatusOK)
 			} else {
-				start(w, req.Uuid, devCont.Id, devEnv)
+				start(req, w, req.Uuid, devCont.Id, devEnv, redisClient)
 			}
 			return
 		} else {
-			provision(req, w, userHeader, false, devEnv)
+			w.WriteHeader(http.StatusOK)
+			go provision(req, userHeader, false, devEnv, redisClient)
+			return
 		}
 	}
 
-	provision(req, w, userHeader, true, devEnv)
+	w.WriteHeader(http.StatusAccepted)
+	go provision(req, userHeader, true, devEnv, redisClient)
 }
 
-func provision(req services.ProvisionRequest, w http.ResponseWriter, userHeader string, isNew bool, devEnv string) {
-	privateKey, workspaceUUID, err := services.CreateDevContainer(req, isNew, devEnv)
+func provision(req services.ProvisionRequest, userHeader string, isNew bool, devEnv string, redisClient *redis.Client) {
+	privateKey, workspaceUUID, err := services.CreateDevContainer(req, isNew, devEnv, redisClient)
 	if err != nil {
 		log.Println(err.Error())
-		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to provision pod")
+		msg, _ := json.Marshal(services.ServiceEvent[services.StatusPayload]{
+			Payload: services.ServiceEventPayload[services.StatusPayload]{
+				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.StatusPayload]{
+					Action: "error", Payload: services.StatusPayload{Message: "Failed to provision workspace"},
+				}},
+		})
+		redisClient.Publish(context.Background(), "socket.send", msg)
 		return
 	}
 
 	if isNew {
 		var workspace services.WorkspaceDTO
 		err = services.CreateWorkspace(req, userHeader, workspaceUUID, &workspace)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(ProvisionDTO{
-			Message:    "Pod created successfully",
-			PrivateKey: privateKey,
-			Workspace:  workspace,
+
+		msg, _ := json.Marshal(services.ServiceEvent[services.ProvisionDTO]{
+			Payload: services.ServiceEventPayload[services.ProvisionDTO]{
+				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.ProvisionDTO]{
+					Action: "success", Payload: services.ProvisionDTO{
+						Message:    "Pod created successfully",
+						PrivateKey: privateKey,
+						Workspace:  workspace,
+					},
+				}},
 		})
-	} else {
-		w.WriteHeader(http.StatusOK)
+		redisClient.Publish(context.Background(), "socket.send", msg)
 	}
 }
-func start(w http.ResponseWriter, uuid string, id string, devEnv string) {
-	err := services.StartDevContainer(uuid, id, devEnv)
+func start(req services.ProvisionRequest, w http.ResponseWriter, uuid string, id string, devEnv string, redisClient *redis.Client) {
+	err := services.StartDevContainer(req, uuid, id, devEnv, redisClient)
 	if err != nil {
 		log.Println(err.Error())
 		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to boot workspace")
