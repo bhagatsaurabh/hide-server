@@ -72,21 +72,21 @@ export class ManageService {
         role: 'owner',
       });
       const savedMembership = await queryRunner.manager.save<Membership>(newMembership);
-      const profile = await firstValueFrom<User>(
-        this.nats.send<User, ServiceMessage<UserProfileRequest>>('user.profile', {
-          meta: { uid: user.uid },
-          payload: { uid: user.uid },
-        }),
-      );
+      const res = this.nats.send<User, ServiceMessage<UserProfileRequest>>('user.profile', {
+        meta: { uid: user.uid },
+        payload: { uid: user.uid },
+      });
+      const profile = await firstValueFrom<User>(res);
       (savedMembership as MembershipDTO).name = profile.name;
       (savedMembership as MembershipDTO).username = profile.username;
       (savedMembership as MembershipDTO).picture = profile.picture;
       savedWorkspace.memberships = [savedMembership];
+      await queryRunner.commitTransaction();
     } catch (err) {
       await queryRunner.rollbackTransaction();
+      console.log(err);
       throw err;
     } finally {
-      await queryRunner.commitTransaction();
       await queryRunner.release();
     }
     return savedWorkspace;
@@ -158,11 +158,11 @@ export class ManageService {
           return queryRunner.manager.delete(Membership, { workspaceId: workspace.id, userId: uid });
         }),
       );
+      await queryRunner.commitTransaction();
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
     } finally {
-      await queryRunner.commitTransaction();
       await queryRunner.release();
     }
 
@@ -190,8 +190,10 @@ export class ManageService {
   async getAllWorkspaces(user: User) {
     const workspaces = await this.wsRepository
       .createQueryBuilder('workspace')
-      .innerJoinAndSelect('workspace.memberships', 'membership')
-      .where('membership.user_id = :userId', { userId: user.uid })
+      .innerJoin('workspace.memberships', 'filterMembership', 'filterMembership.user_id = :userId', {
+        userId: user.uid,
+      })
+      .leftJoinAndSelect('workspace.memberships', 'membership')
       .getMany();
 
     const userIds: string[] = [];
