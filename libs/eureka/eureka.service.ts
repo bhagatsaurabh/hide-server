@@ -77,7 +77,7 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
         `${response.status} Registered ${this.options.serviceName} with Eureka`
       );
     } catch (error) {
-      console.error(`❌ Failed to register with Eureka:`, error);
+      console.error(`Failed to register with Eureka:`, error);
     }
   }
   private async sendHeartbeat() {
@@ -89,7 +89,7 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
         }
       );
     } catch (error) {
-      console.error(`❌ Failed to send heartbeat:`, error);
+      console.error(`Failed to send heartbeat:`, error);
     }
   }
   private async deregisterFromEureka() {
@@ -101,7 +101,7 @@ export class EurekaService implements OnModuleInit, OnModuleDestroy {
         }
       );
     } catch (error) {
-      console.error(`❌ Failed to deregister:`, error);
+      console.error(`Failed to deregister:`, error);
     }
   }
   async getService(serviceName: string) {

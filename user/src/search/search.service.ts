@@ -53,11 +53,11 @@ export class SearchService {
       return this.hideConfidentialFields(profile, actorUid);
     }
 
-    const snap = await this.collection.doc(uid).get();
-    if (!snap.exists) {
+    const snap = await this.collection.where('uid', '==', uid).get();
+    if (snap.empty) {
       throw new NotFoundException('User id not found');
     }
-    profile = snap.data()!;
+    profile = snap.docs[0].data();
     await this.cache.set(`users:${uid}`, profile);
     return this.hideConfidentialFields(profile, actorUid);
   }
@@ -73,7 +73,6 @@ export class SearchService {
       return this.fetchUserFromDB(ids[idx]);
     });
     cachedUsers = await Promise.all(dbPromises);
-    console.log(cachedUsers);
 
     cachedUsers.forEach((user) => delete user?.issuer);
     return this.hideConfidentialFields(cachedUsers, uid);

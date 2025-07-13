@@ -170,7 +170,6 @@ export class SocketGateway
     await lock.release();
   }
   async handleDisconnect(@ConnectedSocket() socket: TypedSocket) {
-    console.log('Disconnect');
     const uid = socket.data.user.uid;
     const sessionId = socket.data.sessionId;
     const lock = await this.acquireLock([this.lockClient], `${uid}:${sessionId}`, 10 * 1000, 5);
@@ -185,7 +184,6 @@ export class SocketGateway
     }
 
     await lock.release();
-    console.log('Disconnected');
   }
   async handleAuthentication(token: string) {
     try {

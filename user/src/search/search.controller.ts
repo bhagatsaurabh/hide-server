@@ -41,7 +41,6 @@ export class SearchController implements OnModuleInit {
 
   @Post('all')
   async all(@Body() ids: string[], @UserHeader() user: User) {
-    console.log(ids);
     return await this.searchService.getUsers(ids, user.uid);
   }
 
@@ -52,6 +51,7 @@ export class SearchController implements OnModuleInit {
 
   @MessagePattern('user.profile', Transport.NATS)
   async getUserProfile(msg: ServiceMessage<UserProfileRequest>) {
-    return await this.searchService.getProfile(msg.payload.uid, msg.meta!.uid);
+    const data = await this.searchService.getProfile(msg.payload.uid, msg.meta!.uid);
+    return data;
   }
 }
