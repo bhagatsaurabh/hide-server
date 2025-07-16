@@ -18,7 +18,7 @@ export class Workspace {
     }
   }
 
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ type: 'uuid', unique: true })

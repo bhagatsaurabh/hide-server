@@ -22,6 +22,12 @@ export const rules: Rules = [
           targetProtocol: ExtTransport.HTTP,
         },
       },
+      search: {
+        GET: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
+      },
     },
   },
   {
@@ -86,6 +92,12 @@ export const rules: Rules = [
     paths: {
       all: {
         GET: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
+      },
+      update: {
+        PATCH: {
           sourceProtocol: ExtTransport.HTTP,
           targetProtocol: ExtTransport.HTTP,
         },

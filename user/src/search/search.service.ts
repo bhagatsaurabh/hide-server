@@ -32,6 +32,7 @@ export class SearchService {
       query_by: ['name', 'username'],
       exclude_fields: ['email'],
       filter_by: `uid:!=${uid}`,
+      infix: ['always', 'always'],
       per_page: 5,
       page: page || 1,
     };
@@ -42,7 +43,13 @@ export class SearchService {
 
     const result: UserSearchDTO = { data: [], page: res.page };
     if (res.hits) {
-      result.data = res.hits.map((hit) => hit.document);
+      result.data = res.hits.map((hit) => ({
+        doc: hit.document,
+        highlights: hit.highlights!.map((highlight) => ({
+          field: highlight.field,
+          snippet: highlight.snippet!,
+        })),
+      }));
     }
     return result;
   }
