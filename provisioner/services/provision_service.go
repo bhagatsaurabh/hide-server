@@ -47,7 +47,7 @@ type CreateWorkspaceRequest struct {
 	Image       string `json:"image"`
 }
 type MembershipDTO struct {
-	WorkspaceId string `json:"workspaceId"`
+	WorkspaceId int64  `json:"workspaceId"`
 	UserId      string `json:"userId"`
 	Role        string `json:"role"`
 	JoinedAt    string `json:"joinedAt"`
@@ -56,7 +56,7 @@ type MembershipDTO struct {
 	Picture     string `json:"picture"`
 }
 type WorkspaceDTO struct {
-	Id          int32           `json:"id"`
+	Id          int64           `json:"id"`
 	Uuid        string          `json:"uuid"`
 	Image       string          `json:"image"`
 	Name        string          `json:"name"`
@@ -421,7 +421,6 @@ func CreateWorkspace(req ProvisionRequest, userHeader string, workspaceUUID stri
 	}
 
 	err = json.Unmarshal(body, &workspace)
-
 	return err
 }
 

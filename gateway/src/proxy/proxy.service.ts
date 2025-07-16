@@ -24,8 +24,9 @@ export class ProxyService {
   ) {
     let url = `http://${serviceName}/api/${path}`;
     if (queries && Object.keys(queries).length > 0) {
-      url += `/${new URLSearchParams(queries).toString()}`;
+      url += `?${new URLSearchParams(queries).toString()}`;
     }
+    console.log(url);
     const response = await fetch(url, {
       method: req.method,
       body: req.body ? JSON.stringify(req.body) : undefined,

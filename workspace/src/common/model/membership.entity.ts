@@ -15,7 +15,7 @@ export class Membership {
     }
   }
 
-  @PrimaryColumn({ name: 'workspace_id', type: 'bigint' })
+  @PrimaryColumn({ name: 'workspace_id' })
   @Index()
   workspaceId: number;
 
