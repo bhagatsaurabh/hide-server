@@ -33,6 +33,7 @@
     "hide-common": "file:../libs/common",
     "hide-redis": "file:../libs/redis",
     "hide-rmq": "file:../libs/rmq",
+    "hide-firebase": "file:../libs/firebase",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.14.0",
     "reflect-metadata": "^0.2.2",

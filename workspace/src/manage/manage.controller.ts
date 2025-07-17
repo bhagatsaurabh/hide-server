@@ -39,6 +39,7 @@ export class ManageController {
 
   @MessagePattern('workspace.membership.check', Transport.RMQ)
   async handleCheckMembership(msg: ServiceMessage<MembershipCheck>) {
+    console.log(msg);
     return await this.service.isUserMemberOf(msg.payload.uid, msg.payload.uuid);
   }
 }

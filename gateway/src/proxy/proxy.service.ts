@@ -5,14 +5,13 @@ import { User } from 'hide-common/model/user';
 import { firstValueFrom, Observable, timeout } from 'rxjs';
 import { Translation } from './translations';
 import { createMessage, isRpcPayloadError, ServiceMessagePayload } from 'hide-common';
-import { RmqService } from 'hide-rmq';
 
 @Injectable()
 export class ProxyService {
   constructor(
     @Inject('GATEWAY_SERVICE_REDIS') private redis: ClientProxy,
     @Inject('GATEWAY_SERVICE_NATS') private nats: ClientProxy,
-    private readonly rmq: RmqService,
+    @Inject('GATEWAY_SERVICE_RMQ') private rmq: ClientProxy,
   ) {}
 
   async sendRequest(
@@ -26,7 +25,6 @@ export class ProxyService {
     if (queries && Object.keys(queries).length > 0) {
       url += `?${new URLSearchParams(queries).toString()}`;
     }
-    console.log(url);
     const response = await fetch(url, {
       method: req.method,
       body: req.body ? JSON.stringify(req.body) : undefined,

@@ -31,7 +31,10 @@ export class ProxyController {
         break;
       }
     }
-    const translation = matchedRule?.paths[servicePath]?.[req.method as Methods];
+    let translation = matchedRule?.paths[servicePath]?.[req.method as Methods];
+    if (!translation && matchedRule && matchedRule.paths['*']) {
+      translation = matchedRule.paths['*'][req.method as Methods];
+    }
     if (!translation) {
       throw new NotFoundException();
     }

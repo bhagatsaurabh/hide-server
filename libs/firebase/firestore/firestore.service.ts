@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { Firestore } from "firebase-admin/firestore";
+import { FieldValue, Firestore } from "firebase-admin/firestore";
 import { FirebaseService } from "../firebase.service";
 
 @Injectable()
@@ -8,5 +8,9 @@ export class FirestoreService {
 
   constructor(private readonly firebaseService: FirebaseService) {
     this.db = this.firebaseService.firestore;
+  }
+
+  public serverTimestamp() {
+    return FieldValue.serverTimestamp();
   }
 }
