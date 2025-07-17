@@ -17,14 +17,16 @@ import {
   InternalWorkspaceWatch,
 } from "./filesystem.message";
 import { NotificationPayload } from "./notification.message";
-import { InternalPresencePing, PresencePing } from "./presence.message";
+import { PresencePing } from "./presence.message";
 import { SSHClose, SSHData, SSHPayload, SSHRequest } from "./ssh.message";
+import { WorkspacePayload } from "./workspace.message";
 
 export type OutSocketMessageActionMap = {
   ssh: SSHPayload;
   notification: NotificationPayload;
   fs: FSPayload;
   env: EnvPayload;
+  workspace: WorkspacePayload;
 } & {
   [key: string]: {
     action: "success" | "error";

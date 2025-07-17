@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Cache } from '@nestjs/cache-manager';
 import {
+  CachedPresence,
   CACHEKEY_PRESENCE,
   NotifyUser,
   ServiceEvent,
@@ -34,10 +35,11 @@ export class AppService {
       .collection('notifications')
       .doc(data.payload.uid)
       .collection('messages')
+      .withConverter(notificationConverter)
       .doc(data.payload.notification.id)
-      .set(data.payload.notification);
+      .set({ ...data.payload.notification, createdOn: new Date(data.payload.notification.createdOn) });
 
-    const presence = await this.cache.get<boolean>(CACHEKEY_PRESENCE(data.payload.uid));
+    const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(data.payload.uid));
     if (!presence) return;
 
     Object.keys(presence).forEach((sessionId) => {

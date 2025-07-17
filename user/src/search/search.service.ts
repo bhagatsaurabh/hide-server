@@ -9,6 +9,7 @@ import { UserSearchDTO } from 'src/common/dto';
 import { TypesenseService } from 'src/typesense/typesense.service';
 import { userConverter } from 'src/utils/converters';
 import { OneOrMore } from 'src/utils/helpers';
+import { CACHEKEY_USER_PROFILE } from 'hide-common';
 
 @Injectable()
 export class SearchService {
@@ -55,7 +56,7 @@ export class SearchService {
   }
 
   async getProfile(uid: string, actorUid: string): Promise<Partial<User>> {
-    let profile = await this.cache.get<Partial<User>>(`users:${uid}`);
+    let profile = await this.cache.get<Partial<User>>(CACHEKEY_USER_PROFILE(uid));
     if (profile) {
       return this.hideConfidentialFields(profile, actorUid);
     }
@@ -65,7 +66,7 @@ export class SearchService {
       throw new NotFoundException('User id not found');
     }
     profile = snap.docs[0].data();
-    await this.cache.set(`users:${uid}`, profile);
+    await this.cache.set(CACHEKEY_USER_PROFILE(uid), profile);
     return this.hideConfidentialFields(profile, actorUid);
   }
 

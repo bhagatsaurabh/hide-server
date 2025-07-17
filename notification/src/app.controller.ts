@@ -1,5 +1,5 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, OnModuleInit, Inject, Get } from '@nestjs/common';
-import { ClientProxy, EventPattern, MessagePattern, Transport } from '@nestjs/microservices';
+import { Body, Controller, HttpCode, HttpStatus, Post, OnModuleInit, Get } from '@nestjs/common';
+import { EventPattern, MessagePattern, Payload, Transport } from '@nestjs/microservices';
 import { AppService } from './app.service';
 import {
   NotificationRead,
@@ -15,7 +15,7 @@ import { NotificationReadDTO } from './common/dto';
 export class AppController implements OnModuleInit {
   constructor(
     private readonly appService: AppService,
-    @Inject('NOTIFICATION_SERVICE_REDIS') private readonly redis: ClientProxy,
+    // @Inject('NOTIFICATION_SERVICE_REDIS') private readonly redis: ClientProxy,
   ) {}
 
   onModuleInit() {
@@ -29,8 +29,8 @@ export class AppController implements OnModuleInit {
   }
 
   @MessagePattern('notification.send', Transport.RMQ)
-  async handleNotification(data: ServiceMessage<NotifyUser<UserNotificationPayload>>) {
-    await this.appService.pushNotification(data);
+  async handleNotification(@Payload() msg: ServiceMessage<NotifyUser<UserNotificationPayload>>) {
+    await this.appService.pushNotification(msg);
   }
 
   @EventPattern('user.online', Transport.REDIS)

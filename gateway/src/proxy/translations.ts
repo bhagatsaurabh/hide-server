@@ -28,6 +28,12 @@ export const rules: Rules = [
           targetProtocol: ExtTransport.HTTP,
         },
       },
+      '*': {
+        GET: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
+      },
     },
   },
   {
@@ -98,6 +104,18 @@ export const rules: Rules = [
       },
       update: {
         PATCH: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
+      },
+      ignore: {
+        POST: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
+      },
+      accept: {
+        POST: {
           sourceProtocol: ExtTransport.HTTP,
           targetProtocol: ExtTransport.HTTP,
         },

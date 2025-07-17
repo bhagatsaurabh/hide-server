@@ -1,11 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Cache } from '@nestjs/cache-manager';
 import { RedisService } from 'hide-redis';
-import { MembershipCheck, MembersModified, ServiceMessage, WorkspaceDeleted } from 'hide-common';
+import {
+  CachedMembership,
+  CACHEKEY_MEMBERSHIP,
+  MembershipCheck,
+  MembersModified,
+  ServiceMessage,
+  WorkspaceDeleted,
+} from 'hide-common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-
-export type CachedMembership = Record<string, boolean>;
 
 @Injectable()
 export class MembershipService {
@@ -19,7 +24,7 @@ export class MembershipService {
   }
 
   async checkMembership(uid: string, workspaceUUID: string) {
-    const cachedMemberships = await this.cache.get<CachedMembership>(`membership:${uid}`);
+    const cachedMemberships = await this.cache.get<CachedMembership>(CACHEKEY_MEMBERSHIP(uid));
     if (cachedMemberships && cachedMemberships[workspaceUUID] !== undefined) {
       return cachedMemberships[workspaceUUID];
     }
@@ -45,7 +50,7 @@ export class MembershipService {
       cache = {};
     }
     cache[workspaceUUID] = isMember;
-    await this.cache.set(`membership:${uid}`, cache);
+    await this.cache.set(CACHEKEY_MEMBERSHIP(uid), cache);
   }
 
   async handleMembersModified(msg: MembersModified) {
@@ -54,7 +59,9 @@ export class MembershipService {
   }
   async invalidateRemovedMembers(uids: string[], uuid: string) {
     const removed = new Map<string, CachedMembership | null>();
-    const cachedMemberships = await Promise.all(uids.map((uid) => this.cache.get<CachedMembership>(uid)));
+    const cachedMemberships = await Promise.all(
+      uids.map((uid) => this.cache.get<CachedMembership>(CACHEKEY_MEMBERSHIP(uid))),
+    );
     uids.forEach((uid, idx) => removed.set(uid, cachedMemberships[idx]));
 
     for (const [uid, cache] of removed.entries()) {
@@ -67,13 +74,15 @@ export class MembershipService {
         modified = true;
       }
       if (modified) {
-        await this.cache.set(uid, cache);
+        await this.cache.set(CACHEKEY_MEMBERSHIP(uid), cache);
       }
     }
   }
   async updateAddedMembers(uids: string[], uuid: string) {
     const added = new Map<string, CachedMembership | null>();
-    const cachedMemberships = await Promise.all(uids.map((uid) => this.cache.get<CachedMembership>(uid)));
+    const cachedMemberships = await Promise.all(
+      uids.map((uid) => this.cache.get<CachedMembership>(CACHEKEY_MEMBERSHIP(uid))),
+    );
     uids.forEach((uid, idx) => added.set(uid, cachedMemberships[idx]));
 
     for (const [uid, cache] of added.entries()) {
@@ -86,7 +95,7 @@ export class MembershipService {
         modified = true;
       }
       if (modified) {
-        await this.cache.set(uid, cache);
+        await this.cache.set(CACHEKEY_MEMBERSHIP(uid), cache);
       }
     }
   }

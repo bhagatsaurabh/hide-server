@@ -22,4 +22,9 @@ services:
       POSTGRES_PASS: ${POSTGRES_PASS}
       POSTGRES_DB: workspacedb
       WORKSPACE_SERVICE_SECRET: ${WORKSPACE_SERVICE_SECRET} # From root .env due to context
+      FIREBASE_EMULATION: true
+      FIREBASE_AUTH_EMULATOR_HOST: host.docker.internal:9099
+      FIRESTORE_EMULATOR_HOST: host.docker.internal:8085
+      FIREBASE_STORAGE_EMULATOR_HOST: host.docker.internal:9199
+      FIREBASE_APP_ID: hide-43a4b
     command: [ "/bin/sh", "-c", "cd workspace && npm run start:dev" ]

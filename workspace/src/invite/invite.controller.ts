@@ -4,6 +4,7 @@ import { UserHeader } from 'hide-common';
 import { User } from 'hide-common/dto/user';
 import { InviteAllDTO, InviteDTO } from 'src/common/dto/invite.dto';
 import { AcceptDTO } from 'src/common/dto/accept.dto';
+import { IgnoreDTO } from 'src/common/dto/ignore.dto';
 
 @Controller('api')
 export class InviteController {
@@ -25,5 +26,11 @@ export class InviteController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async accept(@UserHeader() user: User, @Body() data: AcceptDTO) {
     await this.service.acceptInvitation(user.uid, data);
+  }
+
+  @Post('ignore')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  ignore(@UserHeader() user: User, @Body() data: IgnoreDTO) {
+    this.service.ignoreInvitation(user.uid, data);
   }
 }

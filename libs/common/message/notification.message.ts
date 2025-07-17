@@ -18,6 +18,8 @@ export type NotificationType =
 export interface UserNotificationPayload extends OutSocketMessagePayload {
   type: NotificationType;
   id: string;
+  createdOn: string | Date;
+  actedOn?: number;
 }
 
 export interface WorkspaceInvite extends UserNotificationPayload {
@@ -29,4 +31,5 @@ export interface WorkspaceInvite extends UserNotificationPayload {
 export interface ExclusionData extends UserNotificationPayload {
   actorId: string;
   workspaceUUID: string;
+  name: string;
 }

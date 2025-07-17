@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { RmqModule } from 'hide-rmq';
 
 @Module({
   imports: [
@@ -31,7 +30,6 @@ import { RmqModule } from 'hide-rmq';
         },
       },
     ]),
-    RmqModule.forRoot({ urls: [process.env.RMQ_URL!], queueOptions: { durable: true } }),
   ],
   exports: [ClientsModule],
 })

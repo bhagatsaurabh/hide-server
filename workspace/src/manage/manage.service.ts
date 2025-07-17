@@ -27,11 +27,11 @@ import {
   NotifyUser,
   ServiceEvent,
   ServiceMessage,
+  SocketSend,
   UserProfileRequest,
   WorkspaceDeleted,
 } from 'hide-common';
 import { randomUUID } from 'node:crypto';
-import { RmqService } from 'hide-rmq';
 import { Cache, RedisService } from 'hide-redis';
 import { firstValueFrom } from 'rxjs';
 
@@ -42,9 +42,9 @@ export class ManageService {
   constructor(
     @InjectRepository(Workspace) private wsRepository: Repository<Workspace>,
     @InjectRepository(Membership) private msRepository: Repository<Membership>,
-    private readonly rmq: RmqService,
     @Inject('WORKSPACE_SERVICE_REDIS') private redis: ClientProxy,
     @Inject('WORKSPACE_SERVICE_NATS') private nats: ClientProxy,
+    @Inject('WORKSPACE_SERVICE_RMQ') private rmq: ClientProxy,
     private readonly inviteService: InviteService,
     private dataSource: DataSource,
     private cacheService: RedisService,
@@ -149,6 +149,9 @@ export class ManageService {
     workspace: Workspace,
     { added, removed }: { added: string[]; removed: string[] },
   ) {
+    const members = (await this.msRepository.find({ where: { workspaceId: workspace.id } })).map(
+      (membership) => membership.userId,
+    );
     // Removed members
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.startTransaction();
@@ -170,17 +173,43 @@ export class ManageService {
       const msg = createMessage<NotifyUser<ExclusionData>>(removedUid, '', {
         uid: removedUid,
         notification: {
-          type: 'workspace-membership-removed',
           id: randomUUID(),
+          type: 'workspace-membership-removed',
           actorId: uid,
           workspaceUUID: workspace.uuid,
+          name: workspace.name,
+          createdOn: new Date().toISOString(),
         },
       });
-      this.rmq.send<ServiceMessage<NotifyUser<ExclusionData>>>('notification.send', msg);
+      this.rmq.emit<ServiceMessage<NotifyUser<ExclusionData>>>('notification.send', msg);
     }
 
     // Added members
     await this.inviteService.inviteAllUsers(uid, { inviteeIds: added, workspaceUUID: workspace.uuid });
+
+    if (removed.length) {
+      const mbrs = new Set(members);
+      removed.forEach((uid) => mbrs.delete(uid));
+      const mbrsToNotify = [...mbrs];
+      const presences = await Promise.all(
+        mbrsToNotify.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid))),
+      );
+      mbrsToNotify.forEach((uid, idx) => {
+        const presence = presences[idx];
+        if (!presence) return;
+        Object.keys(presence).forEach((sessionId) => {
+          this.redis.emit<any, ServiceEvent<SocketSend<'workspace'>>>('socket.send', {
+            meta: { uid, sessionId },
+            payload: {
+              pattern: 'workspace',
+              uid,
+              sessionId,
+              msg: { action: 'members.modified', payload: { uuid: workspace.uuid } },
+            },
+          });
+        });
+      });
+    }
 
     this.redis.emit<any, ServiceEvent<MembersModified>>('workspace.members.modified', {
       payload: { uuid: workspace.uuid, added, removed },
