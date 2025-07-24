@@ -91,9 +91,11 @@ export interface MembershipCheck extends ServiceMessagePayload {
 }
 export interface EnvOpenRequest extends ServiceMessagePayload {
   uuid: string;
+  sessionId: string;
 }
 export interface EnvCloseRequest extends ServiceMessagePayload {
   uuid: string;
+  sessionId: string;
 }
 export interface UserProfileRequest extends ServiceMessagePayload {
   uid: string;

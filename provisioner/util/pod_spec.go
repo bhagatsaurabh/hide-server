@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -53,6 +54,7 @@ func GetPodSpec(wsUuid string, image string, publicKey string, devEnv string) *v
 			Name: fmt.Sprintf("workspace-%s", wsUuid),
 		},
 		Spec: v1.PodSpec{
+			RestartPolicy: v1.RestartPolicyAlways,
 			Containers: []v1.Container{
 				{
 					Name:            "dev",
@@ -67,6 +69,16 @@ func GetPodSpec(wsUuid string, image string, publicKey string, devEnv string) *v
 						{
 							MountPath: "/devconfig",
 							Name:      fmt.Sprintf("workspaceconfig-volume-%s", wsUuid),
+						},
+					},
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("100m"),
+							v1.ResourceMemory: resource.MustParse("256Mi"),
+						},
+						Limits: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("100m"),
+							v1.ResourceMemory: resource.MustParse("256Mi"),
 						},
 					},
 				},

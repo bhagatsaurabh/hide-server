@@ -23,20 +23,22 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/microservices": "^11.0.17",
     "@nestjs/platform-express": "^11.0.1",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.8",
+    "axios": "^1.11.0",
     "hide-common": "file:../libs/common",
     "hide-health": "file:../libs/health",
     "hide-redis": "file:../libs/redis",
     "ioredis": "^5.6.1",
+    "nats": "^2.29.3",
     "redlock": "^5.0.0-beta.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "nats": "^2.29.3",
     "ssh2": "^1.16.0",
     "y-protocols": "^1.0.6",
     "yjs": "^13.6.26"

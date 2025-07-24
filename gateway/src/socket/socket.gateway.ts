@@ -288,7 +288,7 @@ export class SocketGateway
         });
       }
     } else {
-      this.nats.send<any, ServiceMessage<InSocketMessage<'env'>>>('env.msg', {
+      this.nats.emit<any, ServiceMessage<InSocketMessage<'env'>>>('env.msg', {
         meta: { uid, sessionId },
         payload: msg,
       });
@@ -312,6 +312,7 @@ export class SocketGateway
   }
 
   async handleCacheExpiry(key: string) {
+    console.log('Cache expired: ', key);
     const lock = await this.acquireLock([this.lockClient], key, 10 * 1000, 0);
 
     const [type, ...parts] = key.split(':');

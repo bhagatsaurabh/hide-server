@@ -85,18 +85,17 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
       }
 
       try {
-        await this.workspaceService.handleEnvOpen(uid, msg.payload as EnvOpenRequest);
+        return await this.workspaceService.handleEnvOpen(uid, msg.payload as EnvOpenRequest);
       } catch (error: unknown) {
         throw new RpcException({
           statusCode: (error as RpcError).statusCode || 400,
           message: (error as RpcError).message,
         });
       }
-      return;
     } else if (msg.payload.reqAction === 'close') {
-      if (!uid) return;
+      if (!uid) return { ok: false };
       await this.workspaceService.handleEnvClose(uid, msg.payload as EnvCloseRequest);
-      return;
+      return { ok: true };
     }
 
     if (!uid || !sessionId) return;

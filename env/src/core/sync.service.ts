@@ -31,7 +31,7 @@ export class SyncService {
   cache: Cache;
 
   constructor(
-    @Inject('FILESYSTEM_SERVICE_REDIS') private redis: ClientProxy,
+    @Inject('ENV_SERVICE_REDIS') private redis: ClientProxy,
     private readonly cacheService: RedisService,
   ) {
     this.cache = this.cacheService.get();
