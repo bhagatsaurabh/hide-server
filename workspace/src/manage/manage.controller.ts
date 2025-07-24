@@ -3,7 +3,7 @@ import { MembershipCheck, ServiceMessage, UserHeader } from 'hide-common';
 import { User } from 'hide-common/dto/user';
 import { CreateDTO } from 'src/common/dto/create.dto';
 import { ManageService } from './manage.service';
-import { UpdateDTO } from 'src/common/dto/update.dto';
+import { UpdateDTO, UpdateStatusDTO } from 'src/common/dto/update.dto';
 import { MessagePattern, Transport } from '@nestjs/microservices';
 
 @Controller('api')
@@ -26,6 +26,13 @@ export class ManageController {
     await this.service.updateWorkspace(user.uid, data);
   }
 
+  // Internal
+  @Patch('update-status')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async updateStatus(@Body() data: UpdateStatusDTO) {
+    await this.service.updateWorkspaceStatus(data.uuid, data.status);
+  }
+
   @Get('all')
   async all(@UserHeader() user: User) {
     return await this.service.getAllWorkspaces(user);
@@ -39,7 +46,6 @@ export class ManageController {
 
   @MessagePattern('workspace.membership.check', Transport.RMQ)
   async handleCheckMembership(msg: ServiceMessage<MembershipCheck>) {
-    console.log(msg);
     return await this.service.isUserMemberOf(msg.payload.uid, msg.payload.uuid);
   }
 }

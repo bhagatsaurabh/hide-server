@@ -42,7 +42,7 @@ export class FSService {
   cache: Cache;
 
   constructor(
-    @Inject('FILESYSTEM_SERVICE_REDIS') private redis: ClientProxy,
+    @Inject('ENV_SERVICE_REDIS') private redis: ClientProxy,
     private readonly syncService: SyncService,
     private readonly cacheService: RedisService,
   ) {

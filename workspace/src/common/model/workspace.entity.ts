@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany, Generated } from 'typeorm';
 import { Membership } from './membership.entity';
+import { WorkspaceStatus } from 'hide-common';
 
 @Entity()
 export class Workspace {
@@ -33,6 +34,9 @@ export class Workspace {
 
   @Column({ nullable: false, type: 'text' })
   description: string;
+
+  @Column({ nullable: false, length: 30 })
+  status: WorkspaceStatus;
 
   @CreateDateColumn({ nullable: false, name: 'created_at', type: 'timestamptz' })
   createdAt: string;

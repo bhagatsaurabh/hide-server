@@ -21,7 +21,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -74,6 +73,12 @@ type ProvisionStatusDTO struct {
 type StatusPayload struct {
 	Message string `json:"message"`
 }
+type ReadyPayload struct {
+	Message string `json:"message"`
+}
+type ErrorPayload struct {
+	Message string `json:"message"`
+}
 type PayloadMessage[T any] struct {
 	Action  string `json:"action"`
 	Payload T      `json:"payload"`
@@ -89,10 +94,14 @@ type ServiceEvent[T any] struct {
 }
 
 func CreateDevContainer(req ProvisionRequest, isNew bool, devEnv string, redisClient *redis.Client) (string, string, error) {
+	message := "Provisioning"
+	if !isNew {
+		message = "Restoring"
+	}
 	sMsg, _ := json.Marshal(ServiceEvent[StatusPayload]{
 		Payload: ServiceEventPayload[StatusPayload]{
 			Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: PayloadMessage[StatusPayload]{
-				Action: "status", Payload: StatusPayload{Message: "Provisioning"},
+				Action: "status", Payload: StatusPayload{Message: message},
 			}},
 	})
 	redisClient.Publish(context.Background(), "socket.send", sMsg)
@@ -115,7 +124,7 @@ func CreateDevContainer(req ProvisionRequest, isNew bool, devEnv string, redisCl
 		privateKey, workspaceUuid, err = CreateK8sPod(req, isNew, devEnv)
 	}
 
-	err = waitOnDevContainerReady(req, workspaceUuid, 60*time.Second, redisClient)
+	err = waitOnDevContainerReady(req, workspaceUuid, 90*time.Second, redisClient)
 	if err != nil {
 		return "", "", err
 	}
@@ -293,7 +302,7 @@ func K8sVolumeExists(uuid string) (bool, error) {
 	return true, nil
 }
 
-func DevContainerExists(wsUuid string, devEnv string) (*DevContainerSummary, error) {
+func DevContainerExists(wsUuid string, devEnv string) (bool, error) {
 	containerName := fmt.Sprintf("workspace-%s", wsUuid)
 	if devEnv == "docker" {
 		return DockerContainerExists(containerName)
@@ -301,10 +310,10 @@ func DevContainerExists(wsUuid string, devEnv string) (*DevContainerSummary, err
 		return K8sPodExists(containerName)
 	}
 }
-func DockerContainerExists(containerName string) (*DevContainerSummary, error) {
+func DockerContainerExists(containerName string) (bool, error) {
 	cli, err := config.LoadDockerConfig()
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 	defer cli.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -314,7 +323,7 @@ func DockerContainerExists(containerName string) (*DevContainerSummary, error) {
 		All: true,
 	})
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
 	var devCont *container.Summary = nil
@@ -329,65 +338,30 @@ outer:
 	}
 
 	if devCont == nil {
-		return nil, nil
+		return false, nil
 	}
-	return &DevContainerSummary{
-		Running: devCont.State == "running",
-		Id:      devCont.ID,
-	}, nil
+	return true, nil
 }
-func K8sPodExists(containerName string) (*DevContainerSummary, error) {
+func K8sPodExists(containerName string) (bool, error) {
 	config, err := config.LoadK8sConfig()
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Println("Error creating Kubernetes client:", err)
-		return nil, err
+		return false, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	pod, err := clientset.CoreV1().Pods("default").Get(ctx, containerName, metav1.GetOptions{})
+	_, err = clientset.CoreV1().Pods("default").Get(ctx, containerName, metav1.GetOptions{})
 
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			return nil, nil
+			return false, nil
 		}
-		return nil, err
+		return false, err
 	}
 
-	return &DevContainerSummary{
-		Running: pod.Status.Phase == v1.PodRunning,
-		Id:      "",
-	}, nil
-}
-
-func StartDevContainer(req ProvisionRequest, uuid string, id string, devEnv string, redisClient *redis.Client) error {
-	var err error = nil
-	if devEnv == "docker" {
-		err = StartDockerContainer(id)
-	} else {
-		err = StartK8sPod(id)
-	}
-
-	err = waitOnDevContainerReady(req, uuid, 60*time.Second, redisClient)
-	return err
-}
-func StartDockerContainer(id string) error {
-	cli, err := config.LoadDockerConfig()
-	if err != nil {
-		return err
-	}
-	defer cli.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-
-	if err := cli.ContainerStart(ctx, id, container.StartOptions{}); err != nil {
-		return err
-	}
-	return nil
-}
-func StartK8sPod(id string) error {
-	return errors.New("Workspace provisioned but not running")
+	return true, nil
 }
 
 func CreateWorkspace(req ProvisionRequest, userHeader string, workspaceUUID string, workspace *WorkspaceDTO) error {

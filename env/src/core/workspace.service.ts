@@ -17,6 +17,7 @@ import {
   ServiceMessage,
   SocketSend,
   StatDTO,
+  WorkspaceWaitDTO,
 } from 'hide-common';
 import { FSClose, FSOpen } from 'hide-common/message/filesystem.message';
 import { RedisService } from 'hide-redis';
@@ -27,6 +28,7 @@ import { SyncService } from './sync.service';
 import { SSHProxyService } from './sshproxy.service';
 import { CommonRef } from 'src/common/refs/common.ref';
 import { firstValueFrom } from 'rxjs';
+import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class WorkspaceService {
@@ -43,10 +45,14 @@ export class WorkspaceService {
     private readonly fsService: FSService,
     private readonly syncService: SyncService,
     private readonly sshService: SSHProxyService,
+    private readonly http: HttpService,
   ) {
     this.cache = this.cacheService.get();
   }
   async handleEnvOpen(uid: string, msg: EnvOpenRequest) {
+    if (!msg.sessionId) {
+      throw new RpcError(400, 'Required session id');
+    }
     let workspace: { image: string } | null;
     try {
       workspace = await this.isAMember(uid, msg.uuid);
@@ -58,15 +64,28 @@ export class WorkspaceService {
       throw new RpcError(401, 'Not a workspace member');
     }
 
+    let ready = false;
     try {
-      await fetch('http://provisioner/api/provision', {
+      const res = await fetch('http://provisioner/api/provision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ image: workspace.image, uuid: msg.uuid }),
+        body: JSON.stringify({ image: workspace.image, uuid: msg.uuid, sessionId: msg.sessionId }),
       });
+      ready = !((await res.json()) as WorkspaceWaitDTO).wait;
     } catch (error) {
       void error;
       throw new RpcError(401, 'Failed to open workspace');
+    }
+
+    if (!ready) {
+      return { wait: true };
+    }
+
+    try {
+      await firstValueFrom(this.http.get(`http://workspace-${msg.uuid}/ready`, { timeout: 3000 }));
+    } catch (error) {
+      console.log(error);
+      throw new RpcError(503, 'Workspace is unreachable');
     }
 
     const lock = await this.acquireLock(msg.uuid);
@@ -91,6 +110,10 @@ export class WorkspaceService {
     } finally {
       await lock.release();
     }
+
+    await this.cache.set(CACHEKEY_PRESENCE_WORKSPACE(uid, msg.sessionId, msg.uuid), 1, 20000);
+
+    return { wait: false };
   }
   async handleEnvClose(uid: string, msg: EnvCloseRequest) {
     if (!(await this.isAMember(uid, msg.uuid))) return;

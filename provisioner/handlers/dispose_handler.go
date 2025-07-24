@@ -20,10 +20,7 @@ func DisposeHandler(w http.ResponseWriter, r *http.Request) {
 
 	devEnv, _ := os.LookupEnv("DEV_PLATFORM")
 
-	if err := services.DisposeDevContainer(uuid, devEnv); err != nil {
-		util.SendAPIErr(w, http.StatusInternalServerError, "Could not de-provision workspace")
-		return
-	}
+	go services.DisposeDevContainer(uuid, devEnv)
 
 	w.WriteHeader(http.StatusOK)
 }

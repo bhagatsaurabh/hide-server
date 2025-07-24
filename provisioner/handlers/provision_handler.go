@@ -4,14 +4,21 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"hideserver/provisioner/services"
 	"hideserver/provisioner/util"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
+
+type WaitResponse struct {
+	Wait bool `json:"wait"`
+}
 
 func ProvisionHandler(w http.ResponseWriter, r *http.Request, redisClient *redis.Client) {
 	if r.Method != http.MethodPost {
@@ -47,37 +54,45 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request, redisClient *redis
 	devEnv, _ := os.LookupEnv("DEV_PLATFORM")
 
 	if req.Uuid != "" {
-		var devCont *services.DevContainerSummary
-		if devCont, err = services.DevContainerExists(req.Uuid, devEnv); err != nil {
+		err := CheckWorkspaceMembership(userHeader, req.Uuid)
+		if err != nil {
+			util.SendAPIErr(w, http.StatusForbidden, "Not a member of the workspace")
+			return
+		}
+		var devContExists bool
+		if devContExists, err = services.DevContainerExists(req.Uuid, devEnv); err != nil {
 			util.SendAPIErr(w, http.StatusBadRequest, "Could not check container existence")
 			return
 		}
-		if devCont != nil {
-			if devCont.Running {
-				w.WriteHeader(http.StatusOK)
-			} else {
-				start(req, w, req.Uuid, devCont.Id, devEnv, redisClient)
-			}
-			return
-		} else {
+		w.Header().Set("Content-Type", "application/json")
+		if devContExists {
 			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(WaitResponse{Wait: false})
+		} else {
+			w.WriteHeader(http.StatusAccepted)
+			json.NewEncoder(w).Encode(WaitResponse{Wait: true})
 			go provision(req, userHeader, false, devEnv, redisClient)
-			return
 		}
+		return
 	}
 
 	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(WaitResponse{Wait: true})
 	go provision(req, userHeader, true, devEnv, redisClient)
 }
 
 func provision(req services.ProvisionRequest, userHeader string, isNew bool, devEnv string, redisClient *redis.Client) {
 	privateKey, workspaceUUID, err := services.CreateDevContainer(req, isNew, devEnv, redisClient)
 	if err != nil {
+		message := "Failed to provision workspace"
+		if !isNew {
+			message = "Failed to restore workspace"
+		}
 		log.Println(err.Error())
 		msg, _ := json.Marshal(services.ServiceEvent[services.StatusPayload]{
 			Payload: services.ServiceEventPayload[services.StatusPayload]{
 				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.StatusPayload]{
-					Action: "error", Payload: services.StatusPayload{Message: "Failed to provision workspace"},
+					Action: "error", Payload: services.StatusPayload{Message: message},
 				}},
 		})
 		redisClient.Publish(context.Background(), "socket.send", msg)
@@ -99,12 +114,31 @@ func provision(req services.ProvisionRequest, userHeader string, isNew bool, dev
 				}},
 		})
 		redisClient.Publish(context.Background(), "socket.send", msg)
+	} else {
+		msg, _ := json.Marshal(services.ServiceEvent[services.ReadyPayload]{
+			Payload: services.ServiceEventPayload[services.ReadyPayload]{
+				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.ReadyPayload]{
+					Action: "ready", Payload: services.ReadyPayload{
+						Message: "Ready",
+					},
+				}},
+		})
+		redisClient.Publish(context.Background(), "socket.send", msg)
 	}
 }
-func start(req services.ProvisionRequest, w http.ResponseWriter, uuid string, id string, devEnv string, redisClient *redis.Client) {
-	err := services.StartDevContainer(req, uuid, id, devEnv, redisClient)
+func CheckWorkspaceMembership(userHeader string, workspaceUUID string) error {
+	var wsReq *http.Request
+	wsReq, err := http.NewRequest("GET", fmt.Sprintf("http://workspace/api/%s/check-membership", workspaceUUID), nil)
 	if err != nil {
-		log.Println(err.Error())
-		util.SendAPIErr(w, http.StatusInternalServerError, "Failed to boot workspace")
+		return errors.New("Failed to create request")
 	}
+	wsReq.Header.Set("Content-Type", "application/json")
+	wsReq.Header.Set("x-auth-user", userHeader)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(wsReq)
+	if err != nil {
+		return errors.New("Not a member of workspace")
+	}
+	defer resp.Body.Close()
+	return nil
 }

@@ -30,6 +30,7 @@ import {
   SocketSend,
   UserProfileRequest,
   WorkspaceDeleted,
+  WorkspaceStatus,
 } from 'hide-common';
 import { randomUUID } from 'node:crypto';
 import { Cache, RedisService } from 'hide-redis';
@@ -63,6 +64,9 @@ export class ManageService {
     let savedWorkspace: Workspace;
     try {
       const newWorkspace = new Workspace(data as CreateDTO);
+
+      // Improvement: PROVISIONING status not used
+      newWorkspace.status = WorkspaceStatus.READY;
       savedWorkspace = await queryRunner.manager.save<Workspace>(newWorkspace);
 
       const newMembership = new Membership();
@@ -140,6 +144,20 @@ export class ManageService {
       }
       await this.updateMembers(uid, workspace, { added, removed });
     }
+
+    await this.wsRepository.save(workspace);
+  }
+
+  async updateWorkspaceStatus(uuid: string, status: WorkspaceStatus) {
+    if (!uuid) {
+      throw new BadRequestException('Missing workspace uuid');
+    }
+    const workspace = await this.wsRepository.findOne({ where: { uuid } });
+    if (!workspace) {
+      throw new NotFoundException('Workspace with specified uuid not found');
+    }
+
+    workspace.status = status;
 
     await this.wsRepository.save(workspace);
   }
