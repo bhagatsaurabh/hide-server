@@ -59,7 +59,10 @@ export interface ServiceEvent<T extends ServiceEventPayload> {
   };
   payload: T;
 }
-export type ServiceEventPayload = Record<string, unknown>;
+export type ServiceEventPayload = {
+  [key: string]: unknown;
+  reqAction?: string;
+};
 
 export interface SocketSend<K extends keyof OutSocketMessageActionMap>
   extends ServiceEventPayload {
@@ -109,3 +112,9 @@ export type UserOffline = UserOnline;
 export interface HealthCheck extends ServiceEventPayload {}
 
 export type InternalMessage<T> = { id: string; data: T };
+
+export interface EnvAffinityRequest extends ServiceEventPayload {
+  uid: string;
+  sessionId: string;
+  uuid: string;
+}

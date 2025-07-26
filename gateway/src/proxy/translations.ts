@@ -120,6 +120,12 @@ export const rules: Rules = [
           targetProtocol: ExtTransport.HTTP,
         },
       },
+      '*': {
+        DELETE: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
+      },
     },
   },
   {

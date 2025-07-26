@@ -63,7 +63,7 @@ export class ManageService {
     await queryRunner.startTransaction();
     let savedWorkspace: Workspace;
     try {
-      const newWorkspace = new Workspace(data as CreateDTO);
+      const newWorkspace = new Workspace({ ...data, status: WorkspaceStatus.READY });
 
       // Improvement: PROVISIONING status not used
       newWorkspace.status = WorkspaceStatus.READY;
@@ -309,23 +309,23 @@ export class ManageService {
       (membership) => membership.userId,
     );
 
-    await this.clearCacheOnDelete(members, workspaceUUID);
-
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.startTransaction();
     try {
       await queryRunner.manager.delete(Membership, { workspaceId: workspace.id });
       await queryRunner.manager.delete(Workspace, { uuid: workspaceUUID });
+      await queryRunner.commitTransaction();
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
     } finally {
-      await queryRunner.commitTransaction();
       await queryRunner.release();
     }
 
-    void fetch(`http://provisioner/api/dispose?uuid=${workspaceUUID}`, {
-      method: 'POST',
+    await this.clearCacheOnDelete(members, workspaceUUID);
+
+    void fetch(`http://provisioner/api/delete?uuid=${workspaceUUID}`, {
+      method: 'DELETE',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     });
 
@@ -335,15 +335,24 @@ export class ManageService {
   }
 
   async clearCacheOnDelete(members: string[], wsUuid: string) {
-    const uids = await Promise.allSettled(
+    const presences = await Promise.allSettled(
       members.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid))),
     );
     members.forEach((uid, idx) => {
-      if (uids[idx].status === 'fulfilled' && uids[idx].value) {
-        const presence = uids[idx].value;
+      if (presences[idx].status === 'fulfilled' && presences[idx].value) {
+        const presence = presences[idx].value;
         const entries = Object.entries(presence);
         const [sessionId, _session] = entries.find(([_, session]) => session.wsUuid === wsUuid) || [];
         if (sessionId) {
+          this.redis.emit<unknown, ServiceEvent<SocketSend<'env'>>>('socket.send', {
+            meta: { uid, sessionId },
+            payload: {
+              pattern: 'env',
+              uid,
+              sessionId,
+              msg: { action: 'disconnect', payload: { code: 'WORKSPACE_DELETED' } },
+            },
+          });
           void this.cache.del(CACHEKEY_PRESENCE_WORKSPACE(uid, sessionId, wsUuid));
           delete presence[sessionId].wsUuid;
           void this.cache.set(CACHEKEY_PRESENCE(uid), presence);

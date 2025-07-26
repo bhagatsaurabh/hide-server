@@ -1,3 +1,4 @@
+import { WorkspaceDTO } from "../dto";
 import {
   InSocketMessagePayload,
   OutSocketMessagePayload,
@@ -32,11 +33,15 @@ export interface InternalDocHash extends InSocketMessageEnv {
 export interface EnvWorkspaceOpened extends OutSocketMessagePayload {}
 export interface EnvWorkspaceOpenWait extends OutSocketMessagePayload {}
 export interface EnvSessionLost extends OutSocketMessagePayload {}
+export interface EnvDisconnect extends OutSocketMessagePayload {
+  code: string;
+}
 export interface EnvError extends OutSocketMessagePayload {
   code: string;
 }
 
 export type EnvResponseMap = {
+  disconnect: EnvDisconnect;
   error: EnvError;
 };
 export type EnvPayload = {
@@ -45,3 +50,33 @@ export type EnvPayload = {
     payload: EnvResponseMap[K];
   };
 }[keyof EnvResponseMap];
+
+///////////////
+
+export interface ProvisionStatus extends InSocketMessagePayload {
+  message: string;
+}
+export interface ProvisionError extends InSocketMessagePayload {
+  message: string;
+}
+export interface ProvisionSuccess extends InSocketMessagePayload {
+  message: string;
+  privateKey: string;
+  workspace: WorkspaceDTO;
+}
+export interface ProvisionReady extends InSocketMessagePayload {
+  message: string;
+}
+
+export type ProvisionResponseMap = {
+  status: ProvisionStatus;
+  error: ProvisionError;
+  success: ProvisionSuccess;
+  ready: ProvisionReady;
+};
+export type ProvisionPayload = {
+  [K in keyof ProvisionResponseMap]: {
+    action: K;
+    payload: ProvisionResponseMap[K];
+  };
+}[keyof ProvisionResponseMap];

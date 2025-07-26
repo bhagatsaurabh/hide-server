@@ -312,7 +312,6 @@ export class SocketGateway
   }
 
   async handleCacheExpiry(key: string) {
-    console.log('Cache expired: ', key);
     const lock = await this.acquireLock([this.lockClient], key, 10 * 1000, 0);
 
     const [type, ...parts] = key.split(':');

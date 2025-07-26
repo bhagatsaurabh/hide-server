@@ -17,6 +17,9 @@ export class Workspace {
     if (data.image) {
       this.image = data.image;
     }
+    if (data.status) {
+      this.status = data.status;
+    }
   }
 
   @PrimaryGeneratedColumn()
