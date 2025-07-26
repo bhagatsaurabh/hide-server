@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -17,7 +18,14 @@ func main() {
 		Addr: fmt.Sprintf("%s:%s", redisHost, redisPort),
 	})
 
-	srv := server.NewServer(redisClient)
+	natsURI := os.Getenv("NATS_URL")
+	natsClient, err := nats.Connect(natsURI)
+	if err != nil {
+		log.Fatalf("Error connecting to NATS: %v", err)
+	}
+	defer natsClient.Drain()
+
+	srv := server.NewServer(redisClient, natsClient)
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {
 		port = "80"

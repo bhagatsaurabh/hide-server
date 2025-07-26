@@ -62,6 +62,7 @@ type WorkspaceDTO struct {
 	Description string          `json:"description"`
 	CreatedAt   string          `json:"createdAt"`
 	Memberships []MembershipDTO `json:"memberships"`
+	Status      string          `json:"status"`
 }
 type DevContainerSummary struct {
 	Running bool

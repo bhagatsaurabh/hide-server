@@ -66,6 +66,9 @@ export class FSService {
       const res = await fetch(`http://workspace-${uuid}/api/dir?path=${path}`, {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       });
+      if (res.status < 200 || res.status > 299) {
+        throw new Error();
+      }
       const entries = (await res.json()) as unknown as FSOpenDTO[];
       this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
         meta: { uid, sessionId },

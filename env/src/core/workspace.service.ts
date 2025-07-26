@@ -17,6 +17,7 @@ import {
   ServiceMessage,
   SocketSend,
   StatDTO,
+  User,
   WorkspaceWaitDTO,
 } from 'hide-common';
 import { FSClose, FSOpen } from 'hide-common/message/filesystem.message';
@@ -49,7 +50,7 @@ export class WorkspaceService {
   ) {
     this.cache = this.cacheService.get();
   }
-  async handleEnvOpen(uid: string, msg: EnvOpenRequest) {
+  async handleEnvOpen(uid: string, user: Partial<User>, msg: EnvOpenRequest): Promise<WorkspaceWaitDTO> {
     if (!msg.sessionId) {
       throw new RpcError(400, 'Required session id');
     }
@@ -68,9 +69,16 @@ export class WorkspaceService {
     try {
       const res = await fetch('http://provisioner/api/provision', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ image: workspace.image, uuid: msg.uuid, sessionId: msg.sessionId }),
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'x-auth-user': Buffer.from(JSON.stringify(user)).toString('base64'),
+        },
+        body: JSON.stringify({ image: workspace.image, uuid: msg.uuid, sessionId: msg.sessionId, uid }),
       });
+      if (res.status < 200 || res.status > 299) {
+        throw new Error();
+      }
       ready = !((await res.json()) as WorkspaceWaitDTO).wait;
     } catch (error) {
       void error;
@@ -81,6 +89,11 @@ export class WorkspaceService {
       return { wait: true };
     }
 
+    await this.handleEnvReady(uid, msg);
+
+    return { wait: false };
+  }
+  async handleEnvReady(uid: string, msg: EnvOpenRequest) {
     try {
       await firstValueFrom(this.http.get(`http://workspace-${msg.uuid}/ready`, { timeout: 3000 }));
     } catch (error) {
@@ -111,9 +124,12 @@ export class WorkspaceService {
       await lock.release();
     }
 
+    const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
+    if (presence) {
+      presence[msg.sessionId].wsUuid = msg.uuid;
+      await this.cache.set(CACHEKEY_PRESENCE(uid), presence);
+    }
     await this.cache.set(CACHEKEY_PRESENCE_WORKSPACE(uid, msg.sessionId, msg.uuid), 1, 20000);
-
-    return { wait: false };
   }
   async handleEnvClose(uid: string, msg: EnvCloseRequest) {
     if (!(await this.isAMember(uid, msg.uuid))) return;
@@ -131,6 +147,7 @@ export class WorkspaceService {
 
       delete presence[sessionId].wsUuid;
       await this.cache.set(CACHEKEY_PRESENCE(uid), presence);
+      await this.cache.del(CACHEKEY_PRESENCE_WORKSPACE(uid, sessionId, msg.uuid));
 
       let workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(msg.uuid));
       if (!workspace) return;
@@ -151,6 +168,7 @@ export class WorkspaceService {
       if (Object.keys(workspace.dirs).length === 0) {
         // Mark for immediate de-provisioning
         workspace.state = 'inactive';
+        await this.cache.set(CACHEKEY_WORKSPACE(msg.uuid), workspace);
         await this.cache.set(CACHEKEY_PRESENCE_WORKSPACE(uid, sessionId, msg.uuid), 0, 200);
       }
     } finally {
@@ -226,10 +244,10 @@ export class WorkspaceService {
   }
 
   async handleOpen(uid: string, sessionId: string, msg: FSOpen, correlationId?: string) {
-    const path = this.root + msg.path;
+    msg.path = this.root + msg.path;
 
     try {
-      const stat = await this.getStat(msg.uuid, path);
+      const stat = await this.getStat(msg.uuid, msg.path);
       if (stat.isDir) {
         return await this.fsService.openDir(uid, sessionId, msg, correlationId);
       }

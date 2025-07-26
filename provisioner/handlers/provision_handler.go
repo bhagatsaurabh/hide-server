@@ -2,25 +2,35 @@ package handlers
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"hideserver/provisioner/services"
 	"hideserver/provisioner/util"
 	"log"
 	"net/http"
 	"os"
-	"time"
 
+	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
 )
 
 type WaitResponse struct {
 	Wait bool `json:"wait"`
 }
+type NestWrapper[T any] struct {
+	Pattern string `json:"pattern"`
+	Data    T      `json:"data"`
+}
+type RequestAffinityPayload struct {
+	Uid       string `json:"uid"`
+	SessionId string `json:"sessionId"`
+	Uuid      string `json:"uuid"`
+	ReqAction string `json:"reqAction"`
+}
+type IntServiceEvent[T any] struct {
+	Payload T `json:"payload"`
+}
 
-func ProvisionHandler(w http.ResponseWriter, r *http.Request, redisClient *redis.Client) {
+func ProvisionHandler(w http.ResponseWriter, r *http.Request, redisClient *redis.Client, natsClient *nats.Conn) {
 	if r.Method != http.MethodPost {
 		util.SendAPIErr(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -37,17 +47,6 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request, redisClient *redis
 	userHeader := r.Header.Get("x-auth-user")
 	if userHeader == "" {
 		util.SendAPIErr(w, http.StatusBadRequest, "Missing x-auth-user header")
-		return
-	}
-	decodedBytes, err := base64.StdEncoding.DecodeString(userHeader)
-	if err != nil {
-		util.SendAPIErr(w, http.StatusBadRequest, "Invalid Base64 encoding in x-auth-user header")
-		return
-	}
-	var user UserHeader
-	err = json.Unmarshal(decodedBytes, &user)
-	if err != nil {
-		util.SendAPIErr(w, http.StatusBadRequest, "Invalid JSON in x-auth-user header")
 		return
 	}
 
@@ -71,17 +70,17 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request, redisClient *redis
 		} else {
 			w.WriteHeader(http.StatusAccepted)
 			json.NewEncoder(w).Encode(WaitResponse{Wait: true})
-			go provision(req, userHeader, false, devEnv, redisClient)
+			go provision(req, userHeader, false, devEnv, redisClient, natsClient)
 		}
 		return
 	}
 
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(WaitResponse{Wait: true})
-	go provision(req, userHeader, true, devEnv, redisClient)
+	go provision(req, userHeader, true, devEnv, redisClient, natsClient)
 }
 
-func provision(req services.ProvisionRequest, userHeader string, isNew bool, devEnv string, redisClient *redis.Client) {
+func provision(req services.ProvisionRequest, userHeader string, isNew bool, devEnv string, redisClient *redis.Client, natsClient *nats.Conn) {
 	privateKey, workspaceUUID, err := services.CreateDevContainer(req, isNew, devEnv, redisClient)
 	if err != nil {
 		message := "Failed to provision workspace"
@@ -115,30 +114,20 @@ func provision(req services.ProvisionRequest, userHeader string, isNew bool, dev
 		})
 		redisClient.Publish(context.Background(), "socket.send", msg)
 	} else {
-		msg, _ := json.Marshal(services.ServiceEvent[services.ReadyPayload]{
-			Payload: services.ServiceEventPayload[services.ReadyPayload]{
-				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.ReadyPayload]{
-					Action: "ready", Payload: services.ReadyPayload{
-						Message: "Ready",
-					},
-				}},
+		msg, err := json.Marshal(NestWrapper[IntServiceEvent[RequestAffinityPayload]]{
+			Pattern: "env.internal",
+			Data: IntServiceEvent[RequestAffinityPayload]{
+				Payload: RequestAffinityPayload{
+					ReqAction: "affinity", Uid: req.Uid, SessionId: req.SessionId, Uuid: req.Uuid,
+				},
+			},
 		})
-		redisClient.Publish(context.Background(), "socket.send", msg)
+		if err != nil {
+			log.Println(err)
+		}
+		err = natsClient.Publish("env.internal", msg)
+		if err != nil {
+			log.Println(err)
+		}
 	}
-}
-func CheckWorkspaceMembership(userHeader string, workspaceUUID string) error {
-	var wsReq *http.Request
-	wsReq, err := http.NewRequest("GET", fmt.Sprintf("http://workspace/api/%s/check-membership", workspaceUUID), nil)
-	if err != nil {
-		return errors.New("Failed to create request")
-	}
-	wsReq.Header.Set("Content-Type", "application/json")
-	wsReq.Header.Set("x-auth-user", userHeader)
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Do(wsReq)
-	if err != nil {
-		return errors.New("Not a member of workspace")
-	}
-	defer resp.Body.Close()
-	return nil
 }

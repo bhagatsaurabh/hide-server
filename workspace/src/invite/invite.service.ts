@@ -80,7 +80,6 @@ export class InviteService {
     this.rmq.emit<unknown, ServiceMessage<NotifyUser<WorkspaceInvite>>>('notification.send', msg);
   }
   async inviteAllUsers(inviterId: string, { inviteeIds, workspaceUUID }: InviteAllDTO) {
-    console.log(inviterId, inviteeIds, workspaceUUID);
     let err: HttpException | undefined;
     if ((err = await this.validateInvite(inviterId, workspaceUUID))) {
       throw err;

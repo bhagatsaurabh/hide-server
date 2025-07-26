@@ -28,6 +28,7 @@ export class SSHProxyService {
   ) {
     this.cache = this.cacheService.get();
     this.instanceId = CommonRef.getInstanceId();
+    this.conns = {};
   }
 
   handleRequest(uid: string, sessionId: string, msg: SSHRequest) {
@@ -141,10 +142,10 @@ export class SSHProxyService {
   }
   async handleSSHClose(uid: string, sessionId: string, msg: SSHClose) {
     if (msg.sshSessionId === '#all') {
-      for (const sshSessionId in this.conns[uid][msg.uuid]?.sessions || {}) {
+      for (const sshSessionId in this.conns[uid]?.[msg.uuid]?.sessions ?? {}) {
         this.conns[uid][msg.uuid].sessions?.[sshSessionId]?.close();
       }
-      this.conns[uid]?.[msg.uuid].conn?.end();
+      this.conns[uid]?.[msg.uuid]?.conn?.end();
       await this.updateConnCache(sessionId, msg.uuid, false);
       return;
     }

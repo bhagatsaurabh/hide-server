@@ -1,10 +1,8 @@
 import {
   EnvPayload,
-  EnvUserDisconnect,
-  InternalWorkspaceOpen,
   InSocketMessageEnv,
-  InternalWorkspaceClose,
   InternalDocHash,
+  ProvisionPayload,
 } from "./env.message";
 import {
   FSClose,
@@ -26,6 +24,7 @@ export type OutSocketMessageActionMap = {
   notification: NotificationPayload;
   fs: FSPayload;
   env: EnvPayload;
+  provision: ProvisionPayload;
   workspace: WorkspacePayload;
 } & {
   [key: string]: {
