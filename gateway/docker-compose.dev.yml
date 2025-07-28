@@ -25,7 +25,7 @@ services:
       - FIREBASE_APP_ID=hide-43a4b
       - JWT_PUBLIC_KEY=test
       - WORKSPACE_PING_TIMEOUT=20000
-      - WORKSPACE_ACTIVITY_TIMEOUT=60000
+      - WORKSPACE_ACTIVITY_TIMEOUT=3600000
       - SESSION_PING_TIMEOUT=20000
-      - SESSION_ACTIVITY_TIMEOUT=360000
+      - SESSION_ACTIVITY_TIMEOUT=3600000
     command: [ "/bin/sh", "-c", "cd gateway && npm run start:dev" ]
