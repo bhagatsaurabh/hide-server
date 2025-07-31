@@ -66,7 +66,6 @@ export class SocketGateway
 {
   @WebSocketServer()
   private server: Server<DefaultEventsMap, ClientEvents, DefaultEventsMap, SocketData>;
-  private instanceId: string;
   private cache: Cache;
   private db: Firestore;
   private redisClients: [Redis, Redis];
@@ -90,21 +89,20 @@ export class SocketGateway
   async onModuleInit() {
     CommonRef.setInstanceId(randomUUID());
     console.log('Instance: ', CommonRef.getInstanceId());
-    this.instanceId = CommonRef.getInstanceId();
     this.redisClients = RedisRef.get();
     await this.setupInstanceListener();
   }
   async onModuleDestroy() {
     this.allowConnections = false;
 
-    await this.redisClients[1].removeAllListeners().unsubscribe(`gateway.${this.instanceId}`);
+    await this.redisClients[1].removeAllListeners().unsubscribe(`gateway.${CommonRef.getInstanceId()}`);
     for (const socket of this.server.sockets.sockets.values()) {
       socket.client.conn.close();
     }
   }
   async setupInstanceListener() {
     const sub = this.redisClients[1];
-    const channel = `gateway.${this.instanceId}`;
+    const channel = `gateway.${CommonRef.getInstanceId()}`;
     await sub.subscribe(channel);
 
     sub.on('message', (chan, message) => {
@@ -149,7 +147,12 @@ export class SocketGateway
     if (!presence) presence = {};
     if (!presence[sessionId]) presence[sessionId] = {} as CachedSession;
     const { socketId: oldSocketId, gatewayId: oldGatewayId, wsUuid } = presence[sessionId];
-    presence[sessionId] = { socketId: newSocketId, gatewayId: this.instanceId, wsUuid, state: 'active' };
+    presence[sessionId] = {
+      socketId: newSocketId,
+      gatewayId: CommonRef.getInstanceId(),
+      wsUuid,
+      state: 'active',
+    };
 
     // Existing Session, re-connection
     if (oldSocketId && oldGatewayId) {
@@ -263,7 +266,6 @@ export class SocketGateway
       } else {
         envInstanceId = workspace.sshs[sessionId];
       }
-
       let healthy = false;
       try {
         await firstValueFrom(
@@ -284,6 +286,7 @@ export class SocketGateway
         }
       } else {
         this.redis.emit<any, ServiceEvent<InSocketMessage<'env'>>>(`env.${envInstanceId}`, {
+          meta: { uid, sessionId },
           payload: msg,
         });
       }

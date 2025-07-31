@@ -20,20 +20,15 @@ type ActiveWorkspaces = Record<string, ActiveSSHSessions>;
 export class SSHProxyService {
   cache: Cache;
   conns: ActiveWorkspaces;
-  instanceId: string;
 
   constructor(
     @Inject('ENV_SERVICE_REDIS') private readonly redis: ClientProxy,
     private readonly cacheService: RedisService,
   ) {
     this.cache = this.cacheService.get();
-    this.instanceId = CommonRef.getInstanceId();
     this.conns = {};
   }
 
-  handleRequest(uid: string, sessionId: string, msg: SSHRequest) {
-    this.handleSSHConnection(uid, sessionId, msg);
-  }
   handleSSHConnection(uid: string, sessionId: string, msg: SSHRequest) {
     if (!this.conns[uid]) {
       this.conns[uid] = {};
@@ -49,10 +44,10 @@ export class SSHProxyService {
     const conn = new SSHClient();
     conn.on('ready', () => {
       this.conns[uid][msg.uuid] = { conn, sessionId, sessions: {} };
-      void this.updateConnCache(sessionId, msg.uuid, true);
-      this.handleNewSSHSession(uid, sessionId, msg);
+      void this.updateConnCache(sessionId, msg.uuid, { uid, msg });
     });
-    conn.on('error', (_err) => {
+    conn.on('error', (err) => {
+      console.log(err);
       this.redis.emit<any, ServiceEvent<SocketSend<'ssh'>>>('socket.send', {
         payload: {
           uid,
@@ -66,7 +61,7 @@ export class SSHProxyService {
       if (this.conns[uid] && this.conns[uid][msg.uuid]) {
         delete this.conns[uid][msg.uuid];
       }
-      void this.updateConnCache(sessionId, msg.uuid, false);
+      void this.updateConnCache(sessionId, msg.uuid);
     });
 
     if (process.env.NODE_ENV === 'development' && process.env.HIDE_ENV_ON_K8s) {
@@ -87,9 +82,8 @@ export class SSHProxyService {
   }
   handleNewSSHSession(uid: string, sessionId: string, msg: SSHRequest) {
     const conn = this.conns[uid][msg.uuid].conn;
-    const sshSessionId = randomUUID();
 
-    conn.shell((err, channel) => {
+    conn.shell({ term: 'xterm' }, (err, stream) => {
       if (err) {
         this.redis.emit<any, ServiceEvent<SocketSend<'ssh'>>>('socket.send', {
           payload: {
@@ -99,19 +93,12 @@ export class SSHProxyService {
             msg: { action: 'error', payload: { message: 'Failed to start shell' } },
           },
         });
-        return;
+        throw err;
       }
-      this.conns[uid][msg.uuid].sessions[sshSessionId] = channel;
-      this.redis.emit<any, ServiceEvent<SocketSend<'ssh'>>>('socket.send', {
-        payload: {
-          uid,
-          sessionId,
-          pattern: 'ssh',
-          msg: { action: 'open', payload: { sshSessionId } },
-        },
-      });
+      const sshSessionId = randomUUID();
+      this.conns[uid][msg.uuid].sessions[sshSessionId] = stream;
 
-      channel.on('data', (data: Buffer) => {
+      stream.on('data', (data: Buffer) => {
         this.redis.emit<any, ServiceEvent<SocketSend<'ssh'>>>('socket.send', {
           payload: {
             uid,
@@ -120,8 +107,9 @@ export class SSHProxyService {
             msg: { action: 'output', payload: { sshSessionId, output: data.toString() } },
           },
         });
+        console.log('Sent', sshSessionId);
       });
-      channel.on('close', () => {
+      stream.on('close', () => {
         this.redis.emit<any, ServiceEvent<SocketSend<'ssh'>>>('socket.send', {
           payload: {
             uid,
@@ -131,13 +119,24 @@ export class SSHProxyService {
           },
         });
       });
+
+      this.redis.emit<any, ServiceEvent<SocketSend<'ssh'>>>('socket.send', {
+        payload: {
+          uid,
+          sessionId,
+          pattern: 'ssh',
+          msg: { action: 'open', payload: { sshSessionId, clientId: msg.clientId } },
+        },
+      });
+      console.log('Open', sshSessionId);
     });
   }
 
   handleSSHData(uid: string, _sessionId: string, msg: SSHData) {
-    const channel = this.conns[uid]?.[msg.uuid].sessions?.[msg.sshSessionId];
-    if (channel) {
-      channel.write(msg.input);
+    const stream = this.conns[uid]?.[msg.uuid].sessions?.[msg.sshSessionId];
+    if (stream) {
+      stream.write(msg.input);
+      console.log('Rec', msg.sshSessionId);
     }
   }
   async handleSSHClose(uid: string, sessionId: string, msg: SSHClose) {
@@ -146,25 +145,29 @@ export class SSHProxyService {
         this.conns[uid][msg.uuid].sessions?.[sshSessionId]?.close();
       }
       this.conns[uid]?.[msg.uuid]?.conn?.end();
-      await this.updateConnCache(sessionId, msg.uuid, false);
+      await this.updateConnCache(sessionId, msg.uuid);
       return;
     }
 
     this.conns[uid]?.[msg.uuid].sessions?.[msg.sshSessionId]?.close();
     if (Object.keys(this.conns[uid]?.[msg.uuid].sessions || {}).length === 0) {
-      await this.updateConnCache(sessionId, msg.uuid, false);
+      await this.updateConnCache(sessionId, msg.uuid);
     }
   }
 
-  async updateConnCache(sessionId: string, wsUuid: string, add: boolean) {
+  async updateConnCache(sessionId: string, wsUuid: string, add?: { uid: string; msg: SSHRequest }) {
     const workspace = await this.cache.get<CachedWorkspace>(`workspace:${wsUuid}`);
     if (!workspace) return;
 
     if (add) {
-      workspace.sshs[sessionId] = this.instanceId;
+      workspace.sshs[sessionId] = CommonRef.getInstanceId();
     } else {
       delete workspace.sshs[sessionId];
     }
     await this.cache.set<CachedWorkspace>(`workspace:${wsUuid}`, workspace);
+
+    if (add) {
+      this.handleNewSSHSession(add.uid, sessionId, add.msg);
+    }
   }
 }

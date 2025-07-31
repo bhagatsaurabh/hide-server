@@ -13,20 +13,9 @@ import { NotificationReadDTO } from './common/dto';
 
 @Controller('api')
 export class AppController implements OnModuleInit {
-  constructor(
-    private readonly appService: AppService,
-    // @Inject('NOTIFICATION_SERVICE_REDIS') private readonly redis: ClientProxy,
-  ) {}
+  constructor(private readonly appService: AppService) {}
 
-  onModuleInit() {
-    /* setTimeout(() => {
-      this.redis.emit('test.pattern', { hi: 'hello' }).subscribe({
-        next: (val) => console.log('Received: ', val),
-        error: (err) => console.log('Error: ', err),
-        complete: () => console.log('Done'),
-      });
-    }, 2000); */
-  }
+  onModuleInit() {}
 
   @MessagePattern('notification.send', Transport.RMQ)
   async handleNotification(@Payload() msg: ServiceMessage<NotifyUser<UserNotificationPayload>>) {

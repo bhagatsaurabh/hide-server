@@ -9,25 +9,9 @@ export class SearchController implements OnModuleInit {
   constructor(
     private readonly searchService: SearchService,
     @Inject('USER_SERVICE_RMQ') private _rmq: ClientProxy,
-    // @Inject('USER_SERVICE_REDIS') private redis: ClientProxy,
   ) {}
 
-  async onModuleInit() {
-    /* const [pub, sub] = RedisRef.get();
-
-    await sub.subscribe('test.pattern');
-    sub.on('message', (chan, message) => {
-      if (chan !== 'test.pattern') return;
-      const parsed = JSON.parse(message) as { id: string; data: unknown };
-      console.log('Received: ', parsed);
-      if (parsed.id) {
-        void pub.publish(
-          `${chan}.reply`,
-          JSON.stringify({ id: parsed.id, data: { beep: 'boop' }, pattern: `${chan}.reply` }),
-        );
-      }
-    }); */
-  }
+  async onModuleInit() {}
 
   @Get('search')
   async search(@Query('q') query: string, @Query('page') page: number, @UserHeader() user: User) {

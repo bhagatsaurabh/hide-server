@@ -26,7 +26,6 @@ import { CommonRef } from 'src/common/refs/common.ref';
 export class CoreController implements OnModuleInit, OnModuleDestroy {
   redisServer: [Redis, Redis];
   cache: Cache;
-  instanceId: string;
   channels: string[];
 
   constructor(
@@ -35,9 +34,9 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
     private readonly workspaceService: WorkspaceService,
   ) {
     CommonRef.setInstanceId(randomUUID());
-    this.instanceId = CommonRef.getInstanceId();
+    const instanceId = CommonRef.getInstanceId();
     this.cache = this.cacheService.get();
-    this.channels = [`env.${this.instanceId}`, `env.${this.instanceId}.health`];
+    this.channels = [`env.${instanceId}`, `env.${instanceId}.health`];
   }
 
   async onModuleInit() {

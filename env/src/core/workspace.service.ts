@@ -180,7 +180,7 @@ export class WorkspaceService {
 
     switch (msg.action) {
       case 'ssh.request': {
-        this.sshService.handleRequest(uid, sessionId, msg.payload);
+        this.sshService.handleSSHConnection(uid, sessionId, msg.payload);
         break;
       }
       case 'fs.open': {
@@ -240,6 +240,9 @@ export class WorkspaceService {
     const res = await fetch(`http://workspace-${wsUuid}/api/stat?path=${path}`, {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     });
+    if (res.status < 200 || res.status > 299) {
+      throw new Error('Not found');
+    }
     return (await res.json()) as StatDTO;
   }
 
