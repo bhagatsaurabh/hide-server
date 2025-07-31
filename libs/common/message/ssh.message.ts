@@ -5,6 +5,7 @@ export type SSHAction = "ssh.request" | "ssh.data" | "ssh.close";
 
 export interface SSHRequest extends InSocketMessageEnv {
   privateKey: string;
+  clientId: string;
 }
 export interface SSHData extends InSocketMessageEnv {
   sshSessionId: string;
@@ -31,6 +32,7 @@ export type SSHPayload = {
 
 export interface SSHOpen extends OutSocketMessagePayload {
   sshSessionId: string;
+  clientId: string;
 }
 export interface SSHOutput extends OutSocketMessagePayload {
   sshSessionId: string;
