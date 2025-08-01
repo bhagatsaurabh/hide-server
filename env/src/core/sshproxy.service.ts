@@ -107,7 +107,6 @@ export class SSHProxyService {
             msg: { action: 'output', payload: { sshSessionId, output: data.toString() } },
           },
         });
-        console.log('Sent', sshSessionId);
       });
       stream.on('close', () => {
         this.redis.emit<any, ServiceEvent<SocketSend<'ssh'>>>('socket.send', {
@@ -128,7 +127,6 @@ export class SSHProxyService {
           msg: { action: 'open', payload: { sshSessionId, clientId: msg.clientId } },
         },
       });
-      console.log('Open', sshSessionId);
     });
   }
 
@@ -136,7 +134,6 @@ export class SSHProxyService {
     const stream = this.conns[uid]?.[msg.uuid].sessions?.[msg.sshSessionId];
     if (stream) {
       stream.write(msg.input);
-      console.log('Rec', msg.sshSessionId);
     }
   }
   async handleSSHClose(uid: string, sessionId: string, msg: SSHClose) {

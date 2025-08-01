@@ -33,7 +33,7 @@ import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class WorkspaceService {
-  root = '/home/devuser/workspace';
+  root = '/workspace';
   cache: Cache;
   redlock: Redlock;
   lockClient: Redis;
@@ -105,6 +105,8 @@ export class WorkspaceService {
     if (!lock) throw new Error('Could not acquire lock on workspace');
 
     try {
+      await this.invalidatePreviousSessions(uid, msg.uuid);
+
       let workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(msg.uuid));
       let dirty = false;
       if (!workspace) {
@@ -116,10 +118,22 @@ export class WorkspaceService {
         dirty = true;
       }
       if (dirty) {
-        this.redis.emit(`workspace.${msg.uuid}.affine`, { envInstanceId: CommonRef.getInstanceId() });
+        const res = await fetch(
+          `http://workspace-${msg.uuid}/api/affine?envId=${CommonRef.getInstanceId()}`,
+          {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
+        if (res.status < 200 || res.status > 299) {
+          throw new Error();
+        }
         this.fsService.setWorkspace(msg.uuid);
         await this.cache.set(CACHEKEY_WORKSPACE(msg.uuid), workspace);
       }
+    } catch (error) {
+      console.log(error);
+      throw new RpcError(500, 'Unknown error');
     } finally {
       await lock.release();
     }
@@ -236,6 +250,29 @@ export class WorkspaceService {
     return { evt, value, chan };
   }
 
+  async invalidatePreviousSessions(uid: string, uuid: string) {
+    const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
+    if (!presence) return;
+
+    for (const [sessionId, session] of Object.entries(presence)) {
+      if (session.wsUuid === uuid) {
+        delete session.wsUuid;
+        await this.cache.del(CACHEKEY_PRESENCE_WORKSPACE(uid, sessionId, uuid));
+      }
+    }
+    await this.cache.set(CACHEKEY_PRESENCE(uid), presence);
+
+    const workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(uuid));
+    if (workspace) {
+      const paths = Object.entries(workspace.dirs)
+        .filter(([_, uids]) => uids.includes(uid))
+        .map((dir) => dir[0]);
+      this.fsService.closeDirs(uid, uuid, paths, workspace);
+
+      await this.cache.set(CACHEKEY_WORKSPACE(uuid), workspace);
+    }
+  }
+
   async getStat(wsUuid: string, path: string) {
     const res = await fetch(`http://workspace-${wsUuid}/api/stat?path=${path}`, {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -271,13 +308,13 @@ export class WorkspaceService {
     }
   }
   async handleClose(uid: string, msg: FSClose) {
-    const path = this.root + msg.path;
+    msg.path = this.root + msg.path;
     try {
-      const stat = await this.getStat(msg.uuid, path);
+      const stat = await this.getStat(msg.uuid, msg.path);
       if (stat.isDir) {
-        return await this.fsService.closeDir(uid, msg.uuid, path);
+        return await this.fsService.closeDir(uid, msg.uuid, msg.path);
       }
-      return await this.syncService.closeFile(uid, msg.uuid, path);
+      return await this.syncService.closeFile(uid, msg.uuid, msg.path);
     } catch (err) {
       console.log(err);
       return;

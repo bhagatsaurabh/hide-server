@@ -67,7 +67,7 @@ func CommitDockerImage(uuid string, baseImage string) error {
 }
 
 func copyWorkspaceFromContainer(ctx context.Context, cli *client.Client, containerId string, tempDir string) error {
-	reader, _, err := cli.CopyFromContainer(ctx, containerId, "/home/devuser/workspace")
+	reader, _, err := cli.CopyFromContainer(ctx, containerId, "/workspace")
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func untar(reader io.Reader, target string) error {
 }
 
 func generateDockerfile(baseImage string, tempDir string) (string, error) {
-	dockerfile := fmt.Sprintf("FROM %s\nCOPY workspace /home/devuser/workspace\n", baseImage)
+	dockerfile := fmt.Sprintf("FROM %s\nCOPY workspace /workspace\n", baseImage)
 	dockerfilePath := filepath.Join(tempDir, "Dockerfile")
 	return dockerfilePath, os.WriteFile(dockerfilePath, []byte(dockerfile), 0644)
 }

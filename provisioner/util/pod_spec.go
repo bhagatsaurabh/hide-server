@@ -63,7 +63,7 @@ func GetPodSpec(wsUuid string, image string, publicKey string, devEnv string) *v
 					Env:             envs,
 					VolumeMounts: []v1.VolumeMount{
 						{
-							MountPath: "/home/devuser/workspace",
+							MountPath: "/workspace",
 							Name:      fmt.Sprintf("workspace-volume-%s", wsUuid),
 						},
 						{
