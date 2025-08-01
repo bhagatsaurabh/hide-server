@@ -33,7 +33,7 @@ type WatchEventState = {
 
 @Injectable()
 export class FSService {
-  root = '/home/devuser/workspace';
+  root = '/workspace';
   idleTimeout: NodeJS.Timeout;
   state: Record<string, WatchEventState> = {};
   debounceTime = 250;
@@ -98,6 +98,16 @@ export class FSService {
   }
   async closeDir(uid: string, wsUuid: string, path: string) {
     await this.updateCache(uid, wsUuid, path, false);
+  }
+  closeDirs(uid: string, wsUuid: string, paths: string[], workspace: CachedWorkspace) {
+    paths.forEach((path) => {
+      const watchers = workspace.dirs[path];
+      watchers.splice(watchers.indexOf(uid), 1);
+      if (watchers.length === 0) {
+        delete workspace.dirs[path];
+        this.redis.emit(`workspace.${wsUuid}.watch.remove`, { path });
+      }
+    });
   }
   async updateCache(uid: string, wsUuid: string, path: string, add: boolean) {
     const workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(wsUuid));
@@ -200,14 +210,21 @@ export class FSService {
         }
       }
 
-      this.cleanPaths(event);
-      for (const uid of wCache.dirs[event.watchedPath]) {
+      console.log(wCache.dirs, event.watchedPath);
+      if (event.watchedPath === '/workspace') {
+        event.watchedPath = event.watchedPath + '/';
+      }
+
+      for (const uid of wCache.dirs[event.watchedPath] ?? []) {
         if (!batches[uid]) batches[uid] = [];
         batches[uid].push(event);
       }
+
+      console.log(batches);
     }
 
     const { uids, sessionIds } = await this.getWatchingUsersFromUid(uuid, Object.keys(batches));
+    console.log(uids, sessionIds);
     sessionIds.forEach((sessionId, idx) => {
       if (!sessionId) return;
       this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
@@ -219,14 +236,17 @@ export class FSService {
           msg: { action: 'batch', payload: { events: batches[uids[idx]] || [] } },
         },
       });
+      console.log('Sent', uids[idx], sessionId);
     });
   }
 
   cleanPaths(event: FSEvent) {
     event.path = event.path.replace(this.root, '');
     if (event.path === '') event.path = '/';
+
     event.watchedPath = event.watchedPath.replace(this.root, '');
     if (event.watchedPath === '') event.watchedPath = '/';
+
     if (event.oldPath) {
       event.oldPath = event.oldPath.replace(this.root, '');
       if (event.oldPath === '') event.oldPath = '/';

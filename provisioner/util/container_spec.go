@@ -25,6 +25,10 @@ func GetContainerSpec(workspaceUUID, image, publicKey string) *container.Config 
 	containerSpec := &container.Config{
 		Image: image,
 		Env:   envs,
+		Labels: map[string]string{
+			"com.docker.compose.project": "hide-server",
+			"com.docker.compose.service": fmt.Sprintf("workspace-%s", workspaceUUID),
+		},
 	}
 
 	return containerSpec
@@ -35,7 +39,7 @@ func GetHostConfig(wsUuid string) *container.HostConfig {
 		{
 			Type:   mount.TypeVolume,
 			Source: fmt.Sprintf("workspace-volume-%s", wsUuid),
-			Target: "/home/devuser/workspace",
+			Target: "/workspace",
 		},
 		{
 			Type:   mount.TypeVolume,

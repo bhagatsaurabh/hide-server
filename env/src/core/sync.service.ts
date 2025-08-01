@@ -26,7 +26,7 @@ export type DocState = Map<string, ActiveDocs>;
 
 @Injectable()
 export class SyncService {
-  root = '/home/devuser/workspace';
+  root = '/workspace';
   docs: DocState = new Map<string, ActiveDocs>();
   cache: Cache;
 
@@ -73,7 +73,7 @@ export class SyncService {
 
       await this.updateCache(uuid, path, true);
     } catch (error) {
-      void error;
+      console.log(error);
       if (correlationId) {
         this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
           meta: { uid, sessionId },
