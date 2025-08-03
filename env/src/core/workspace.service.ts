@@ -241,6 +241,7 @@ export class WorkspaceService {
         break;
       }
       case 'fs.sync': {
+        console.log('Received Sync', msg.payload.path);
         value = await this.syncService.handleSync(uid, sessionId, msg.payload);
         break;
       }
@@ -308,6 +309,7 @@ export class WorkspaceService {
     }
   }
   async handleClose(uid: string, msg: FSClose) {
+    console.log('Req close');
     msg.path = this.root + msg.path;
     try {
       const stat = await this.getStat(msg.uuid, msg.path);

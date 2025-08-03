@@ -42,6 +42,7 @@ export class SyncService {
       let activeDocs = this.docs.get(uuid);
       if (!activeDocs) {
         activeDocs = new Map();
+        this.docs.set(uuid, activeDocs);
       }
       let doc = activeDocs.get(path);
       if (!doc) {
@@ -56,6 +57,8 @@ export class SyncService {
         activeDocs.set(path, doc);
       }
       doc.users.set(uid, new Set());
+
+      await this.updateCache(uuid, path, true);
       await this.initialSync(uid, path, doc, sessionId);
 
       this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
@@ -70,8 +73,6 @@ export class SyncService {
           },
         },
       });
-
-      await this.updateCache(uuid, path, true);
     } catch (error) {
       console.log(error);
       if (correlationId) {
@@ -88,6 +89,7 @@ export class SyncService {
     }
   }
   async closeFile(uid: string, uuid: string, path: string) {
+    console.log('CLOSING');
     const doc = this.docs.get(uuid)?.get(path);
     if (!doc || !doc.users.has(uid)) return;
 
@@ -116,13 +118,14 @@ export class SyncService {
         msg: {
           action: 'sync',
           payload: {
-            path: path.replace(this.root, ''),
+            path,
             buf: Buffer.from(buf).toString('base64'),
             uuid,
           },
         },
       },
     });
+    console.log('Sent Sync');
   }
   async broadcast(uids: string[], uuid: string, path: string, buf: Uint8Array) {
     const results = await Promise.allSettled(uids.map((uid) => this.getSessionId(uid, uuid)));
@@ -144,13 +147,14 @@ export class SyncService {
         msg: {
           action: 'sync',
           payload: {
-            path: path.replace(this.root, ''),
+            path,
             buf: Buffer.from(buf).toString('base64'),
             uuid,
           },
         },
       },
     });
+    console.log('Sent Sync');
   }
 
   async handleSync(uid: string, sessionId: string, msg: FSSyncIn) {
@@ -221,11 +225,12 @@ export class SyncService {
     return (await res.json()) as string;
   }
   async setFileContent(uuid: string, path: string, content: string) {
-    await fetch(`http://workspace-${uuid}/api/write?path=${path}`, {
+    const res = await fetch(`http://workspace-${uuid}/api/write?path=${path}`, {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       method: 'POST',
       body: JSON.stringify({ content }),
     });
+    console.log('Res', res.status);
   }
   async getSessionId(uid: string, uuid: string) {
     const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));

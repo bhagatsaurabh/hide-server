@@ -1,14 +1,16 @@
 import { createHash } from "node:crypto";
 
-export const debounce = <C extends (...args: any[]) => any>(
+export const debounce = <
+  C extends (...args: never[]) => Promise<never> | Promise<void> | never
+>(
   func: C,
   wait: number
 ) => {
-  let timeout: NodeJS.Timeout | null = null;
+  let timeout: NodeJS.Timeout | number;
 
   return (...args: Parameters<C>): void => {
     if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(() => void func(...args), wait);
+    timeout = setTimeout(() => void func(...args), wait) as unknown as number;
   };
 };
 

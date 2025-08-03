@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { join, resolve, sep } from 'node:path';
-import { debounce } from 'src/utils';
 import { SyncService } from './sync.service';
 import Redlock from 'redlock';
 import Redis from 'ioredis';
@@ -10,6 +9,7 @@ import {
   CachedWorkspace,
   CACHEKEY_PRESENCE,
   CACHEKEY_WORKSPACE,
+  debounce,
   FSOpenDTO,
   InSocketMessage,
   ServiceEvent,
@@ -210,7 +210,6 @@ export class FSService {
         }
       }
 
-      console.log(wCache.dirs, event.watchedPath);
       if (event.watchedPath === '/workspace') {
         event.watchedPath = event.watchedPath + '/';
       }
@@ -219,12 +218,9 @@ export class FSService {
         if (!batches[uid]) batches[uid] = [];
         batches[uid].push(event);
       }
-
-      console.log(batches);
     }
 
     const { uids, sessionIds } = await this.getWatchingUsersFromUid(uuid, Object.keys(batches));
-    console.log(uids, sessionIds);
     sessionIds.forEach((sessionId, idx) => {
       if (!sessionId) return;
       this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
@@ -236,7 +232,6 @@ export class FSService {
           msg: { action: 'batch', payload: { events: batches[uids[idx]] || [] } },
         },
       });
-      console.log('Sent', uids[idx], sessionId);
     });
   }
 
