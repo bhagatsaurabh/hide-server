@@ -262,7 +262,7 @@ export class SocketGateway
     if (this.stickyActions.includes(msg.action)) {
       let envInstanceId: string;
       if (msg.action === 'fs.sync') {
-        envInstanceId = workspace.docs[msg.payload.path];
+        envInstanceId = workspace.docs['/workspace' + msg.payload.path];
       } else {
         envInstanceId = workspace.sshs[sessionId];
       }
@@ -280,7 +280,7 @@ export class SocketGateway
 
       if (!healthy) {
         if (msg.action === 'fs.sync') {
-          await this.handleFSLoss(socket, workspace, msg.payload.uuid, msg.payload.path);
+          await this.handleFSLoss(socket, workspace, msg.payload.uuid, '/workspace' + msg.payload.path);
         } else if (msg.action === 'ssh.data') {
           await this.handleSSHSLoss(socket, workspace, sessionId, msg.payload.uuid, msg.payload.sshSessionId);
         }

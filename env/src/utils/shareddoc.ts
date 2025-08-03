@@ -34,15 +34,16 @@ export class WSSharedDoc extends Doc {
     this.awareness.on('update', (update: AwarenessUpdate, uid: string) =>
       this.awarenessChangeHandler(update, uid),
     );
-    this.on('update', (update: Uint8Array, origin: unknown, doc: WSSharedDoc, tran: Transaction) =>
-      this.updateHandler(update, origin, doc, tran),
-    );
+    this._flush = debounce(async (uuid: string, path: string) => await flush(uuid, path), this.debounceTime);
+    this.on('update', (update: Uint8Array, origin: unknown, doc: WSSharedDoc, tran: Transaction) => {
+      console.log('Update');
+      this.updateHandler(update, origin, doc, tran);
+    });
 
     const yText = this.getText('monaco');
     const text = content;
     yText.insert(0, text);
     this.computeHash();
-    this._flush = debounce(async (uuid: string, path: string) => await flush(uuid, path), this.debounceTime);
   }
 
   awarenessChangeHandler({ added, updated, removed }: AwarenessUpdate, uid: string) {
@@ -69,13 +70,18 @@ export class WSSharedDoc extends Doc {
     void this.send(Array.from(this.users.keys()), this.uuid, this.name, buf);
   }
   updateHandler(update: Uint8Array, _origin: unknown, doc: WSSharedDoc, _tr: unknown) {
+    console.log('Decode', new TextDecoder().decode(update));
+
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, YMessage.SYNC);
     syncProtocol.writeUpdate(encoder, update);
     const buf = encoding.toUint8Array(encoder);
 
+    console.log('Here');
     applyUpdate(doc, buf, this);
+    console.log('Applied');
     void this.send(Array.from(doc.users.keys()), doc.uuid, doc.name, buf);
+    console.log('Req Flush');
     this._flush(this.uuid, this.name);
   }
 
