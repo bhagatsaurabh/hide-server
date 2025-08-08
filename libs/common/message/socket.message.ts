@@ -10,6 +10,7 @@ import {
   FSFile,
   FSNoop,
   FSOpen,
+  FSOpenAck,
   FSPayload,
   FSSyncIn,
   InternalWorkspaceWatch,
@@ -62,6 +63,7 @@ export type InSocketMessagePayloadMap =
       "ssh.data": SSHData;
       "ssh.close": SSHClose;
       "fs.open": FSOpen;
+      "fs.open.ack": FSOpenAck;
       "fs.sync": FSSyncIn;
       "fs.close": FSClose;
     };

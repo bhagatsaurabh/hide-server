@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { applyUpdate, Doc, Transaction } from 'yjs';
+import { Doc, Transaction } from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as syncProtocol from 'y-protocols/sync';
 import * as encoding from 'lib0/encoding';
@@ -15,14 +15,16 @@ export class WSSharedDoc extends Doc {
   hash: string;
   awareness: awarenessProtocol.Awareness;
   users: Map<string, Set<number>>;
-  whenInitialized: Promise<void>;
+  whenInitialized: Promise<boolean>;
   debounceTime = 3000;
   _flush: (...args: any[]) => void;
+  private awarenessChangeHandler: (update: AwarenessUpdate, uid: string) => void;
+  private updateHandler: (update: Uint8Array, _origin: unknown, doc: WSSharedDoc, _tr: Transaction) => void;
 
   constructor(
     public name: string,
     public uuid: string,
-    content: string,
+    contentInitializor: (doc: WSSharedDoc) => Promise<boolean>,
     public send: (uids: string[], uuid: string, path: string, buf: Uint8Array) => Promise<void>,
     flush: (uuid: string, path: string) => Promise<void>,
   ) {
@@ -30,33 +32,30 @@ export class WSSharedDoc extends Doc {
     this.users = new Map();
     this.awareness = new awarenessProtocol.Awareness(this);
     this.awareness.setLocalState(null);
+    this.awarenessChangeHandler = this._awarenessChangeHandler.bind(
+      this,
+    ) as typeof this._awarenessChangeHandler;
+    this.updateHandler = this._updateHandler.bind(this) as typeof this._updateHandler;
 
-    this.awareness.on('update', (update: AwarenessUpdate, uid: string) =>
-      this.awarenessChangeHandler(update, uid),
-    );
+    this.awareness.on('update', this.awarenessChangeHandler);
+    this.on('update', this.updateHandler);
+
     this._flush = debounce(async (uuid: string, path: string) => await flush(uuid, path), this.debounceTime);
-    this.on('update', (update: Uint8Array, origin: unknown, doc: WSSharedDoc, tran: Transaction) => {
-      console.log('Update');
-      this.updateHandler(update, origin, doc, tran);
-    });
 
-    const yText = this.getText('monaco');
+    this.whenInitialized = contentInitializor(this);
+    /* const yText = this.getText('monaco');
     const text = content;
     yText.insert(0, text);
-    this.computeHash();
+    this.computeHash(); */
   }
 
-  awarenessChangeHandler({ added, updated, removed }: AwarenessUpdate, uid: string) {
+  _awarenessChangeHandler({ added, updated, removed }: AwarenessUpdate, uid: string): void {
     const changedClients = added.concat(updated, removed);
     if (uid !== null) {
       const userControlledIDs = this.users.get(uid);
       if (userControlledIDs !== undefined) {
-        added.forEach((clientID) => {
-          userControlledIDs.add(clientID);
-        });
-        removed.forEach((clientID) => {
-          userControlledIDs.delete(clientID);
-        });
+        added.forEach((clientID) => userControlledIDs.add(clientID));
+        removed.forEach((clientID) => userControlledIDs.delete(clientID));
       }
     }
 
@@ -69,20 +68,15 @@ export class WSSharedDoc extends Doc {
     const buf = encoding.toUint8Array(encoder);
     void this.send(Array.from(this.users.keys()), this.uuid, this.name, buf);
   }
-  updateHandler(update: Uint8Array, _origin: unknown, doc: WSSharedDoc, _tr: unknown) {
-    console.log('Decode', new TextDecoder().decode(update));
-
+  _updateHandler(update: Uint8Array, _origin: unknown, doc: WSSharedDoc, _tr: Transaction) {
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, YMessage.SYNC);
     syncProtocol.writeUpdate(encoder, update);
     const buf = encoding.toUint8Array(encoder);
 
-    console.log('Here');
-    applyUpdate(doc, buf, this);
-    console.log('Applied');
+    // applyUpdate(doc, buf, this);
     void this.send(Array.from(doc.users.keys()), doc.uuid, doc.name, buf);
-    console.log('Req Flush');
-    this._flush(this.uuid, this.name);
+    // this._flush(this.uuid, this.name);
   }
 
   computeHash(content?: string) {
