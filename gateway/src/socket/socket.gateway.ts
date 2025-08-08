@@ -241,7 +241,7 @@ export class SocketGateway
     }
   }
 
-  stickyActions = ['fs.sync', 'ssh.data', 'ssh.close'];
+  stickyActions = ['fs.sync', 'ssh.data', 'ssh.close', 'fs.open.ack'];
   async handleEnvMessage(socket: TypedSocket, uid: string, sessionId: string, msg: InSocketMessage<'env'>) {
     const workspace = await this.cache.get<CachedWorkspace>(`workspace:${msg.payload.uuid}`);
     if (!workspace) {
@@ -260,10 +260,10 @@ export class SocketGateway
 
     // Sticky route
     if (this.stickyActions.includes(msg.action)) {
-      let envInstanceId: string;
-      if (msg.action === 'fs.sync') {
+      let envInstanceId = '';
+      if (msg.action === 'fs.sync' || msg.action === 'fs.open.ack') {
         envInstanceId = workspace.docs['/workspace' + msg.payload.path];
-      } else {
+      } else if (msg.action === 'ssh.data' || msg.action === 'ssh.close') {
         envInstanceId = workspace.sshs[sessionId];
       }
       let healthy = false;
@@ -279,9 +279,9 @@ export class SocketGateway
       }
 
       if (!healthy) {
-        if (msg.action === 'fs.sync') {
+        if (msg.action === 'fs.sync' || msg.action === 'fs.open.ack') {
           await this.handleFSLoss(socket, workspace, msg.payload.uuid, '/workspace' + msg.payload.path);
-        } else if (msg.action === 'ssh.data') {
+        } else if (msg.action === 'ssh.data' || msg.action === 'ssh.close') {
           await this.handleSSHSLoss(socket, workspace, sessionId, msg.payload.uuid, msg.payload.sshSessionId);
         }
       } else {

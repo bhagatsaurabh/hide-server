@@ -17,7 +17,7 @@ import {
   SocketSend,
 } from 'hide-common';
 import { CommonRef } from 'src/common/refs/common.ref';
-import { FSOpen, FSSyncIn } from 'hide-common/message/filesystem.message';
+import { FSOpen, FSOpenAck, FSSyncIn } from 'hide-common/message/filesystem.message';
 
 // path
 export type ActiveDocs = Map<string, WSSharedDoc>;
@@ -46,20 +46,38 @@ export class SyncService {
       }
       let doc = activeDocs.get(path);
       if (!doc) {
-        const content = await this.getFileContent(uuid, path);
         doc = new WSSharedDoc(
           path,
           uuid,
-          content,
+          (doc) => this.loadFileContent(doc),
           (...a) => this.broadcast(...a),
           (...a) => this.flush(...a),
         );
+        const success = await doc.whenInitialized;
+        if (!success) {
+          if (correlationId) {
+            this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
+              meta: { uid, sessionId },
+              payload: {
+                pattern: correlationId,
+                uid,
+                sessionId,
+                msg: { action: 'error', payload: { error: { code: 'ERR_READ_FILE' } } },
+              },
+            });
+          }
+          // TODO: Cleanup
+          doc.destroy();
+          if (this.docs.get(uuid)?.size === 1) {
+            this.docs.delete(uuid);
+          }
+          return;
+        }
         activeDocs.set(path, doc);
       }
       doc.users.set(uid, new Set());
 
       await this.updateCache(uuid, path, true);
-      await this.initialSync(uid, path, doc, sessionId);
 
       this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
         meta: { uid, sessionId },
@@ -89,7 +107,6 @@ export class SyncService {
     }
   }
   async closeFile(uid: string, uuid: string, path: string) {
-    console.log('CLOSING');
     const doc = this.docs.get(uuid)?.get(path);
     if (!doc || !doc.users.has(uid)) return;
 
@@ -109,6 +126,7 @@ export class SyncService {
     sessionId = sessionId || (await this.getSessionId(uid, uuid));
     if (!sessionId) return;
 
+    console.log('Send', performance.now(), new Uint8Array(buf));
     this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
       meta: { uid, sessionId },
       payload: {
@@ -125,9 +143,10 @@ export class SyncService {
         },
       },
     });
-    console.log('Sent Sync');
   }
   async broadcast(uids: string[], uuid: string, path: string, buf: Uint8Array) {
+    if (!uids.length) return;
+
     const results = await Promise.allSettled(uids.map((uid) => this.getSessionId(uid, uuid)));
     const sessionIds = results.map((result) => (result.status === 'fulfilled' ? result.value : undefined));
     const activeUids: string[] = [];
@@ -139,6 +158,7 @@ export class SyncService {
       }
     });
 
+    console.log('Send', performance.now(), new Uint8Array(buf));
     this.redis.emit<any, ServiceEvent<SocketBroadcast<'fs'>>>('socket.broadcast', {
       payload: {
         uids: activeUids,
@@ -154,7 +174,6 @@ export class SyncService {
         },
       },
     });
-    console.log('Sent Sync');
   }
 
   async handleSync(uid: string, sessionId: string, msg: FSSyncIn) {
@@ -165,6 +184,7 @@ export class SyncService {
     try {
       const encoder = encoding.createEncoder();
       const buf = Uint8Array.from(Buffer.from(msg.buf, 'base64'));
+      console.log('Get', performance.now(), new Uint8Array(buf));
       const decoder = decoding.createDecoder(buf);
       const messageType = decoding.readVarUint(decoder) as YMessage;
       switch (messageType) {
@@ -192,11 +212,16 @@ export class SyncService {
     await this.setFileContent(uuid, path, content);
   }
 
-  async initialSync(uid: string, path: string, doc: WSSharedDoc, sessionId: string) {
+  async handleOpenAck(uid: string, sessionId: string, msg: FSOpenAck) {
+    msg.path = this.root + msg.path;
+    const doc = this.docs.get(msg.uuid)?.get(msg.path);
+    if (!doc) return;
+
+    // Initial Sync
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, YMessage.SYNC);
     syncProtocol.writeSyncStep1(encoder, doc);
-    await this.send(uid, doc.uuid, path, encoding.toUint8Array(encoder));
+    await this.send(uid, doc.uuid, msg.path, encoding.toUint8Array(encoder));
     const awarenessStates = doc.awareness.getStates();
     if (awarenessStates.size > 0) {
       const encoder = encoding.createEncoder();
@@ -205,7 +230,7 @@ export class SyncService {
         encoder,
         awarenessProtocol.encodeAwarenessUpdate(doc.awareness, Array.from(awarenessStates.keys())),
       );
-      await this.send(uid, doc.uuid, path, encoding.toUint8Array(encoder), sessionId);
+      await this.send(uid, doc.uuid, msg.path, encoding.toUint8Array(encoder), sessionId);
     }
   }
   async updateCache(uuid: string, path: string, add: boolean) {
@@ -218,11 +243,26 @@ export class SyncService {
     }
     await this.cache.set(CACHEKEY_WORKSPACE(uuid), wCache);
   }
-  async getFileContent(uuid: string, path: string) {
-    const res = await fetch(`http://workspace-${uuid}/api/read?path=${path}`, {
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    });
-    return (await res.json()) as string;
+  async loadFileContent(doc: WSSharedDoc) {
+    try {
+      const res = await fetch(`http://workspace-${doc.uuid}/api/read?path=${doc.name}`, {
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      });
+      const data = (await res.json()) as { content: string };
+      if (!res.ok) {
+        console.log('Failed to read file', data);
+        return false;
+      }
+
+      console.log(data.content);
+      const ytext = doc.getText('monaco');
+      ytext.insert(0, data.content);
+
+      return true;
+    } catch (error) {
+      console.log(error);
+    }
+    return false;
   }
   async setFileContent(uuid: string, path: string, content: string) {
     const res = await fetch(`http://workspace-${uuid}/api/write?path=${path}`, {
@@ -230,7 +270,6 @@ export class SyncService {
       method: 'POST',
       body: JSON.stringify({ content }),
     });
-    console.log('Res', res.status);
   }
   async getSessionId(uid: string, uuid: string) {
     const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));

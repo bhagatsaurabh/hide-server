@@ -37,7 +37,7 @@ export class WorkspaceService {
   cache: Cache;
   redlock: Redlock;
   lockClient: Redis;
-  stickyActions = ['fs.sync', 'ssh.data', 'ssh.close', 'workspace.watch', 'doc.hash'];
+  stickyActions = ['fs.sync', 'ssh.data', 'ssh.close', 'workspace.watch', 'doc.hash', 'fs.open.ack'];
 
   constructor(
     @Inject('ENV_SERVICE_REDIS') private readonly redis: ClientProxy,
@@ -241,8 +241,11 @@ export class WorkspaceService {
         break;
       }
       case 'fs.sync': {
-        console.log('Received Sync', msg.payload.path);
         value = await this.syncService.handleSync(uid, sessionId, msg.payload);
+        break;
+      }
+      case 'fs.open.ack': {
+        value = await this.syncService.handleOpenAck(uid, sessionId, msg.payload);
         break;
       }
       default:
@@ -309,7 +312,6 @@ export class WorkspaceService {
     }
   }
   async handleClose(uid: string, msg: FSClose) {
-    console.log('Req close');
     msg.path = this.root + msg.path;
     try {
       const stat = await this.getStat(msg.uuid, msg.path);

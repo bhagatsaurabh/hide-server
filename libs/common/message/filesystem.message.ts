@@ -2,8 +2,6 @@ import { FSOpenDTO } from "../dto";
 import { InSocketMessageEnv } from "./env.message";
 import { OutSocketMessagePayload } from "./socket.message";
 
-export type FSAction = "fs.sync" | "fs.close";
-
 export type FSEventType = "create" | "remove" | "rename" | "write";
 export type FSEvent = {
   watchedPath: string;
@@ -58,6 +56,9 @@ export interface FSSyncIn extends InSocketMessageEnv {
 }
 
 export interface FSOpen extends InSocketMessageEnv {
+  path: string;
+}
+export interface FSOpenAck extends InSocketMessageEnv {
   path: string;
 }
 
