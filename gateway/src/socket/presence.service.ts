@@ -61,6 +61,9 @@ export class PresenceService {
       ) {
         const workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(wsUuid));
         await this.setWorkspaceState(workspace, uid, sessionId, wsUuid, 'active');
+        if (workspace) {
+          return workspace.dirs['/workspace/'];
+        }
       }
     }
   }

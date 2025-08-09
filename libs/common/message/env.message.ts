@@ -39,10 +39,14 @@ export interface EnvDisconnect extends OutSocketMessagePayload {
 export interface EnvError extends OutSocketMessagePayload {
   code: string;
 }
+export interface EnvAwareness extends OutSocketMessagePayload {
+  uids: string[];
+}
 
 export type EnvResponseMap = {
   disconnect: EnvDisconnect;
   error: EnvError;
+  awareness: EnvAwareness;
 };
 export type EnvPayload = {
   [K in keyof EnvResponseMap]: {
