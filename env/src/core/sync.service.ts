@@ -66,13 +66,13 @@ export class SyncService {
               },
             });
           }
-          // TODO: Cleanup
           doc.destroy();
           if (this.docs.get(uuid)?.size === 1) {
             this.docs.delete(uuid);
           }
           return;
         }
+        doc.computeHash();
         activeDocs.set(path, doc);
       }
       doc.users.set(uid, new Set());
@@ -126,7 +126,6 @@ export class SyncService {
     sessionId = sessionId || (await this.getSessionId(uid, uuid));
     if (!sessionId) return;
 
-    console.log('Send', performance.now(), new Uint8Array(buf));
     this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
       meta: { uid, sessionId },
       payload: {
@@ -158,7 +157,6 @@ export class SyncService {
       }
     });
 
-    console.log('Send', performance.now(), new Uint8Array(buf));
     this.redis.emit<any, ServiceEvent<SocketBroadcast<'fs'>>>('socket.broadcast', {
       payload: {
         uids: activeUids,
@@ -184,7 +182,6 @@ export class SyncService {
     try {
       const encoder = encoding.createEncoder();
       const buf = Uint8Array.from(Buffer.from(msg.buf, 'base64'));
-      console.log('Get', performance.now(), new Uint8Array(buf));
       const decoder = decoding.createDecoder(buf);
       const messageType = decoding.readVarUint(decoder) as YMessage;
       switch (messageType) {
@@ -254,7 +251,6 @@ export class SyncService {
         return false;
       }
 
-      console.log(data.content);
       const ytext = doc.getText('monaco');
       ytext.insert(0, data.content);
 
@@ -265,11 +261,18 @@ export class SyncService {
     return false;
   }
   async setFileContent(uuid: string, path: string, content: string) {
-    const res = await fetch(`http://workspace-${uuid}/api/write?path=${path}`, {
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      method: 'POST',
-      body: JSON.stringify({ content }),
-    });
+    try {
+      const res = await fetch(`http://workspace-${uuid}/api/write?path=${path}`, {
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      });
+      if (res.status < 200 || res.status > 299) {
+        console.log('Failed to write file', await res.json());
+      }
+    } catch (error) {
+      console.log(error);
+    }
   }
   async getSessionId(uid: string, uuid: string) {
     const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));

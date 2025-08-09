@@ -16,7 +16,7 @@ export class WSSharedDoc extends Doc {
   awareness: awarenessProtocol.Awareness;
   users: Map<string, Set<number>>;
   whenInitialized: Promise<boolean>;
-  debounceTime = 3000;
+  debounceTime = 5000;
   _flush: (...args: any[]) => void;
   private awarenessChangeHandler: (update: AwarenessUpdate, uid: string) => void;
   private updateHandler: (update: Uint8Array, _origin: unknown, doc: WSSharedDoc, _tr: Transaction) => void;
@@ -43,10 +43,6 @@ export class WSSharedDoc extends Doc {
     this._flush = debounce(async (uuid: string, path: string) => await flush(uuid, path), this.debounceTime);
 
     this.whenInitialized = contentInitializor(this);
-    /* const yText = this.getText('monaco');
-    const text = content;
-    yText.insert(0, text);
-    this.computeHash(); */
   }
 
   _awarenessChangeHandler({ added, updated, removed }: AwarenessUpdate, uid: string): void {
@@ -76,7 +72,7 @@ export class WSSharedDoc extends Doc {
 
     // applyUpdate(doc, buf, this);
     void this.send(Array.from(doc.users.keys()), doc.uuid, doc.name, buf);
-    // this._flush(this.uuid, this.name);
+    this._flush(this.uuid, this.name);
   }
 
   computeHash(content?: string) {

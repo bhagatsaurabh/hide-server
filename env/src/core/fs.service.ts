@@ -301,11 +301,20 @@ export class FSService {
     return { uids, sessionIds };
   }
   async getFileHash(uuid: string, path: string) {
-    const res = await fetch(`http://workspace-${uuid}/api/hash?path=${path}`, {
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    });
-    const { hash } = (await res.json()) as { hash: string };
-    return hash;
+    try {
+      const res = await fetch(`http://workspace-${uuid}/api/hash?path=${path}`, {
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      });
+      const data = (await res.json()) as { hex: string };
+      if (!res.ok) {
+        console.log('Failed to get file hash', data);
+        return '';
+      }
+      return data.hex;
+    } catch (error) {
+      console.log(error);
+    }
+    return '';
   }
   async getDocHash(uuid: string, path: string, wCache: CachedWorkspace) {
     let hash: string | undefined;

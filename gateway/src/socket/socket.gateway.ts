@@ -237,7 +237,15 @@ export class SocketGateway
     if (msg.service === 'env') {
       await this.handleEnvMessage(socket, uid, sessionId, msg);
     } else if (msg.service === 'presence') {
-      await this.presenceService.handlePresenceMessage(uid, sessionId, presence, msg);
+      const awareness = await this.presenceService.handlePresenceMessage(uid, sessionId, presence, msg);
+      if (awareness) {
+        void this.send<'env'>({
+          pattern: 'env',
+          uid,
+          sessionId,
+          msg: { action: 'awareness', payload: { uids: awareness } },
+        });
+      }
     }
   }
 
