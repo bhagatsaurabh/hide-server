@@ -84,3 +84,14 @@ export type ProvisionPayload = {
     payload: ProvisionResponseMap[K];
   };
 }[keyof ProvisionResponseMap];
+
+////////////////////
+
+export interface CommandMap {
+  "file.new": { name: string };
+  "folder.new": { name: string };
+}
+export interface WSRun<K extends keyof CommandMap> extends InSocketMessageEnv {
+  command: K;
+  ctx: CommandMap[K];
+}

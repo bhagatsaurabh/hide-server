@@ -30,6 +30,7 @@ import { SSHProxyService } from './sshproxy.service';
 import { CommonRef } from 'src/common/refs/common.ref';
 import { firstValueFrom } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
+import { CommandMap, WSRun } from 'hide-common/message/env.message';
 
 @Injectable()
 export class WorkspaceService {
@@ -37,7 +38,15 @@ export class WorkspaceService {
   cache: Cache;
   redlock: Redlock;
   lockClient: Redis;
-  stickyActions = ['fs.sync', 'ssh.data', 'ssh.close', 'workspace.watch', 'doc.hash', 'fs.open.ack'];
+  stickyActions = [
+    'fs.sync',
+    'ssh.data',
+    'ssh.close',
+    'workspace.watch',
+    'doc.hash',
+    'fs.open.ack',
+    'ws.run',
+  ];
 
   constructor(
     @Inject('ENV_SERVICE_REDIS') private readonly redis: ClientProxy,
@@ -248,6 +257,10 @@ export class WorkspaceService {
         value = await this.syncService.handleOpenAck(uid, sessionId, msg.payload);
         break;
       }
+      case 'ws.run': {
+        value = await this.runCommand(uid, sessionId, msg.payload);
+        break;
+      }
       default:
         break;
     }
@@ -322,6 +335,21 @@ export class WorkspaceService {
     } catch (err) {
       console.log(err);
       return;
+    }
+  }
+
+  async runCommand(uid: string, sessionId: string, msg: WSRun<keyof CommandMap>) {
+    switch (msg.command) {
+      case 'file.new': {
+        // TODO
+        break;
+      }
+      case 'folder.new': {
+        // TODO
+        break;
+      }
+      default:
+        break;
     }
   }
 
