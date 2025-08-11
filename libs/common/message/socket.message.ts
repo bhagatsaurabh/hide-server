@@ -1,8 +1,10 @@
 import {
+  CommandMap,
   EnvPayload,
   InSocketMessageEnv,
   InternalDocHash,
   ProvisionPayload,
+  WSRun,
 } from "./env.message";
 import {
   FSClose,
@@ -66,6 +68,7 @@ export type InSocketMessagePayloadMap =
       "fs.open.ack": FSOpenAck;
       "fs.sync": FSSyncIn;
       "fs.close": FSClose;
+      "ws.run": WSRun<keyof CommandMap>;
     };
     presence: {
       "session.ping": PresencePing;

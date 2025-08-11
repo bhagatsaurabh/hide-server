@@ -249,7 +249,7 @@ export class SocketGateway
     }
   }
 
-  stickyActions = ['fs.sync', 'ssh.data', 'ssh.close', 'fs.open.ack'];
+  stickyActions = ['fs.sync', 'ssh.data', 'ssh.close', 'fs.open.ack', 'ws.run'];
   async handleEnvMessage(socket: TypedSocket, uid: string, sessionId: string, msg: InSocketMessage<'env'>) {
     const workspace = await this.cache.get<CachedWorkspace>(`workspace:${msg.payload.uuid}`);
     if (!workspace) {
@@ -273,6 +273,8 @@ export class SocketGateway
         envInstanceId = workspace.docs['/workspace' + msg.payload.path];
       } else if (msg.action === 'ssh.data' || msg.action === 'ssh.close') {
         envInstanceId = workspace.sshs[sessionId];
+      } else if (msg.action === 'ws.run') {
+        envInstanceId = workspace.fs;
       }
       let healthy = false;
       try {
@@ -291,6 +293,13 @@ export class SocketGateway
           await this.handleFSLoss(socket, workspace, msg.payload.uuid, '/workspace' + msg.payload.path);
         } else if (msg.action === 'ssh.data' || msg.action === 'ssh.close') {
           await this.handleSSHSLoss(socket, workspace, sessionId, msg.payload.uuid, msg.payload.sshSessionId);
+        } else if (msg.action === 'ws.run') {
+          if (msg.correlationId) {
+            socket.emit(msg.correlationId, {
+              action: 'error',
+              payload: { error: { code: 'WS_NOT_REACHABLE' } },
+            });
+          }
         }
       } else {
         this.redis.emit<any, ServiceEvent<InSocketMessage<'env'>>>(`env.${envInstanceId}`, {
