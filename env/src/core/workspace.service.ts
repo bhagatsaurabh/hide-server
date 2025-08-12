@@ -258,7 +258,7 @@ export class WorkspaceService {
         break;
       }
       case 'ws.run': {
-        value = await this.runCommand(uid, sessionId, msg.payload);
+        value = await this.runCommand(uid, sessionId, msg.payload, msg.correlationId);
         break;
       }
       default:
@@ -338,18 +338,23 @@ export class WorkspaceService {
     }
   }
 
-  async runCommand(uid: string, sessionId: string, msg: WSRun<keyof CommandMap>) {
-    switch (msg.command) {
-      case 'file.new': {
-        // TODO
-        break;
+  async runCommand(uid: string, sessionId: string, msg: WSRun<keyof CommandMap>, correlationId?: string) {
+    const res = await fetch(`http://workspace-${msg.uuid}/api/command`, {
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ command: msg.command, data: msg.ctx }),
+    });
+    if (res.status < 200 || res.status > 299) {
+      if (correlationId) {
+        this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
+          meta: { uid, sessionId },
+          payload: {
+            uid,
+            sessionId,
+            pattern: correlationId,
+            msg: { action: 'error', payload: { error: { code: 'UNKNOWN' } } },
+          },
+        });
       }
-      case 'folder.new': {
-        // TODO
-        break;
-      }
-      default:
-        break;
     }
   }
 
