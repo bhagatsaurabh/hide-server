@@ -341,10 +341,11 @@ export class WorkspaceService {
   async runCommand(uid: string, sessionId: string, msg: WSRun<keyof CommandMap>, correlationId?: string) {
     const res = await fetch(`http://workspace-${msg.uuid}/api/command`, {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      method: 'POST',
       body: JSON.stringify({ command: msg.command, data: msg.ctx }),
     });
-    if (res.status < 200 || res.status > 299) {
-      if (correlationId) {
+    if (correlationId) {
+      if (res.status < 200 || res.status > 299) {
         this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
           meta: { uid, sessionId },
           payload: {
@@ -352,6 +353,16 @@ export class WorkspaceService {
             sessionId,
             pattern: correlationId,
             msg: { action: 'error', payload: { error: { code: 'UNKNOWN' } } },
+          },
+        });
+      } else {
+        this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
+          meta: { uid, sessionId },
+          payload: {
+            uid,
+            sessionId,
+            pattern: correlationId,
+            msg: { action: 'success', payload: {} },
           },
         });
       }
