@@ -146,7 +146,7 @@ export class SSHProxyService {
       return;
     }
 
-    this.conns[uid]?.[msg.uuid].sessions?.[msg.sshSessionId]?.close();
+    this.conns[uid]?.[msg.uuid]?.sessions?.[msg.sshSessionId]?.close();
     if (Object.keys(this.conns[uid]?.[msg.uuid].sessions || {}).length === 0) {
       await this.updateConnCache(sessionId, msg.uuid);
     }

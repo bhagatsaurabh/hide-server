@@ -130,6 +130,7 @@ export class FSService {
   async handleWatchEvent(msg: InternalWorkspaceWatch) {
     const { uuid, event } = msg;
     const wState = this.state[uuid];
+    console.log('Busy:', wState.busy, wState.events.length, wState.buffer.length);
     if (!wState || wState.busy) return;
     wState[wState.isProcessing ? 'buffer' : 'events'].push(event);
 
@@ -137,8 +138,9 @@ export class FSService {
     wState.process(uuid);
   }
   async burstProtection(wState: WatchEventState) {
-    const threshold = parseInt(process.env.EVENT_QUEUE_SIZE || '100');
+    const threshold = parseInt(process.env.EVENT_QUEUE_SIZE || '10');
     if (wState.events.length >= threshold || wState.buffer.length >= threshold) {
+      console.log('Threshold:', wState.busy, wState.events.length, wState.buffer.length);
       const paths = new Set<string>();
       let events: FSEvent[];
       if (wState.events.length >= threshold) events = wState.events;
@@ -170,11 +172,13 @@ export class FSService {
     const wState = this.state[wsUuid];
     if (!wState) return;
     if (wState.busy) {
+      console.log('Resuming:', wState.busy, wState.events.length, wState.buffer.length);
       const { uids, sessionIds } = await this.getWatchingUsersFromPath(wsUuid, wState.busy.path);
       for (let idx = 0; idx < sessionIds.length; idx += 1) {
         const sessionId = sessionIds[idx];
         if (!sessionId) continue;
         this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+          meta: { uid: uids[idx], sessionId },
           payload: {
             uid: uids[idx],
             pattern: 'fs',
@@ -187,6 +191,7 @@ export class FSService {
       return;
     }
 
+    console.log('Blocking:', wState.busy, wState.events.length, wState.buffer.length);
     wState.isProcessing = true;
     await this.sync(wState);
     wState.events = wState.buffer;
