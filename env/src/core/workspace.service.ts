@@ -155,6 +155,7 @@ export class WorkspaceService {
     await this.cache.set(CACHEKEY_PRESENCE_WORKSPACE(uid, msg.sessionId, msg.uuid), 1, 20000);
   }
   async handleEnvClose(uid: string, msg: EnvCloseRequest) {
+    console.log('Closing');
     if (!(await this.isAMember(uid, msg.uuid))) return;
 
     const lock = await this.acquireLock(msg.uuid);
@@ -177,17 +178,22 @@ export class WorkspaceService {
 
       // Close all user ssh sessions
       await this.sshService.handleSSHClose(uid, sessionId, { uuid: msg.uuid, sshSessionId: '#all' });
+      console.log('SSHS Closed');
 
       // TODO: Batch Optimization
       // Close all user opened dirs
+      console.log(workspace.dirs);
       const dirs = Object.entries(workspace.dirs)
         .map(([path, uids]) => (uids.includes(uid) ? path : null))
         .filter((path) => !!path) as string[];
+      console.log(dirs);
       await Promise.allSettled(dirs.map((dir) => this.fsService.closeDir(uid, msg.uuid, dir)));
+      console.log('Dirs Closed');
 
       // Fetch updated workspace
       workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(msg.uuid));
       if (!workspace) return;
+      console.log(workspace.dirs);
       if (Object.keys(workspace.dirs).length === 0) {
         // Mark for immediate de-provisioning
         workspace.state = 'inactive';
