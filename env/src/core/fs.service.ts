@@ -21,25 +21,35 @@ import { FSEvent, FSOpen, InternalWorkspaceWatch } from 'hide-common/message/fil
 import { CommonRef } from 'src/common/refs/common.ref';
 import { firstValueFrom } from 'rxjs';
 
-type WatchEventState = {
-  uuid: string;
-  events: Array<FSEvent>;
-  buffer: Array<FSEvent>;
-  isProcessing: boolean;
-  busy: { path: string } | null;
-  process: (wsUuid: string) => void;
-  timer?: NodeJS.Timeout;
-};
-
 @Injectable()
 export class FSService {
   root = '/workspace';
   idleTimeout: NodeJS.Timeout;
-  state: Record<string, WatchEventState> = {};
   debounceTime = 250;
   redlock: Redlock;
   lockClient: Redis;
   cache: Cache;
+
+  pathState: Record<
+    string,
+    {
+      uuid: string;
+      batch: FSEvent[];
+      paths: Map<
+        string,
+        {
+          lastEvent: number;
+          count: number;
+          bursting: boolean;
+          cooldownTimer?: NodeJS.Timeout;
+        }
+      >;
+      process: (wsUuid: string) => void;
+    }
+  > = {};
+  BURST_THRESHOLD = 50;
+  BURST_INTERVAL = 200;
+  COOLDOWN = 500;
 
   constructor(
     @Inject('ENV_SERVICE_REDIS') private redis: ClientProxy,
@@ -50,12 +60,10 @@ export class FSService {
   }
 
   setWorkspace(wsUuid: string) {
-    this.state[wsUuid] = {
+    this.pathState[wsUuid] = {
       uuid: wsUuid,
-      events: [],
-      buffer: [],
-      isProcessing: false,
-      busy: null,
+      paths: new Map(),
+      batch: [],
       process: debounce(async (wsUuid: string) => await this._process(wsUuid), this.debounceTime),
     };
   }
@@ -127,83 +135,66 @@ export class FSService {
     await this.cache.set(CACHEKEY_WORKSPACE(wsUuid), workspace);
   }
 
-  async handleWatchEvent(msg: InternalWorkspaceWatch) {
-    const { uuid, event } = msg;
-    const wState = this.state[uuid];
-    console.log('Busy:', wState.busy, wState.events.length, wState.buffer.length);
-    if (!wState || wState.busy) return;
-    wState[wState.isProcessing ? 'buffer' : 'events'].push(event);
-
-    wState.busy = await this.burstProtection(wState);
-    wState.process(uuid);
-  }
-  async burstProtection(wState: WatchEventState) {
-    const threshold = parseInt(process.env.EVENT_QUEUE_SIZE || '10');
-    if (wState.events.length >= threshold || wState.buffer.length >= threshold) {
-      console.log('Threshold:', wState.busy, wState.events.length, wState.buffer.length);
-      const paths = new Set<string>();
-      let events: FSEvent[];
-      if (wState.events.length >= threshold) events = wState.events;
-      else events = wState.buffer;
-
-      for (const event of events) {
-        paths.add(event.watchedPath);
-      }
-      const blockedPath = this.commonParent(Array.from(paths));
-      const { uids, sessionIds } = await this.getWatchingUsersFromPath(wState.uuid, blockedPath);
-      sessionIds.forEach((sessionId, idx) => {
-        if (!sessionId) return;
-        this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
-          meta: { uid: uids[idx], sessionId },
-          payload: {
-            uid: uids[idx],
-            pattern: 'fs',
-            sessionId,
-            msg: { action: 'block', payload: { path: blockedPath } },
-          },
-        });
-      });
-
-      return { path: blockedPath };
-    }
-    return null;
-  }
-  async _process(wsUuid: string) {
-    const wState = this.state[wsUuid];
+  async handleWatchEvent({ event, uuid }: InternalWorkspaceWatch) {
+    const wState = this.pathState[uuid];
     if (!wState) return;
-    if (wState.busy) {
-      console.log('Resuming:', wState.busy, wState.events.length, wState.buffer.length);
-      const { uids, sessionIds } = await this.getWatchingUsersFromPath(wsUuid, wState.busy.path);
-      for (let idx = 0; idx < sessionIds.length; idx += 1) {
-        const sessionId = sessionIds[idx];
-        if (!sessionId) continue;
-        this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
-          meta: { uid: uids[idx], sessionId },
-          payload: {
-            uid: uids[idx],
-            pattern: 'fs',
-            sessionId,
-            msg: { action: 'resume', payload: { path: wState.busy.path } },
-          },
-        });
-      }
-      wState.busy = null;
+
+    let state = wState.paths.get(event.watchedPath);
+    if (!state) {
+      state = { lastEvent: 0, count: 0, bursting: false };
+      wState.paths.set(event.watchedPath, state);
+    }
+
+    if (event.timestamp - state.lastEvent > this.BURST_INTERVAL) {
+      state.count = 0;
+    }
+    state.count += 1;
+    state.lastEvent = event.timestamp;
+
+    if (!state.bursting && state.count > this.BURST_THRESHOLD) {
+      state.bursting = true;
+      await this.signal(uuid, event.watchedPath, 'block');
+    }
+
+    if (state.bursting) {
+      clearTimeout(state.cooldownTimer);
+      state.cooldownTimer = setTimeout(() => {
+        state.bursting = false;
+        void this.signal(uuid, event.watchedPath, 'resume');
+      }, this.COOLDOWN);
       return;
     }
 
-    console.log('Blocking:', wState.busy, wState.events.length, wState.buffer.length);
-    wState.isProcessing = true;
-    await this.sync(wState);
-    wState.events = wState.buffer;
-    wState.buffer = [];
-    wState.isProcessing = false;
+    wState.batch.push(event);
+    wState.process(uuid);
   }
-  async sync({ events, uuid }: WatchEventState) {
+  async signal(uuid: string, path: string, action: 'resume' | 'block') {
+    const { uids, sessionIds } = await this.getWatchingUsersFromPath(uuid, path);
+    sessionIds.forEach((sessionId, idx) => {
+      if (!sessionId) return;
+      this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+        meta: { uid: uids[idx], sessionId },
+        payload: {
+          uid: uids[idx],
+          pattern: 'fs',
+          sessionId,
+          msg: { action, payload: { path } },
+        },
+      });
+    });
+  }
+  async _process(uuid: string) {
+    const wState = this.pathState[uuid];
+    if (!wState) return;
+    await this.sync(uuid, wState.batch);
+    wState.batch = [];
+  }
+  async sync(uuid: string, batch: FSEvent[]) {
     const wCache = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(uuid));
     if (!wCache) return;
 
     const batches: { [uid: string]: FSEvent[] } = {};
-    for (const event of events) {
+    for (const event of batch) {
       if (event.type === 'file' && event.action === 'write') {
         const docHash = await this.getDocHash(uuid, event.path, wCache);
         if (!docHash) {
