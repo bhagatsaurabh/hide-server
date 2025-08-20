@@ -25,7 +25,7 @@ export interface InternalWorkspaceClose extends InSocketMessageEnv {
 }
 export interface InternalDocHash extends InSocketMessageEnv {
   uuid: string;
-  path: string;
+  ino: number;
 }
 
 ////////////////
