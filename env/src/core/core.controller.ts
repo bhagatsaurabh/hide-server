@@ -7,6 +7,8 @@ import {
   EnvOpenRequest,
   HealthCheck,
   InSocketMessage,
+  InterEnvFSClose,
+  InterEnvFSOpen,
   InternalMessage,
   RpcError,
   ServiceEvent,
@@ -36,7 +38,12 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
     CommonRef.setInstanceId(randomUUID());
     const instanceId = CommonRef.getInstanceId();
     this.cache = this.cacheService.get();
-    this.channels = [`env.${instanceId}`, `env.${instanceId}.health`];
+    this.channels = [
+      `env.${instanceId}`,
+      `env.${instanceId}.health`,
+      `env.${instanceId}.openfile`,
+      `env.${instanceId}.closefile`,
+    ];
   }
 
   async onModuleInit() {
@@ -50,6 +57,28 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
       if (chan.endsWith('.health')) {
         const evt = JSON.parse(message) as InternalMessage<ServiceEvent<HealthCheck>>;
         void pub.publish(`${chan}.reply`, JSON.stringify({ id: evt.id, data: {}, pattern: `${chan}.reply` }));
+        return;
+      } else if (chan.endsWith('.openfile')) {
+        const evt = JSON.parse(message) as InternalMessage<ServiceEvent<InterEnvFSOpen>>;
+        void this.workspaceService.syncService.openFile(
+          evt.data.meta!.uid!,
+          evt.data.meta!.sessionId!,
+          {
+            uuid: evt.data.payload.uuid,
+            path: evt.data.payload.path,
+          },
+          evt.data.payload.stat,
+          evt.data.payload.correlationId,
+        );
+        return;
+      } else if (chan.endsWith('.closefile')) {
+        const evt = JSON.parse(message) as InternalMessage<ServiceEvent<InterEnvFSClose>>;
+        void this.workspaceService.syncService.closeFile(
+          evt.data.meta!.uid!,
+          evt.data.meta!.sessionId!,
+          evt.data.payload.uuid,
+          evt.data.payload.ino,
+        );
         return;
       }
 

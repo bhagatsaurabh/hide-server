@@ -33,7 +33,7 @@ export type CachedWorkspace = {
   };
   // envInstanceId
   docs: {
-    [docId: string]: string;
+    [docId: number]: string;
   };
   // envInstanceId
   sshs: {

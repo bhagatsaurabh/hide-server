@@ -17,16 +17,18 @@ export class WSSharedDoc extends Doc {
   users: Map<string, Set<number>>;
   whenInitialized: Promise<boolean>;
   debounceTime = 5000;
+  isDisplaced = false;
   _flush: (...args: any[]) => void;
   private awarenessChangeHandler: (update: AwarenessUpdate, uid: string) => void;
   private updateHandler: (update: Uint8Array, _origin: unknown, doc: WSSharedDoc, _tr: Transaction) => void;
 
   constructor(
-    public name: string,
+    public ino: number,
+    public path: string,
     public uuid: string,
     contentInitializor: (doc: WSSharedDoc) => Promise<boolean>,
-    public send: (uids: string[], uuid: string, path: string, buf: Uint8Array) => Promise<void>,
-    flush: (uuid: string, path: string) => Promise<void>,
+    public send: (doc: WSSharedDoc, buf: Uint8Array) => Promise<void>,
+    flush: (doc: WSSharedDoc) => Promise<void>,
   ) {
     super({ gc: true });
     this.users = new Map();
@@ -40,7 +42,7 @@ export class WSSharedDoc extends Doc {
     this.awareness.on('update', this.awarenessChangeHandler);
     this.on('update', this.updateHandler);
 
-    this._flush = debounce(async (uuid: string, path: string) => await flush(uuid, path), this.debounceTime);
+    this._flush = debounce(async (doc: WSSharedDoc) => await flush(doc), this.debounceTime);
 
     this.whenInitialized = contentInitializor(this);
   }
@@ -62,7 +64,7 @@ export class WSSharedDoc extends Doc {
       awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients),
     );
     const buf = encoding.toUint8Array(encoder);
-    void this.send(Array.from(this.users.keys()), this.uuid, this.name, buf);
+    void this.send(this, buf);
   }
   _updateHandler(update: Uint8Array, _origin: unknown, doc: WSSharedDoc, _tr: Transaction) {
     const encoder = encoding.createEncoder();
@@ -70,9 +72,8 @@ export class WSSharedDoc extends Doc {
     syncProtocol.writeUpdate(encoder, update);
     const buf = encoding.toUint8Array(encoder);
 
-    // applyUpdate(doc, buf, this);
-    void this.send(Array.from(doc.users.keys()), doc.uuid, doc.name, buf);
-    this._flush(this.uuid, this.name);
+    void this.send(doc, buf);
+    this._flush(this);
   }
 
   computeHash(content?: string) {

@@ -12,15 +12,18 @@ import {
   CachedWorkspace,
   CACHEKEY_PRESENCE,
   CACHEKEY_WORKSPACE,
+  InterEnvFSClose,
+  InterEnvFSOpen,
   ServiceEvent,
   SocketBroadcast,
   SocketSend,
+  StatDTO,
 } from 'hide-common';
 import { CommonRef } from 'src/common/refs/common.ref';
 import { FSOpen, FSOpenAck, FSSyncIn } from 'hide-common/message/filesystem.message';
 
-// path
-export type ActiveDocs = Map<string, WSSharedDoc>;
+// docId = ino
+export type ActiveDocs = Map<number, WSSharedDoc>;
 // wsUuid
 export type DocState = Map<string, ActiveDocs>;
 
@@ -37,35 +40,47 @@ export class SyncService {
     this.cache = this.cacheService.get();
   }
 
-  async openFile(uid: string, sessionId: string, { uuid, path }: FSOpen, correlationId?: string) {
+  async openFile(
+    uid: string,
+    sessionId: string,
+    { uuid, path }: FSOpen,
+    stat: StatDTO,
+    correlationId?: string,
+  ) {
+    const workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(uuid));
+    if (!workspace) {
+      this.sendError(uid, sessionId, 'ERR_NO_WORKSPACE', correlationId);
+      return;
+    }
+
+    const envInstanceId = workspace.docs[stat.ino];
+    if (envInstanceId && CommonRef.getInstanceId() !== envInstanceId) {
+      this.redis.emit<any, ServiceEvent<InterEnvFSOpen>>(`env.${envInstanceId}.openfile`, {
+        meta: { uid, sessionId },
+        payload: { uuid, path, stat, correlationId },
+      });
+      return;
+    }
+
     try {
       let activeDocs = this.docs.get(uuid);
       if (!activeDocs) {
         activeDocs = new Map();
         this.docs.set(uuid, activeDocs);
       }
-      let doc = activeDocs.get(path);
+      let doc = activeDocs.get(stat.ino);
       if (!doc) {
         doc = new WSSharedDoc(
+          stat.ino,
           path,
           uuid,
           (doc) => this.loadFileContent(doc),
-          (...a) => this.broadcast(...a),
-          (...a) => this.flush(...a),
+          (doc: WSSharedDoc, buf: Uint8Array) => this.broadcast(doc, buf),
+          (doc: WSSharedDoc) => this.flush(doc),
         );
         const success = await doc.whenInitialized;
         if (!success) {
-          if (correlationId) {
-            this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
-              meta: { uid, sessionId },
-              payload: {
-                pattern: correlationId,
-                uid,
-                sessionId,
-                msg: { action: 'error', payload: { error: { code: 'ERR_READ_FILE' } } },
-              },
-            });
-          }
+          this.sendError(uid, sessionId, 'ERR_READ_FILE', correlationId);
           doc.destroy();
           if (this.docs.get(uuid)?.size === 1) {
             this.docs.delete(uuid);
@@ -73,41 +88,33 @@ export class SyncService {
           return;
         }
         doc.computeHash();
-        activeDocs.set(path, doc);
+        activeDocs.set(stat.ino, doc);
       }
       doc.users.set(uid, new Set());
 
-      await this.updateCache(uuid, path, true);
-
-      this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
-        meta: { uid, sessionId },
-        payload: {
-          pattern: correlationId!,
-          uid,
-          sessionId,
-          msg: {
-            action: 'success',
-            payload: { content: doc.getText('monaco').toJSON() },
-          },
-        },
-      });
+      await this.updateCache(uuid, stat.ino, true);
+      this.sendSuccess(uid, sessionId, correlationId);
     } catch (error) {
-      console.log(error);
-      if (correlationId) {
-        this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
-          meta: { uid, sessionId },
-          payload: {
-            pattern: correlationId,
-            uid,
-            sessionId,
-            msg: { action: 'error', payload: { error: { code: 'ERR_FETCH_FILE' } } },
-          },
-        });
-      }
+      void error;
+      this.sendError(uid, sessionId, 'ERR_FETCH_FILE', correlationId);
     }
   }
-  async closeFile(uid: string, uuid: string, path: string) {
-    const doc = this.docs.get(uuid)?.get(path);
+  async closeFile(uid: string, sessionId: string, uuid: string, ino: number) {
+    const workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(uuid));
+    if (!workspace) {
+      return;
+    }
+
+    const envInstanceId = workspace.docs[ino];
+    if (envInstanceId && CommonRef.getInstanceId() !== envInstanceId) {
+      this.redis.emit<any, ServiceEvent<InterEnvFSClose>>(`env.${envInstanceId}.closefile`, {
+        meta: { uid, sessionId },
+        payload: { uuid, ino },
+      });
+      return;
+    }
+
+    const doc = this.docs.get(uuid)?.get(ino);
     if (!doc || !doc.users.has(uid)) return;
 
     const controlledIds = doc.users.get(uid)!;
@@ -116,13 +123,13 @@ export class SyncService {
 
     if (doc.users.size > 0) return;
     doc.destroy();
-    this.docs.get(uuid)?.delete(doc.name);
-    await this.updateCache(uuid, path, false);
+    this.docs.get(uuid)?.delete(ino);
+    await this.updateCache(uuid, ino, false);
     if (this.docs.get(uuid)?.size) return;
     this.docs.delete(uuid);
   }
 
-  async send(uid: string, uuid: string, path: string, buf: Uint8Array, sessionId?: string) {
+  async send(uid: string, uuid: string, ino: number, buf: Uint8Array, sessionId?: string) {
     sessionId = sessionId || (await this.getSessionId(uid, uuid));
     if (!sessionId) return;
 
@@ -135,7 +142,7 @@ export class SyncService {
         msg: {
           action: 'sync',
           payload: {
-            path,
+            ino,
             buf: Buffer.from(buf).toString('base64'),
             uuid,
           },
@@ -143,7 +150,68 @@ export class SyncService {
       },
     });
   }
-  async broadcast(uids: string[], uuid: string, path: string, buf: Uint8Array) {
+  async broadcast(doc: WSSharedDoc, buf: Uint8Array) {
+    const uids = Array.from(doc.users.keys());
+    if (!uids.length) return;
+
+    const results = await Promise.allSettled(uids.map((uid) => this.getSessionId(uid, doc.uuid)));
+    const sessionIds = results.map((result) => (result.status === 'fulfilled' ? result.value : undefined));
+    const activeUids: string[] = [];
+    const activeSessionIds: string[] = [];
+    sessionIds.forEach((sessionId, idx) => {
+      if (sessionId) {
+        activeUids.push(uids[idx]);
+        activeSessionIds.push(sessionId);
+      }
+    });
+
+    this.redis.emit<any, ServiceEvent<SocketBroadcast<'fs'>>>('socket.broadcast', {
+      payload: {
+        uids: activeUids,
+        sessionIds: activeSessionIds,
+        pattern: 'fs',
+        msg: {
+          action: 'sync',
+          payload: {
+            ino: doc.ino,
+            buf: Buffer.from(buf).toString('base64'),
+            uuid: doc.uuid,
+          },
+        },
+      },
+    });
+  }
+
+  sendError(uid: string, sessionId: string, code: string, correlationId?: string) {
+    if (correlationId) {
+      this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
+        meta: { uid, sessionId },
+        payload: {
+          pattern: correlationId,
+          uid,
+          sessionId,
+          msg: { action: 'error', payload: { error: { code } } },
+        },
+      });
+    }
+  }
+  sendSuccess(uid: string, sessionId: string, correlationId?: string) {
+    if (correlationId) {
+      this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
+        meta: { uid, sessionId },
+        payload: {
+          pattern: correlationId,
+          uid,
+          sessionId,
+          msg: {
+            action: 'success',
+            payload: {},
+          },
+        },
+      });
+    }
+  }
+  async sendFileMovedOrDeleted(uids: string[], uuid: string, ino: number) {
     if (!uids.length) return;
 
     const results = await Promise.allSettled(uids.map((uid) => this.getSessionId(uid, uuid)));
@@ -163,11 +231,10 @@ export class SyncService {
         sessionIds: activeSessionIds,
         pattern: 'fs',
         msg: {
-          action: 'sync',
+          action: 'displaced',
           payload: {
-            path,
-            buf: Buffer.from(buf).toString('base64'),
-            uuid,
+            uuid: uuid,
+            ino: ino,
           },
         },
       },
@@ -175,8 +242,7 @@ export class SyncService {
   }
 
   async handleSync(uid: string, sessionId: string, msg: FSSyncIn) {
-    msg.path = this.root + msg.path;
-    const doc = this.docs.get(msg.uuid)?.get(msg.path);
+    const doc = this.docs.get(msg.uuid)?.get(msg.ino);
     if (!doc) return;
 
     try {
@@ -189,7 +255,7 @@ export class SyncService {
           encoding.writeVarUint(encoder, YMessage.SYNC);
           syncProtocol.readSyncMessage(decoder, encoder, doc, uid);
           if (encoding.length(encoder) > 1) {
-            await this.send(uid, msg.uuid, msg.path, encoding.toUint8Array(encoder), sessionId);
+            await this.send(uid, msg.uuid, msg.ino, encoding.toUint8Array(encoder), sessionId);
           }
           break;
         case YMessage.AWARENESS: {
@@ -201,24 +267,40 @@ export class SyncService {
       console.error(err);
     }
   }
-  async flush(uuid: string, path: string) {
-    const doc = this.docs.get(uuid)?.get(path);
-    if (!doc) return;
+  async flush(doc: WSSharedDoc) {
+    if (doc.isDisplaced) {
+      return;
+    }
+
+    let ok = false;
+    try {
+      const stat = await this.getStat(doc.uuid, doc.path);
+      if (!stat.isDir) {
+        ok = true;
+      }
+    } catch (error) {
+      void error;
+    }
+
+    if (!ok) {
+      doc.isDisplaced = true;
+      await this.sendFileMovedOrDeleted(Array.from(doc.users.keys()), doc.uuid, doc.ino);
+      return;
+    }
 
     const content = doc.getText('monaco').toJSON();
-    await this.setFileContent(uuid, path, content);
+    await this.setFileContent(doc, content);
   }
 
   async handleOpenAck(uid: string, sessionId: string, msg: FSOpenAck) {
-    msg.path = this.root + msg.path;
-    const doc = this.docs.get(msg.uuid)?.get(msg.path);
+    const doc = this.docs.get(msg.uuid)?.get(msg.ino);
     if (!doc) return;
 
     // Initial Sync
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, YMessage.SYNC);
     syncProtocol.writeSyncStep1(encoder, doc);
-    await this.send(uid, doc.uuid, msg.path, encoding.toUint8Array(encoder));
+    await this.send(uid, doc.uuid, msg.ino, encoding.toUint8Array(encoder));
     const awarenessStates = doc.awareness.getStates();
     if (awarenessStates.size > 0) {
       const encoder = encoding.createEncoder();
@@ -227,22 +309,22 @@ export class SyncService {
         encoder,
         awarenessProtocol.encodeAwarenessUpdate(doc.awareness, Array.from(awarenessStates.keys())),
       );
-      await this.send(uid, doc.uuid, msg.path, encoding.toUint8Array(encoder), sessionId);
+      await this.send(uid, doc.uuid, msg.ino, encoding.toUint8Array(encoder), sessionId);
     }
   }
-  async updateCache(uuid: string, path: string, add: boolean) {
+  async updateCache(uuid: string, ino: number, add: boolean) {
     const wCache = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(uuid));
     if (!wCache) return;
     if (add) {
-      wCache.docs[path] = CommonRef.getInstanceId();
+      wCache.docs[ino] = CommonRef.getInstanceId();
     } else {
-      delete wCache.docs[path];
+      delete wCache.docs[ino];
     }
     await this.cache.set(CACHEKEY_WORKSPACE(uuid), wCache);
   }
   async loadFileContent(doc: WSSharedDoc) {
     try {
-      const res = await fetch(`http://workspace-${doc.uuid}/api/read?path=${doc.name}`, {
+      const res = await fetch(`http://workspace-${doc.uuid}/api/read?path=${doc.path}`, {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       });
       const data = (await res.json()) as { content: string };
@@ -260,9 +342,9 @@ export class SyncService {
     }
     return false;
   }
-  async setFileContent(uuid: string, path: string, content: string) {
+  async setFileContent(doc: WSSharedDoc, content: string) {
     try {
-      const res = await fetch(`http://workspace-${uuid}/api/write?path=${path}`, {
+      const res = await fetch(`http://workspace-${doc.uuid}/api/write?path=${doc.path}`, {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         method: 'POST',
         body: JSON.stringify({ content }),
@@ -280,5 +362,14 @@ export class SyncService {
     const sessions = Object.entries(presence);
     const [sessionId, _session] = sessions.find(([_sessionId, session]) => session.wsUuid === uuid) ?? [];
     return sessionId;
+  }
+  async getStat(wsUuid: string, path: string) {
+    const res = await fetch(`http://workspace-${wsUuid}/api/stat?path=${path}`, {
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    });
+    if (res.status < 200 || res.status > 299) {
+      throw new Error('Not found');
+    }
+    return (await res.json()) as StatDTO;
   }
 }

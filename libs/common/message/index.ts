@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { UserNotificationPayload } from "./notification.message";
 import { OutSocketMessage, OutSocketMessageActionMap } from "./socket.message";
+import { StatDTO } from "dto";
 
 export * from "./notification.message";
 export * from "./socket.message";
@@ -117,4 +118,15 @@ export interface EnvAffinityRequest extends ServiceEventPayload {
   uid: string;
   sessionId: string;
   uuid: string;
+}
+
+export interface InterEnvFSOpen extends ServiceEventPayload {
+  uuid: string;
+  path: string;
+  stat: StatDTO;
+  correlationId?: string;
+}
+export interface InterEnvFSClose extends ServiceEventPayload {
+  uuid: string;
+  ino: number;
 }

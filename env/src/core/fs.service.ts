@@ -196,7 +196,7 @@ export class FSService {
     const batches: { [uid: string]: FSEvent[] } = {};
     for (const event of batch) {
       if (event.type === 'file' && event.action === 'write') {
-        const docHash = await this.getDocHash(uuid, event.path, wCache);
+        const docHash = await this.getDocHash(uuid, event.ino!, wCache);
         if (!docHash) {
           continue;
         }
@@ -312,17 +312,17 @@ export class FSService {
     }
     return '';
   }
-  async getDocHash(uuid: string, path: string, wCache: CachedWorkspace) {
+  async getDocHash(uuid: string, ino: number, wCache: CachedWorkspace) {
     let hash: string | undefined;
-    if (!wCache.docs[path]) return hash;
+    if (!wCache.docs[ino]) return hash;
 
-    const envInstanceId = wCache.docs[path];
+    const envInstanceId = wCache.docs[ino];
     if (CommonRef.getInstanceId() === envInstanceId) {
-      hash = this.syncService.docs.get(uuid)?.get(path)?.computeHash();
+      hash = this.syncService.docs.get(uuid)?.get(ino)?.computeHash();
     } else {
       hash = await firstValueFrom(
         this.redis.send<string, ServiceEvent<InSocketMessage<'internal'>>>(`env.${envInstanceId}`, {
-          payload: { service: 'internal', action: 'doc.hash', payload: { uuid, path } },
+          payload: { service: 'internal', action: 'doc.hash', payload: { uuid, ino } },
         }),
       );
     }

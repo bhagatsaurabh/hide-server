@@ -53,7 +53,7 @@ export class WorkspaceService {
     @Inject('ENV_SERVICE_RMQ') private readonly rmq: ClientProxy,
     private readonly cacheService: RedisService,
     private readonly fsService: FSService,
-    private readonly syncService: SyncService,
+    readonly syncService: SyncService,
     private readonly sshService: SSHProxyService,
     private readonly http: HttpService,
   ) {
@@ -217,7 +217,7 @@ export class WorkspaceService {
         break;
       }
       case 'fs.close': {
-        await this.handleClose(uid, msg.payload);
+        await this.handleClose(uid, sessionId, msg.payload);
         break;
       }
       default:
@@ -244,7 +244,7 @@ export class WorkspaceService {
         break;
       }
       case 'doc.hash': {
-        value = this.syncService.docs.get(msg.payload.uuid)?.get(msg.payload.path)?.computeHash();
+        value = this.syncService.docs.get(msg.payload.uuid)?.get(msg.payload.ino)?.computeHash();
         break;
       }
       case 'ssh.data': {
@@ -314,7 +314,7 @@ export class WorkspaceService {
       if (stat.isDir) {
         return await this.fsService.openDir(uid, sessionId, msg, correlationId);
       }
-      return await this.syncService.openFile(uid, sessionId, msg, correlationId);
+      return await this.syncService.openFile(uid, sessionId, msg, stat, correlationId);
     } catch (err) {
       console.log(err);
       if (correlationId) {
@@ -330,14 +330,18 @@ export class WorkspaceService {
       }
     }
   }
-  async handleClose(uid: string, msg: FSClose) {
+  async handleClose(uid: string, sessionId: string, msg: FSClose) {
     msg.path = this.root + msg.path;
+
     try {
-      const stat = await this.getStat(msg.uuid, msg.path);
-      if (stat.isDir) {
-        return await this.fsService.closeDir(uid, msg.uuid, msg.path);
+      if (msg.ino) {
+        return await this.syncService.closeFile(uid, sessionId, msg.uuid, msg.ino);
+      } else {
+        const stat = await this.getStat(msg.uuid, msg.path);
+        if (stat.isDir) {
+          return await this.fsService.closeDir(uid, msg.uuid, msg.path);
+        }
       }
-      return await this.syncService.closeFile(uid, msg.uuid, msg.path);
     } catch (err) {
       console.log(err);
       return;
