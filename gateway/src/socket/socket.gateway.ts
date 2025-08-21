@@ -270,7 +270,7 @@ export class SocketGateway
     if (this.stickyActions.includes(msg.action)) {
       let envInstanceId = '';
       if (msg.action === 'fs.sync' || msg.action === 'fs.open.ack') {
-        envInstanceId = workspace.docs['/workspace' + msg.payload.path];
+        envInstanceId = workspace.docs[msg.payload.ino];
       } else if (msg.action === 'ssh.data' || msg.action === 'ssh.close') {
         envInstanceId = workspace.sshs[sessionId];
       } else if (msg.action === 'ws.run') {
@@ -290,7 +290,7 @@ export class SocketGateway
 
       if (!healthy) {
         if (msg.action === 'fs.sync' || msg.action === 'fs.open.ack') {
-          await this.handleFSLoss(socket, workspace, msg.payload.uuid, '/workspace' + msg.payload.path);
+          await this.handleFSLoss(socket, workspace, msg.payload.uuid, msg.payload.ino);
         } else if (msg.action === 'ssh.data' || msg.action === 'ssh.close') {
           await this.handleSSHSLoss(socket, workspace, sessionId, msg.payload.uuid, msg.payload.sshSessionId);
         } else if (msg.action === 'ws.run') {
@@ -314,10 +314,10 @@ export class SocketGateway
       });
     }
   }
-  async handleFSLoss(socket: TypedSocket, workspace: CachedWorkspace, wsUuid: string, path: string) {
-    delete workspace.docs[path];
+  async handleFSLoss(socket: TypedSocket, workspace: CachedWorkspace, wsUuid: string, ino: number) {
+    delete workspace.docs[ino];
     await this.cache.set<CachedWorkspace>(`workspace:${wsUuid}`, workspace);
-    socket.emit('fs', { action: 'lost', payload: { path } });
+    socket.emit('fs', { action: 'lost', payload: { ino } });
   }
   async handleSSHSLoss(
     socket: TypedSocket,
