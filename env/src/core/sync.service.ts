@@ -225,18 +225,13 @@ export class SyncService {
       }
     });
 
+    console.log(activeUids, activeSessionIds, uuid, ino);
     this.redis.emit<any, ServiceEvent<SocketBroadcast<'fs'>>>('socket.broadcast', {
       payload: {
         uids: activeUids,
         sessionIds: activeSessionIds,
         pattern: 'fs',
-        msg: {
-          action: 'displaced',
-          payload: {
-            uuid: uuid,
-            ino: ino,
-          },
-        },
+        msg: { action: 'displaced', payload: { uuid, ino } },
       },
     });
   }
@@ -268,10 +263,12 @@ export class SyncService {
     }
   }
   async flush(doc: WSSharedDoc) {
+    console.log('Flushing doc', doc.ino, doc.isDisplaced);
     if (doc.isDisplaced) {
       return;
     }
 
+    console.log('Stating');
     let ok = false;
     try {
       const stat = await this.getStat(doc.uuid, doc.path);
@@ -282,9 +279,11 @@ export class SyncService {
       void error;
     }
 
+    console.log('Stat', ok);
     if (!ok) {
       doc.isDisplaced = true;
       await this.sendFileMovedOrDeleted(Array.from(doc.users.keys()), doc.uuid, doc.ino);
+      console.log('Sent displaced');
       return;
     }
 
