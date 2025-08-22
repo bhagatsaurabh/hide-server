@@ -45,6 +45,7 @@ export class WorkspaceService {
     'workspace.watch',
     'doc.hash',
     'fs.open.ack',
+    'fs.conflict.resolve',
     'ws.run',
   ];
 
@@ -257,6 +258,10 @@ export class WorkspaceService {
       }
       case 'fs.open.ack': {
         value = await this.syncService.handleOpenAck(uid, sessionId, msg.payload);
+        break;
+      }
+      case 'fs.conflict.resolve': {
+        value = await this.syncService.handleConflictResolve(uid, sessionId, msg.payload);
         break;
       }
       case 'ws.run': {

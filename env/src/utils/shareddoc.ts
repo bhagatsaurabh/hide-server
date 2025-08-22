@@ -18,6 +18,8 @@ export class WSSharedDoc extends Doc {
   whenInitialized: Promise<boolean>;
   debounceTime = 5000;
   isDisplaced = false;
+  isConflicting = false;
+  conflictResolver = '';
   _flush: (...args: any[]) => void;
   private awarenessChangeHandler: (update: AwarenessUpdate, uid: string) => void;
   private updateHandler: (update: Uint8Array, _origin: unknown, doc: WSSharedDoc, _tr: Transaction) => void;

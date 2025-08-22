@@ -8,6 +8,7 @@ import {
 } from "./env.message";
 import {
   FSClose,
+  FSConflictResolve,
   FSDirEntries,
   FSFile,
   FSNoop,
@@ -66,6 +67,7 @@ export type InSocketMessagePayloadMap =
       "ssh.close": SSHClose;
       "fs.open": FSOpen;
       "fs.open.ack": FSOpenAck;
+      "fs.conflict.resolve": FSConflictResolve;
       "fs.sync": FSSyncIn;
       "fs.close": FSClose;
       "ws.run": WSRun<keyof CommandMap>;
