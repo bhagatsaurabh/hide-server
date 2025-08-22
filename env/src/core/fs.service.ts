@@ -20,6 +20,7 @@ import { Cache } from '@nestjs/cache-manager';
 import { FSEvent, FSOpen, InternalWorkspaceWatch } from 'hide-common/message/filesystem.message';
 import { CommonRef } from 'src/common/refs/common.ref';
 import { firstValueFrom } from 'rxjs';
+import { pickOne } from 'src/utils';
 
 @Injectable()
 export class FSService {
@@ -78,30 +79,12 @@ export class FSService {
         throw new Error();
       }
       const entries = (await res.json()) as unknown as FSOpenDTO[];
-      this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
-        meta: { uid, sessionId },
-        payload: {
-          pattern: correlationId!,
-          uid,
-          sessionId,
-          msg: { action: 'success', payload: { entries, correlationId } },
-        },
-      });
 
+      this.sendSuccess(uid, sessionId, entries, correlationId);
       await this.updateCache(uid, uuid, path, true);
     } catch (error) {
       void error;
-      if (correlationId) {
-        this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
-          meta: { uid, sessionId },
-          payload: {
-            pattern: correlationId,
-            uid,
-            sessionId,
-            msg: { action: 'error', payload: { error: { code: 'ERR_FETCH_DIRECTORY' } } },
-          },
-        });
-      }
+      this.sendError(uid, sessionId, 'ERR_FETCH_DIRECTORY', correlationId);
     }
   }
   async closeDir(uid: string, wsUuid: string, path: string) {
@@ -201,8 +184,17 @@ export class FSService {
           continue;
         }
         const fileHash = await this.getFileHash(uuid, event.path);
+
         if (fileHash === docHash) {
           continue;
+        } else {
+          console.log('Conflict!');
+          const doc = this.syncService.docs.get(uuid)?.get(event.ino!);
+          if (doc) {
+            doc.isConflicting = true;
+            doc.conflictResolver = pickOne([...doc.users.keys()]);
+            await this.sendConflict(doc.uuid, doc.ino, [...doc.users.keys()], doc.conflictResolver);
+          }
         }
       }
 
@@ -219,18 +211,73 @@ export class FSService {
     const { uids, sessionIds } = await this.getWatchingUsersFromUid(uuid, Object.keys(batches));
     sessionIds.forEach((sessionId, idx) => {
       if (!sessionId) return;
+      this.sendBatch(uids[idx], sessionId, batches[uids[idx]] || []);
+    });
+  }
+
+  sendSuccess(uid: string, sessionId: string, entries: FSOpenDTO[], correlationId?: string) {
+    if (correlationId) {
+      this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
+        meta: { uid, sessionId },
+        payload: {
+          pattern: correlationId,
+          uid,
+          sessionId,
+          msg: { action: 'success', payload: { entries, correlationId } },
+        },
+      });
+    }
+  }
+  sendError(uid: string, sessionId: string, code: string, correlationId?: string) {
+    if (correlationId) {
+      this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
+        meta: { uid, sessionId },
+        payload: {
+          pattern: correlationId,
+          uid,
+          sessionId,
+          msg: { action: 'error', payload: { error: { code } } },
+        },
+      });
+    }
+  }
+  sendBatch(uid: string, sessionId: string, events: FSEvent[]) {
+    this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+      meta: { uid, sessionId },
+      payload: {
+        uid,
+        pattern: 'fs',
+        sessionId,
+        msg: { action: 'batch', payload: { events } },
+      },
+    });
+  }
+  async sendConflict(uuid: string, ino: number, uids: string[], resolverUid: string) {
+    const presences = await Promise.allSettled(
+      uids.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid))),
+    );
+    const sessionIds = presences.map((presence) => {
+      if (presence.status === 'rejected' || !presence.value) return;
+
+      const entries = Object.entries(presence.value);
+      const [sid, _session] = entries.find(([_sid, session]) => session.wsUuid === uuid) ?? [];
+      return sid;
+    });
+
+    sessionIds.forEach((sessionId, idx) => {
+      if (!sessionId) return;
+
       this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
         meta: { uid: uids[idx], sessionId },
         payload: {
           uid: uids[idx],
-          pattern: 'fs',
           sessionId,
-          msg: { action: 'batch', payload: { events: batches[uids[idx]] || [] } },
+          pattern: 'fs',
+          msg: { action: 'conflict', payload: { uuid, ino, resolverUid: resolverUid } },
         },
       });
     });
   }
-
   cleanPaths(event: FSEvent) {
     event.path = event.path.replace(this.root, '');
     if (event.path === '') event.path = '/';

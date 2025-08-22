@@ -249,7 +249,7 @@ export class SocketGateway
     }
   }
 
-  stickyActions = ['fs.sync', 'ssh.data', 'ssh.close', 'fs.open.ack', 'ws.run'];
+  stickyActions = ['fs.sync', 'ssh.data', 'ssh.close', 'fs.open.ack', 'fs.conflict.resolve', 'ws.run'];
   async handleEnvMessage(socket: TypedSocket, uid: string, sessionId: string, msg: InSocketMessage<'env'>) {
     const workspace = await this.cache.get<CachedWorkspace>(`workspace:${msg.payload.uuid}`);
     if (!workspace) {
@@ -269,7 +269,7 @@ export class SocketGateway
     // Sticky route
     if (this.stickyActions.includes(msg.action)) {
       let envInstanceId = '';
-      if (msg.action === 'fs.sync' || msg.action === 'fs.open.ack') {
+      if (msg.action === 'fs.sync' || msg.action === 'fs.open.ack' || msg.action === 'fs.conflict.resolve') {
         envInstanceId = workspace.docs[msg.payload.ino];
       } else if (msg.action === 'ssh.data' || msg.action === 'ssh.close') {
         envInstanceId = workspace.sshs[sessionId];
@@ -289,7 +289,11 @@ export class SocketGateway
       }
 
       if (!healthy) {
-        if (msg.action === 'fs.sync' || msg.action === 'fs.open.ack') {
+        if (
+          msg.action === 'fs.sync' ||
+          msg.action === 'fs.open.ack' ||
+          msg.action === 'fs.conflict.resolve'
+        ) {
           await this.handleFSLoss(socket, workspace, msg.payload.uuid, msg.payload.ino);
         } else if (msg.action === 'ssh.data' || msg.action === 'ssh.close') {
           await this.handleSSHSLoss(socket, workspace, sessionId, msg.payload.uuid, msg.payload.sshSessionId);

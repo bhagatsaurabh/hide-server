@@ -20,7 +20,7 @@ import {
   StatDTO,
 } from 'hide-common';
 import { CommonRef } from 'src/common/refs/common.ref';
-import { FSOpen, FSOpenAck, FSSyncIn } from 'hide-common/message/filesystem.message';
+import { FSConflictResolve, FSOpen, FSOpenAck, FSSyncIn } from 'hide-common/message/filesystem.message';
 
 // docId = ino
 export type ActiveDocs = Map<number, WSSharedDoc>;
@@ -225,13 +225,46 @@ export class SyncService {
       }
     });
 
-    console.log(activeUids, activeSessionIds, uuid, ino);
     this.redis.emit<any, ServiceEvent<SocketBroadcast<'fs'>>>('socket.broadcast', {
       payload: {
         uids: activeUids,
         sessionIds: activeSessionIds,
         pattern: 'fs',
         msg: { action: 'displaced', payload: { uuid, ino } },
+      },
+    });
+  }
+  async sendConflictResolved(uuid: string, uids: string[], ino: number) {
+    if (!uids.length) return;
+
+    const results = await Promise.allSettled(uids.map((uid) => this.getSessionId(uid, uuid)));
+    const sessionIds = results.map((result) => (result.status === 'fulfilled' ? result.value : undefined));
+    const activeUids: string[] = [];
+    const activeSessionIds: string[] = [];
+    sessionIds.forEach((sessionId, idx) => {
+      if (sessionId) {
+        activeUids.push(uids[idx]);
+        activeSessionIds.push(sessionId);
+      }
+    });
+
+    this.redis.emit<any, ServiceEvent<SocketBroadcast<'fs'>>>('socket.broadcast', {
+      payload: {
+        uids: activeUids,
+        sessionIds: activeSessionIds,
+        pattern: 'fs',
+        msg: { action: 'resolved', payload: { uuid, ino } },
+      },
+    });
+  }
+  sendFSLoss(uid: string, sessionId: string, ino: number) {
+    this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+      meta: { uid, sessionId },
+      payload: {
+        uid,
+        sessionId,
+        pattern: 'fs',
+        msg: { action: 'lost', payload: { ino } },
       },
     });
   }
@@ -263,8 +296,8 @@ export class SyncService {
     }
   }
   async flush(doc: WSSharedDoc) {
-    console.log('Flushing doc', doc.ino, doc.isDisplaced);
-    if (doc.isDisplaced) {
+    console.log('Flushing doc', doc.ino, doc.isDisplaced, doc.isConflicting, doc.conflictResolver);
+    if (doc.isDisplaced || doc.isConflicting) {
       return;
     }
 
@@ -310,6 +343,22 @@ export class SyncService {
       );
       await this.send(uid, doc.uuid, msg.ino, encoding.toUint8Array(encoder), sessionId);
     }
+  }
+  async handleConflictResolve(uid: string, sessionId: string, msg: FSConflictResolve) {
+    const doc = this.docs.get(msg.uuid)?.get(msg.ino);
+    if (!doc) {
+      this.sendFSLoss(uid, sessionId, msg.ino);
+      return;
+    }
+
+    if (msg.decision === 'keep') {
+      const content = doc.getText('monaco').toJSON();
+      await this.setFileContent(doc, content);
+    } else {
+      // TODO: Reload disk's file content onto the yjs document
+    }
+
+    await this.sendConflictResolved(msg.uuid, [...doc.users.keys()], msg.ino);
   }
   async updateCache(uuid: string, ino: number, add: boolean) {
     const wCache = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(uuid));
