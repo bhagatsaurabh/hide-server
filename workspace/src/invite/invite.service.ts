@@ -45,7 +45,11 @@ export class InviteService {
     this.cache = this.cacheService.get();
   }
 
-  async inviteUser(inviterId: string, { inviteeId, workspaceUUID }: InviteDTO, doValidate: boolean = true) {
+  async inviteUser(
+    inviterId: string,
+    { inviteeId, workspaceUUID, sshKey }: InviteDTO,
+    doValidate: boolean = true,
+  ) {
     let err: HttpException | undefined;
     if (doValidate) {
       if ((err = await this.validateInvite(inviterId, workspaceUUID))) {
@@ -63,6 +67,7 @@ export class InviteService {
       inviteeId,
       workspaceUUID,
       validTill: expiryDate.getTime(),
+      sshKey,
     };
     const jwt = (sign as JWTSignFn<InvitationPayload>)(payload, process.env.WORKSPACE_SERVICE_SECRET!);
     const msg = createMessage<NotifyUser<WorkspaceInvite>>(inviteeId, '', {
@@ -79,14 +84,14 @@ export class InviteService {
 
     this.rmq.emit<unknown, ServiceMessage<NotifyUser<WorkspaceInvite>>>('notification.send', msg);
   }
-  async inviteAllUsers(inviterId: string, { inviteeIds, workspaceUUID }: InviteAllDTO) {
+  async inviteAllUsers(inviterId: string, { inviteeIds, workspaceUUID, sshKey }: InviteAllDTO) {
     let err: HttpException | undefined;
     if ((err = await this.validateInvite(inviterId, workspaceUUID))) {
       throw err;
     }
 
     await Promise.all(
-      inviteeIds.map((inviteeId) => this.inviteUser(inviterId, { inviteeId, workspaceUUID }, false)),
+      inviteeIds.map((inviteeId) => this.inviteUser(inviterId, { inviteeId, workspaceUUID, sshKey }, false)),
     );
   }
 
@@ -133,6 +138,8 @@ export class InviteService {
         });
       });
     });
+
+    return { sshKey: payload.sshKey };
   }
 
   ignoreInvitation(inviteeId: string, { token }: IgnoreDTO) {

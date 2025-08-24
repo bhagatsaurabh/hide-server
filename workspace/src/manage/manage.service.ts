@@ -142,7 +142,7 @@ export class ManageService {
       for (const uid of actMembers) {
         if (!reqMembers.has(uid)) removed.push(uid);
       }
-      await this.updateMembers(uid, workspace, { added, removed });
+      await this.updateMembers(uid, workspace, { added, removed }, data.sshKey!);
     }
 
     await this.wsRepository.save(workspace);
@@ -166,6 +166,7 @@ export class ManageService {
     uid: string,
     workspace: Workspace,
     { added, removed }: { added: string[]; removed: string[] },
+    sshKey: string,
   ) {
     const members = (await this.msRepository.find({ where: { workspaceId: workspace.id } })).map(
       (membership) => membership.userId,
@@ -203,7 +204,11 @@ export class ManageService {
     }
 
     // Added members
-    await this.inviteService.inviteAllUsers(uid, { inviteeIds: added, workspaceUUID: workspace.uuid });
+    await this.inviteService.inviteAllUsers(uid, {
+      inviteeIds: added,
+      workspaceUUID: workspace.uuid,
+      sshKey,
+    });
 
     if (removed.length) {
       const mbrs = new Set(members);

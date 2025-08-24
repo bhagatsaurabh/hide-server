@@ -5,6 +5,7 @@ export type UpdateDTO = {
   name: string;
   description: string;
   members: string[];
+  sshKey: string;
 };
 export type UpdateStatusDTO = {
   uuid: string;

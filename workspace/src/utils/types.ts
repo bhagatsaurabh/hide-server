@@ -6,4 +6,5 @@ export type InvitationPayload = {
   inviteeId: string;
   workspaceUUID: string;
   validTill: number;
+  sshKey: string;
 };
