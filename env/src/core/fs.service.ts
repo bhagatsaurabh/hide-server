@@ -188,7 +188,6 @@ export class FSService {
         if (fileHash === docHash) {
           continue;
         } else {
-          console.log('Conflict!');
           const doc = this.syncService.docs.get(uuid)?.get(event.ino!);
           if (doc) {
             doc.isConflicting = true;

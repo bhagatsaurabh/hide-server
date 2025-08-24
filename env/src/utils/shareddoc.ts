@@ -31,6 +31,7 @@ export class WSSharedDoc extends Doc {
     contentInitializor: (doc: WSSharedDoc) => Promise<boolean>,
     public send: (doc: WSSharedDoc, buf: Uint8Array) => Promise<void>,
     flush: (doc: WSSharedDoc) => Promise<void>,
+    public conflict: (doc: WSSharedDoc) => Promise<void>,
   ) {
     super({ gc: true });
     this.users = new Map();
@@ -50,6 +51,8 @@ export class WSSharedDoc extends Doc {
   }
 
   _awarenessChangeHandler({ added, updated, removed }: AwarenessUpdate, uid: string): void {
+    const initialUids = new Set([...this.users.keys()]);
+
     const changedClients = added.concat(updated, removed);
     if (uid !== null) {
       const userControlledIDs = this.users.get(uid);
@@ -67,6 +70,11 @@ export class WSSharedDoc extends Doc {
     );
     const buf = encoding.toUint8Array(encoder);
     void this.send(this, buf);
+
+    const updatedUids = new Set([...this.users.keys()]);
+    if (this.isConflicting && removed.length > 0 && this.isResolverRemoved(initialUids, updatedUids)) {
+      void this.conflict(this);
+    }
   }
   _updateHandler(update: Uint8Array, _origin: unknown, doc: WSSharedDoc, _tr: Transaction) {
     const encoder = encoding.createEncoder();
@@ -78,6 +86,16 @@ export class WSSharedDoc extends Doc {
     this._flush(this);
   }
 
+  isResolverRemoved(initialUids: Set<string>, updatedUids: Set<string>) {
+    if (
+      this.conflictResolver &&
+      initialUids.has(this.conflictResolver) &&
+      !updatedUids.has(this.conflictResolver)
+    ) {
+      return true;
+    }
+    return false;
+  }
   computeHash(content?: string) {
     if (!content) {
       content = this.getText('monaco').toJSON();

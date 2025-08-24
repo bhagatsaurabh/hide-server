@@ -13,7 +13,7 @@ export class InviteController {
   @Post('invite')
   @HttpCode(HttpStatus.NO_CONTENT)
   async invite(@UserHeader() user: User, @Body() data: InviteDTO) {
-    await this.service.inviteUser(user.uid, data);
+    await this.service.inviteUser(user.uid, data, true);
   }
 
   @Post('invite-all')
@@ -23,9 +23,8 @@ export class InviteController {
   }
 
   @Post('accept')
-  @HttpCode(HttpStatus.NO_CONTENT)
   async accept(@UserHeader() user: User, @Body() data: AcceptDTO) {
-    await this.service.acceptInvitation(user.uid, data);
+    return await this.service.acceptInvitation(user.uid, data);
   }
 
   @Post('ignore')

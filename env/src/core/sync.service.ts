@@ -21,6 +21,7 @@ import {
 } from 'hide-common';
 import { CommonRef } from 'src/common/refs/common.ref';
 import { FSConflictResolve, FSOpen, FSOpenAck, FSSyncIn } from 'hide-common/message/filesystem.message';
+import { UndoManager } from 'yjs';
 
 // docId = ino
 export type ActiveDocs = Map<number, WSSharedDoc>;
@@ -77,6 +78,7 @@ export class SyncService {
           (doc) => this.loadFileContent(doc),
           (doc: WSSharedDoc, buf: Uint8Array) => this.broadcast(doc, buf),
           (doc: WSSharedDoc) => this.flush(doc),
+          (doc: WSSharedDoc) => this.sendConflict(doc),
         );
         const success = await doc.whenInitialized;
         if (!success) {
@@ -93,7 +95,7 @@ export class SyncService {
       doc.users.set(uid, new Set());
 
       await this.updateCache(uuid, stat.ino, true);
-      this.sendSuccess(uid, sessionId, correlationId);
+      this.sendSuccess(uid, sessionId, correlationId, doc.isConflicting, doc.conflictResolver);
     } catch (error) {
       void error;
       this.sendError(uid, sessionId, 'ERR_FETCH_FILE', correlationId);
@@ -195,7 +197,13 @@ export class SyncService {
       });
     }
   }
-  sendSuccess(uid: string, sessionId: string, correlationId?: string) {
+  sendSuccess(
+    uid: string,
+    sessionId: string,
+    correlationId?: string,
+    isConflicting?: boolean,
+    conflictResolver?: string,
+  ) {
     if (correlationId) {
       this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
         meta: { uid, sessionId },
@@ -205,7 +213,7 @@ export class SyncService {
           sessionId,
           msg: {
             action: 'success',
-            payload: {},
+            payload: { isConflicting, conflictResolver },
           },
         },
       });
@@ -268,6 +276,37 @@ export class SyncService {
       },
     });
   }
+  async sendConflict(doc: WSSharedDoc) {
+    const uids = [...doc.users.keys()];
+
+    const presences = await Promise.allSettled(
+      uids.map((uid) => this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid))),
+    );
+    const sessionIds = presences.map((presence) => {
+      if (presence.status === 'rejected' || !presence.value) return;
+
+      const entries = Object.entries(presence.value);
+      const [sid, _session] = entries.find(([_sid, session]) => session.wsUuid === doc.uuid) ?? [];
+      return sid;
+    });
+
+    sessionIds.forEach((sessionId, idx) => {
+      if (!sessionId) return;
+
+      this.redis.emit<any, ServiceEvent<SocketSend<'fs'>>>('socket.send', {
+        meta: { uid: uids[idx], sessionId },
+        payload: {
+          uid: uids[idx],
+          sessionId,
+          pattern: 'fs',
+          msg: {
+            action: 'conflict',
+            payload: { uuid: doc.uuid, ino: doc.ino, resolverUid: doc.conflictResolver },
+          },
+        },
+      });
+    });
+  }
 
   async handleSync(uid: string, sessionId: string, msg: FSSyncIn) {
     const doc = this.docs.get(msg.uuid)?.get(msg.ino);
@@ -296,12 +335,10 @@ export class SyncService {
     }
   }
   async flush(doc: WSSharedDoc) {
-    console.log('Flushing doc', doc.ino, doc.isDisplaced, doc.isConflicting, doc.conflictResolver);
     if (doc.isDisplaced || doc.isConflicting) {
       return;
     }
 
-    console.log('Stating');
     let ok = false;
     try {
       const stat = await this.getStat(doc.uuid, doc.path);
@@ -312,11 +349,9 @@ export class SyncService {
       void error;
     }
 
-    console.log('Stat', ok);
     if (!ok) {
       doc.isDisplaced = true;
       await this.sendFileMovedOrDeleted(Array.from(doc.users.keys()), doc.uuid, doc.ino);
-      console.log('Sent displaced');
       return;
     }
 
@@ -355,9 +390,11 @@ export class SyncService {
       const content = doc.getText('monaco').toJSON();
       await this.setFileContent(doc, content);
     } else {
-      // TODO: Reload disk's file content onto the yjs document
+      await this.loadFileContent(doc, true);
     }
 
+    doc.isConflicting = false;
+    doc.conflictResolver = '';
     await this.sendConflictResolved(msg.uuid, [...doc.users.keys()], msg.ino);
   }
   async updateCache(uuid: string, ino: number, add: boolean) {
@@ -370,7 +407,7 @@ export class SyncService {
     }
     await this.cache.set(CACHEKEY_WORKSPACE(uuid), wCache);
   }
-  async loadFileContent(doc: WSSharedDoc) {
+  async loadFileContent(doc: WSSharedDoc, replace?: boolean) {
     try {
       const res = await fetch(`http://workspace-${doc.uuid}/api/read?path=${doc.path}`, {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -381,8 +418,19 @@ export class SyncService {
         return false;
       }
 
-      const ytext = doc.getText('monaco');
-      ytext.insert(0, data.content);
+      if (!replace) {
+        const ytext = doc.getText('monaco');
+        ytext.insert(0, data.content);
+      } else {
+        doc.transact((t) => {
+          const yText = t.doc.getText('monaco');
+          yText.delete(0, yText.length);
+          yText.insert(0, data.content);
+
+          const undoManager = new UndoManager(yText);
+          undoManager.clear();
+        }, doc);
+      }
 
       return true;
     } catch (error) {

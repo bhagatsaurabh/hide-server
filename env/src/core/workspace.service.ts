@@ -123,7 +123,7 @@ export class WorkspaceService {
         workspace = { dirs: {}, fs: CommonRef.getInstanceId(), docs: {}, sshs: {}, state: 'active' };
         dirty = true;
       }
-      if (!workspace.dirs) {
+      if (!workspace.dirs || !Object.keys(workspace.dirs).length) {
         workspace.fs = CommonRef.getInstanceId();
         dirty = true;
       }
