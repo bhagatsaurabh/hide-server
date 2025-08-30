@@ -14,4 +14,13 @@ services:
       JAVA_OPTS: "-Xms256m -Xmx512m"
       SPRING_PROFILES_ACTIVE: local
       FIREBASE_AUTH_EMULATOR_HOST: "host.docker.internal:9099"
+      HIDE_AZURE_COMM_EMAIL_CONNECTION: "${HIDE_AZURE_COMM_EMAIL_CONNECTION}"
     command: ./gradlew bootRun --no-daemon
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1g
+        reservations:
+          cpus: "0.5"
+          memory: 1g

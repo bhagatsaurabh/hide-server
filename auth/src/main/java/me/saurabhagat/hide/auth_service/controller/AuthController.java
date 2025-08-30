@@ -1,11 +1,12 @@
 package me.saurabhagat.hide.auth_service.controller;
 
+import me.saurabhagat.hide.auth_service.exception.BadRequestException;
 import me.saurabhagat.hide.auth_service.service.AuthService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.Objects;
 
 @RestController
@@ -21,15 +22,18 @@ public class AuthController {
     public ResponseEntity<?> validateToken(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
         var token = extractToken(authHeader);
         if (Objects.isNull(token)) {
-            return ResponseEntity.badRequest().body("Invalid authorization header");
+            throw new BadRequestException("INVALID_AUTH_HEADER");
         }
 
         var user = authService.validateToken(token);
-        if (user == null) {
-            return ResponseEntity.status(401).body("Invalid token");
-        }
 
         return ResponseEntity.ok(user);
+    }
+
+    @GetMapping("/register-email")
+    public ResponseEntity<?> registerEmail(@RequestParam(name = "email") String email) throws IOException {
+        authService.registerEmail(email);
+        return ResponseEntity.ok(null);
     }
 
     private String extractToken(String authHeader) {

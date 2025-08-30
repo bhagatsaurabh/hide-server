@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Sign-In Code</title>
+    <style>
+        body {
+          margin: 0;
+          padding: 0;
+          background-color: #f6f8fa;
+          font-family: Arial, Helvetica, sans-serif;
+          color: #333333;
+        }
+        .container {
+          max-width: 600px;
+          margin: 20px auto;
+          background-color: #ffffff;
+          border-radius: 8px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+          overflow: hidden;
+        }
+        .header {
+          padding: 20px;
+          text-align: center;
+          background-color: #004aad;
+        }
+        .header img {
+          max-height: 50px;
+        }
+        .content {
+          padding: 30px;
+          text-align: center;
+        }
+        .content h1 {
+          font-size: 20px;
+          font-weight: normal;
+          color: #333333;
+        }
+        .code-box {
+          display: inline-block;
+          margin: 20px 0;
+          padding: 12px 24px;
+          font-size: 24px;
+          font-weight: bold;
+          letter-spacing: 4px;
+          color: #004aad;
+          border: 2px dashed #004aad;
+          border-radius: 6px;
+          background-color: #f0f5ff;
+        }
+        .footer {
+          font-size: 12px;
+          color: #666666;
+          text-align: center;
+          padding: 20px;
+          border-top: 1px solid #eeeeee;
+        }
+        .footer a {
+          color: #004aad;
+          text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="cid:logo" alt="H-IDE" />
+    </div>
+
+    <div class="content">
+        <h1>Here’s your sign-in code</h1>
+        <p>Use the following 5-character code to complete your sign-in. This code will expire in 5 minutes.</p>
+
+        <div class="code-box">[[${pin}]]</div>
+
+        <p>If you did not request this code, you can safely ignore this email.</p>
+    </div>
+
+    <div class="footer">
+        <p>&copy; [[${year}]] <a href="https://saurabhagat.me">Saurabh Bhagat</a>.</p>
+        <p>
+            <a href="mailto:support@hide.saurabhagat.me">Contact Support</a>
+        </p>
+    </div>
+</div>
+</body>
+</html>
