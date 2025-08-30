@@ -8,4 +8,12 @@ services:
       GLOG_minloglevel: 1
     volumes:
       - ./.typesense-data:/data
-    command: '--data-dir /data --api-key=test --enable-cors'
+    command: "--data-dir /data --api-key=test --enable-cors"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 0.25g
+        reservations:
+          cpus: "0.25"
+          memory: 0.25g

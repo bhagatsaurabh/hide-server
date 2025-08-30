@@ -1,6 +1,13 @@
 import { Firestore } from '@google-cloud/firestore';
 import { Cache } from '@nestjs/cache-manager';
-import { BadRequestException, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { UserRegistered } from 'hide-common/dto/webhook';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
@@ -91,6 +98,23 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
     const isProfileCreated = await this.cache.get<boolean>(`profile:${data.uid}`);
     if (isProfileCreated !== null && isProfileCreated === false) {
       await this.cache.set(`profile:${data.uid}`, true);
+    }
+  }
+
+  async registerEmail(email: string) {
+    try {
+      const response = await fetch('http://auth/register-email', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      });
+      const data = (await response.json()) as { message: string };
+      if (response.status < 200 || response.status > 299) {
+        throw new HttpException(data.message ?? 'UNKNOWN', response.status);
+      }
+    } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException('Unknown error');
     }
   }
 }

@@ -28,4 +28,12 @@ services:
       - WORKSPACE_ACTIVITY_TIMEOUT=3600000
       - SESSION_PING_TIMEOUT=20000
       - SESSION_ACTIVITY_TIMEOUT=3600000
-    command: [ "/bin/sh", "-c", "cd gateway && npm run start:dev" ]
+    command: ['/bin/sh', '-c', 'cd gateway && npm run start:dev']
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 0.75g
+        reservations:
+          cpus: '0.5'
+          memory: 0.75g

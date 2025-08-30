@@ -12,10 +12,10 @@ services:
     environment:
       NODE_ENV: development
       SERVICE_PORT: 80
-      RMQ_URL: "amqp://rabbitmq:5672"
+      RMQ_URL: 'amqp://rabbitmq:5672'
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      NATS_URL: "nats://nats:4222"
+      NATS_URL: 'nats://nats:4222'
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: admin
@@ -27,4 +27,12 @@ services:
       FIRESTORE_EMULATOR_HOST: host.docker.internal:8085
       FIREBASE_STORAGE_EMULATOR_HOST: host.docker.internal:9199
       FIREBASE_APP_ID: hide-43a4b
-    command: [ "/bin/sh", "-c", "cd workspace && npm run start:dev" ]
+    command: ['/bin/sh', '-c', 'cd workspace && npm run start:dev']
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 0.4g
+        reservations:
+          cpus: '0.3'
+          memory: 0.4g

@@ -21,4 +21,12 @@ services:
       - FIRESTORE_EMULATOR_HOST=host.docker.internal:8085
       - FIREBASE_STORAGE_EMULATOR_HOST=host.docker.internal:9199
       - FIREBASE_APP_ID=hide-43a4b
-    command: [ "/bin/sh", "-c", "cd notification && npm run start:dev" ]
+    command: ['/bin/sh', '-c', 'cd notification && npm run start:dev']
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 0.5g
+        reservations:
+          cpus: '0.3'
+          memory: 0.5g
