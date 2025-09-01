@@ -69,6 +69,9 @@ services:
   auth:
     container_name: auth
     hostname: auth
+    depends_on:
+      redis:
+        condition: service_started
     extends:
       file: ./auth/docker-compose.dev.yml
       service: auth

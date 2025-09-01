@@ -4,7 +4,7 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { UsernameAvailabilityDTO } from 'hide-common/dto/user';
 import { UserRegistered, WebHookDTO } from 'hide-common/dto/webhook';
 import { PublicGuard } from 'src/common/guard/public.guard';
-import { RegisterEmailDTO } from 'hide-common';
+import { RegisterEmailDTO, VerifyEmailDTO } from 'hide-common';
 
 @Controller('api')
 export class PublicController {
@@ -17,14 +17,21 @@ export class PublicController {
     return await this.service.checkUsernameExistence(username);
   }
 
-  @Get('register-email')
+  @Post('register-email')
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 1000, limit: 5 } })
   async registerEmail(@Body() data: RegisterEmailDTO): Promise<void> {
-    await this.service.registerEmail(data.email);
+    return await this.service.registerEmail(data.email);
   }
 
-  // TODO: Network restriction
+  @Post('verify-email')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 1000, limit: 5 } })
+  async verifyEmail(@Body() data: VerifyEmailDTO): Promise<{ token: string }> {
+    return await this.service.verifyEmail(data);
+  }
+
+  // TODO: Network restrictions
   @Post('webhook')
   @UseGuards(PublicGuard)
   async handleWebhook(@Body() data: WebHookDTO<unknown>) {

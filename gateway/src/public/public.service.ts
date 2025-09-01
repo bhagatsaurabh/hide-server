@@ -8,6 +8,7 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
+import { VerifyEmailDTO } from 'hide-common';
 import { UserRegistered } from 'hide-common/dto/webhook';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
@@ -102,19 +103,41 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
   }
 
   async registerEmail(email: string) {
+    let response: Response;
     try {
-      const response = await fetch('http://auth/register-email', {
+      response = await fetch('http://auth/api/register-email', {
         method: 'POST',
         body: JSON.stringify({ email }),
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       });
-      const data = (await response.json()) as { message: string };
-      if (response.status < 200 || response.status > 299) {
-        throw new HttpException(data.message ?? 'UNKNOWN', response.status);
-      }
     } catch (error) {
       console.log(error);
       throw new InternalServerErrorException('Unknown error');
     }
+
+    if (response.status < 200 || response.status > 299) {
+      const data = (await response.json()) as { message: string };
+      throw new HttpException(data.message ?? 'UNKNOWN', response.status);
+    }
+  }
+
+  async verifyEmail(data: VerifyEmailDTO) {
+    let response: Response;
+    try {
+      response = await fetch('http://auth/api/verify-email', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      });
+    } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException('Unknown error');
+    }
+
+    if (response.status < 200 || response.status > 299) {
+      const data = (await response.json()) as { message: string };
+      throw new HttpException(data.message ?? 'UNKNOWN', response.status);
+    }
+    return (await response.json()) as { token: string };
   }
 }

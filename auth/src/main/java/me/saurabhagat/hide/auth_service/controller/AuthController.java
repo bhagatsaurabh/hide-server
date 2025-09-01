@@ -1,5 +1,10 @@
 package me.saurabhagat.hide.auth_service.controller;
 
+import com.google.firebase.auth.FirebaseAuthException;
+import jakarta.mail.MessagingException;
+import me.saurabhagat.hide.auth_service.dto.RegisterEmailDTO;
+import me.saurabhagat.hide.auth_service.dto.VerifyEmailDTO;
+import me.saurabhagat.hide.auth_service.dto.VerifyEmailSuccessDTO;
 import me.saurabhagat.hide.auth_service.exception.BadRequestException;
 import me.saurabhagat.hide.auth_service.service.AuthService;
 import org.springframework.http.HttpHeaders;
@@ -30,10 +35,16 @@ public class AuthController {
         return ResponseEntity.ok(user);
     }
 
-    @GetMapping("/register-email")
-    public ResponseEntity<?> registerEmail(@RequestParam(name = "email") String email) throws IOException {
-        authService.registerEmail(email);
+    @PostMapping("/register-email")
+    public ResponseEntity<?> registerEmail(@RequestBody RegisterEmailDTO data) throws IOException, MessagingException {
+        authService.registerEmail(data.getEmail());
         return ResponseEntity.ok(null);
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestBody VerifyEmailDTO data) throws FirebaseAuthException {
+        String token = authService.verifyEmail(data.getEmail(), data.getCode());
+        return ResponseEntity.ok(new VerifyEmailSuccessDTO(token));
     }
 
     private String extractToken(String authHeader) {
