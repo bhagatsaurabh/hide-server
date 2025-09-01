@@ -15,12 +15,15 @@ services:
       SPRING_PROFILES_ACTIVE: local
       FIREBASE_AUTH_EMULATOR_HOST: "host.docker.internal:9099"
       HIDE_AZURE_COMM_EMAIL_CONNECTION: "${HIDE_AZURE_COMM_EMAIL_CONNECTION}"
+      HIDE_AZURE_CS_SMTP_SECRET: "${HIDE_AZURE_CS_SMTP_SECRET}"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
     command: ./gradlew bootRun --no-daemon
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus: "1.5"
           memory: 1g
         reservations:
-          cpus: "0.5"
+          cpus: "1.5"
           memory: 1g

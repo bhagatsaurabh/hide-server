@@ -23,6 +23,7 @@ public class AuthExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Error> handleGeneral(Exception ex) {
+        ex.printStackTrace();
         Error error = new Error(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }

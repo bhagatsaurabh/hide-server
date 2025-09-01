@@ -38,6 +38,8 @@ dependencies {
     implementation(platform("com.azure:azure-sdk-bom:1.2.37"))
     implementation("com.azure:azure-communication-email:1.2.0-beta.1")
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 }
 
 dependencyManagement {
