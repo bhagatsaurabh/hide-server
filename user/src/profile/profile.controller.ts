@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, HttpStatus, Patch, Post } from '@nestjs/com
 import { type User } from 'hide-common/dto/user';
 import { UserHeader } from 'hide-common';
 import { ProfileService } from './profile.service';
+import { CreateUserDTO } from 'src/common/dto';
 
 @Controller('api')
 export class ProfileController {
@@ -9,7 +10,7 @@ export class ProfileController {
 
   @Post('register')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async register(@UserHeader() user: User, @Body() data: { username: string; name: string }) {
+  async register(@UserHeader() user: User, @Body() data: CreateUserDTO) {
     await this.profileService.createUser(user, data);
   }
 

@@ -32,8 +32,9 @@ export class ProfileService {
     if (countSnap.data().count <= 0) {
       await this.db
         .collection('users')
+        .withConverter(userConverter)
         .doc(data.username)
-        .set({ ...user, name: data.name, username: data.username });
+        .set({ ...user, name: data.name, username: data.username, picture: data.picture ?? '' });
 
       await this.cache.set(`profile:${user.uid}`, true);
     } else {
