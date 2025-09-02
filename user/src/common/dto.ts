@@ -18,4 +18,5 @@ export type UserSearchDTO = {
 export type CreateUserDTO = {
   name: string;
   username: string;
+  picture: string;
 };
