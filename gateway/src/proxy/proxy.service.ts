@@ -34,7 +34,14 @@ export class ProxyService {
       },
     });
     if (response.status < 200 || response.status > 299) {
-      throw new HttpException('Unknow error', response.status);
+      let error: unknown = null;
+      try {
+        error = await response.json();
+      } catch (err) {
+        void err;
+      }
+      console.error(response.status, error);
+      throw new HttpException('Unknown error', response.status);
     }
     if (response.status === 204) return null;
     let data: unknown;
