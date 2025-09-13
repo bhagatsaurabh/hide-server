@@ -1,0 +1,37 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Git commit SHA to deploy"
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.sha }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
+
+      - name: Install Kustomize
+        run: |
+          curl -sfLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz
+          tar -xvzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Deploy selected commit
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python scripts/deploy.py \
+            "gateway,auth,notification,workspace,provisioner" \
+            "${{ github.event.inputs.sha }}"

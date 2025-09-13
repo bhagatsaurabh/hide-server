@@ -1,0 +1,88 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: ["main"]
+  # pull_request:
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      gateway: ${{ steps.filter.outputs.gateway }}
+      auth: ${{ steps.filter.outputs.auth }}
+      notification: ${{ steps.filter.outputs.notification }}
+      workspace: ${{ steps.filter.outputs.workspace }}
+      provisioner: ${{ steps.filter.outputs.provisioner }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            gateway:
+              - 'gateway/**'
+            auth:
+              - 'auth/**'
+            notification:
+              - 'notification/**'
+            workspace:
+              - 'workspace/**'
+            provisioner:
+              - 'provisioner/**'
+
+  build-images:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build each service only if changed
+      - name: Build Gateway
+        if: needs.detect-changes.outputs.gateway == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./gateway
+          push: true
+          tags: ghcr.io/${{ github.repository }}/gateway:${{ github.sha }}
+
+      - name: Build Auth
+        if: needs.detect-changes.outputs.auth == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./auth
+          push: true
+          tags: ghcr.io/${{ github.repository }}/auth:${{ github.sha }}
+
+      - name: Build Notification
+        if: needs.detect-changes.outputs.notification == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./notification
+          push: true
+          tags: ghcr.io/${{ github.repository }}/notification:${{ github.sha }}
+
+      - name: Build Workspace
+        if: needs.detect-changes.outputs.workspace == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./workspace
+          push: true
+          tags: ghcr.io/${{ github.repository }}/workspace:${{ github.sha }}
+
+      - name: Build Provisioner
+        if: needs.detect-changes.outputs.provisioner == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./provisioner
+          push: true
+          tags: ghcr.io/${{ github.repository }}/provisioner:${{ github.sha }}
