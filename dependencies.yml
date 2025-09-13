@@ -1,0 +1,19 @@
+gateway:
+  depends_on: [redis, rabbitmq, nats]
+env:
+  depends_on: [redis, rabbitmq, nats]
+user:
+  depends_on: [typesense, redis, rabbitmq, nats]
+notification:
+  depends_on: [redis, rabbitmq]
+workspace:
+  depends_on: [postgres, redis, rabbitmq, nats]
+auth:
+  depends_on: [redis]
+provisioner:
+  depends_on: [redis, nats]
+postgres: {}
+typesense: {}
+nats: {}
+redis: {}
+rabbitmq: {}

@@ -11,6 +11,8 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
+      nats:
+        condition: service_started
     extends:
       file: ./gateway/docker-compose.dev.yml
       service: gateway
@@ -21,6 +23,8 @@ services:
     hostname: env
     depends_on:
       redis:
+        condition: service_started
+      rabbitmq:
         condition: service_started
       nats:
         condition: service_started
@@ -34,6 +38,12 @@ services:
     hostname: user
     depends_on:
       redis:
+        condition: service_started
+      typesense:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      nats:
         condition: service_started
     extends:
       file: ./user/docker-compose.dev.yml
@@ -61,6 +71,10 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
     extends:
       file: ./workspace/docker-compose.dev.yml
       service: workspace
@@ -80,6 +94,11 @@ services:
   provisioner:
     container_name: provisioner
     hostname: provisioner
+    depends_on:
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
     extends:
       file: ./provisioner/docker-compose.dev.yml
       service: provisioner

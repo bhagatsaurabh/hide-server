@@ -7,11 +7,11 @@ plugins {
 group = 'me.saurabhagat.hide'
 version = '0.0.1-SNAPSHOT'
 
-java {
+/* java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(23)
     }
-}
+} */
 
 configurations {
     compileOnly {
@@ -46,6 +46,10 @@ dependencyManagement {
     imports {
         mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
     }
+}
+
+tasks.named("jar") {
+    enabled = false
 }
 
 tasks.named('test') {
