@@ -93,7 +93,9 @@ export class SSHProxyService {
             msg: { action: 'error', payload: { message: 'Failed to start shell' } },
           },
         });
-        throw err;
+        console.log(err);
+        void this.handleSSHClose(uid, sessionId, { uuid: msg.uuid, sshSessionId: '' });
+        return;
       }
       const sshSessionId = randomUUID();
       this.conns[uid][msg.uuid].sessions[sshSessionId] = stream;
