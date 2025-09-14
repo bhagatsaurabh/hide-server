@@ -11,21 +11,21 @@ services:
       - .:/app/user
       - /app/user/node_modules
     environment:
-      - NODE_ENV=development
-      - SERVICE_PORT=80
-      - FIREBASE_EMULATION=true
-      - FIREBASE_AUTH_EMULATOR_HOST=host.docker.internal:9099
-      - FIRESTORE_EMULATOR_HOST=host.docker.internal:8085
-      - FIREBASE_STORAGE_EMULATOR_HOST=host.docker.internal:9199
-      - FIREBASE_APP_ID=hide-43a4b
-      - TYPESENSE_HOST=typesense
-      - TYPESENSE_PORT=8108
-      - TYPESENSE_PROTOCOL=http
-      - TYPESENSE_APIKEY=test
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - RMQ_URL=amqp://rabbitmq:5672
-      - NATS_URL=nats://nats:4222
+      NODE_ENV: development
+      SERVICE_PORT: 80
+      FIREBASE_APP_ID: hide-43a4b
+      FIREBASE_EMULATION: true
+      FIREBASE_AUTH_EMULATOR_HOST: host.docker.internal:9099
+      FIRESTORE_EMULATOR_HOST: host.docker.internal:8085
+      FIREBASE_STORAGE_EMULATOR_HOST: host.docker.internal:9199
+      TYPESENSE_HOST: typesense
+      TYPESENSE_PORT: 8108
+      TYPESENSE_PROTOCOL: http
+      TYPESENSE_APIKEY: '${AZURE_COMM_EMAIL_CONNECTION}'
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RMQ_URL: amqp://rabbitmq:5672
+      NATS_URL: nats://nats:4222
     command: ['/bin/sh', '-c', 'cd user && npm run start:dev']
     deploy:
       resources:

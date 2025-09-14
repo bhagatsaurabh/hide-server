@@ -15,38 +15,47 @@ spec:
       containers:
         - name: user
           image: hideregistry.azurecr.io/hide-server-user:latest
-          # imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
-            - containerPort: 3001
+            - containerPort: 80
           env:
             - name: NODE_ENV
               value: production
             - name: SERVICE_PORT
-              value: '80'
+              value: "80"
+            - name: FIREBASE_APP_ID
+              value: "hide-43a4b"
+            - name: TYPESENSE_HOST
+              value: "typesense"
+            - name: TYPESENSE_PORT
+              value: "8108"
+            - name: TYPESENSE_PROTOCOL
+              value: "http"
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: NATS_URL
+              value: nats://nats:4222
+            - name: RMQ_URL
+              value: "amqp://rabbitmq:5672"
             - name: FIREBASE_KEY_BASE64
               valueFrom:
                 secretKeyRef:
-                  name: firebase-key
-                  key: HIDE_FIREBASE_ADMIN_KEY_BASE64
-            - name: FIREBASE_APP_ID
-              value: 'hide-43a4b'
-            - name: TYPESENSE_HOST
-              value: 'typesense'
-            - name: TYPESENSE_PORT
-              value: '8108'
-            - name: TYPESENSE_PROTOCOL
-              value: 'http'
+                  name: hide-secrets
+                  key: FIREBASE_KEY_BASE64
             - name: TYPESENSE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: typesense-secret
-                  key: api-key
-            - name: REDIS_HOST
-              value: 'redis'
-            - name: REDIS_PORT
-              value: '6379'
-            - nam: NATS_URL
-              value: nats://nats:4222
+                  name: hide-secrets
+                  key: TYPESENSE_API_KEY
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500M
+            requests:
+              cpu: 500m
+              memory: 500M
       imagePullSecrets:
         - name: acr-secret
       initContainers:
@@ -54,7 +63,7 @@ spec:
           image: busybox:1.28
           command:
             [
-              'sh',
-              '-c',
-              'until nslookup redis.default.svc.cluster.local; do echo waiting for redis; sleep 2; done',
+              "sh",
+              "-c",
+              "until nslookup redis.default.svc.cluster.local; do echo waiting for redis; sleep 2; done",
             ]

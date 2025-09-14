@@ -1,5 +1,5 @@
 typesense/.typesense-data/
 postgres/.postgres-data/
-rmq/.rabbitmq-data/
+rabbitmq/.rabbitmq-data/
 .env
 .env.local

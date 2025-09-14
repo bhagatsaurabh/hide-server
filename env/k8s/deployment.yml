@@ -15,18 +15,29 @@ spec:
       containers:
         - name: env
           image: hideregistry.azurecr.io/hide-server-env:latest
-          # imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
-            - containerPort: 3001
+            - containerPort: 80
           env:
             - name: NODE_ENV
               value: production
             - name: SERVICE_PORT
-              value: '80'
+              value: "80"
             - name: REDIS_HOST
-              value: 'redis'
+              value: "redis"
             - name: REDIS_PORT
-              value: '6379'
+              value: "6379"
+            - name: RMQ_URL
+              value: "amqp://rabbitmq:5672"
+            - name: NATS_URL
+              value: "nats://nats:4222"
+          resources:
+            limits:
+              cpu: 350m
+              memory: 500M
+            requests:
+              cpu: 350m
+              memory: 500M
       imagePullSecrets:
         - name: acr-secret
       initContainers:
@@ -34,7 +45,7 @@ spec:
           image: busybox:1.28
           command:
             [
-              'sh',
-              '-c',
-              'until nslookup redis.default.svc.cluster.local; do echo waiting for redis; sleep 2; done',
+              "sh",
+              "-c",
+              "until nslookup redis.default.svc.cluster.local; do echo waiting for redis; sleep 2; done",
             ]

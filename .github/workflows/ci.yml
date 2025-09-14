@@ -2,87 +2,76 @@ name: Build
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches: ["main"]
-  # pull_request:
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
-  detect-changes:
+  changes:
     runs-on: ubuntu-latest
     outputs:
-      gateway: ${{ steps.filter.outputs.gateway }}
-      auth: ${{ steps.filter.outputs.auth }}
-      notification: ${{ steps.filter.outputs.notification }}
-      workspace: ${{ steps.filter.outputs.workspace }}
-      provisioner: ${{ steps.filter.outputs.provisioner }}
+      matrix: ${{ steps.filter.outputs.changes }}
     steps:
       - uses: actions/checkout@v4
-      - id: filter
-        uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v3
+        name: Filter
+        id: filter
         with:
           filters: |
             gateway:
               - 'gateway/**'
-            auth:
-              - 'auth/**'
+            env:
+              - 'env/**'
+            user:
+              - 'user/**'
             notification:
               - 'notification/**'
             workspace:
               - 'workspace/**'
+            auth:
+              - 'auth/**'
             provisioner:
               - 'provisioner/**'
+            postgres:
+              - 'postgres/**'
+            typesense:
+              - 'typesense/**'
+            redis:
+              - 'redis/**'
+            nats:
+              - 'nats/**'
+            rabbitmq:
+              - 'rabbitmq/**'
 
-  build-images:
-    needs: detect-changes
+  build:
+    needs: changes
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: Azure Service Principal Login
+        uses: azure/login@v1
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Build each service only if changed
-      - name: Build Gateway
-        if: needs.detect-changes.outputs.gateway == 'true'
-        uses: docker/build-push-action@v5
+      - name: Build and push image
+        uses: azure/docker-login@v1
         with:
-          context: ./gateway
-          push: true
-          tags: ghcr.io/${{ github.repository }}/gateway:${{ github.sha }}
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          IMAGE=${{ secrets.REGISTRY_LOGIN_SERVER }}/hide-server-${{ matrix.service }}:latest
+          cd ${{ matrix.service }}
+          docker build --target production -f dockerfile -t $IMAGE ..
+          docker push $IMAGE
+          echo $IMAGE >> built.txt
 
-      - name: Build Auth
-        if: needs.detect-changes.outputs.auth == 'true'
-        uses: docker/build-push-action@v5
+      - name: Upload build metadata
+        uses: actions/upload-artifact@v4
         with:
-          context: ./auth
-          push: true
-          tags: ghcr.io/${{ github.repository }}/auth:${{ github.sha }}
-
-      - name: Build Notification
-        if: needs.detect-changes.outputs.notification == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./notification
-          push: true
-          tags: ghcr.io/${{ github.repository }}/notification:${{ github.sha }}
-
-      - name: Build Workspace
-        if: needs.detect-changes.outputs.workspace == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./workspace
-          push: true
-          tags: ghcr.io/${{ github.repository }}/workspace:${{ github.sha }}
-
-      - name: Build Provisioner
-        if: needs.detect-changes.outputs.provisioner == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./provisioner
-          push: true
-          tags: ghcr.io/${{ github.repository }}/provisioner:${{ github.sha }}
+          name: built
+          path: built.txt

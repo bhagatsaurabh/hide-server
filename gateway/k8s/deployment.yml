@@ -15,22 +15,51 @@ spec:
       containers:
         - name: gateway
           image: hideregistry.azurecr.io/hide-server-gateway:latest
-          # imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           env:
             - name: NODE_ENV
               value: production
             - name: SERVICE_PORT
-              value: '80'
+              value: "80"
             - name: CORS_ORIGIN
-              value: '*'
+              value: "hide.saurabhagat.me"
             - name: RMQ_URL
-              value: 'amqp://rabbitmq:5672'
+              value: "amqp://rabbitmq:5672"
             - name: REDIS_HOST
               value: redis
             - name: REDIS_PORT
-              value: '6379'
+              value: "6379"
+            - name: NATS_URL
+              value: "nats://nats:4222"
+            - name: FIREBASE_APP_ID
+              value: "hide-43a4b"
+            - name: WORKSPACE_PING_TIMEOUT
+              value: "20000"
+            - name: WORKSPACE_ACTIVITY_TIMEOUT
+              value: "3600000"
+            - name: SESSION_PING_TIMEOUT
+              value: "20000"
+            - name: SESSION_ACTIVITY_TIMEOUT
+              value: "3600000"
+            - name: FIREBASE_KEY_BASE64
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: FIREBASE_KEY_BASE64
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: JWT_PUBLIC_KEY
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500M
+            requests:
+              cpu: 500m
+              memory: 500M
       imagePullSecrets:
         - name: acr-secret
       initContainers:
@@ -38,15 +67,15 @@ spec:
           image: busybox:1.28
           command:
             [
-              'sh',
-              '-c',
-              'until nslookup redis.default.svc.cluster.local; do echo waiting for redis; sleep 2; done',
+              "sh",
+              "-c",
+              "until nslookup redis.default.svc.cluster.local; do echo waiting for redis; sleep 2; done",
             ]
         - name: init-rmq
           image: busybox:1.28
           command:
             [
-              'sh',
-              '-c',
-              'until nslookup rabbitmq.default.svc.cluster.local; do echo waiting for rabbitmq; sleep 2; done',
+              "sh",
+              "-c",
+              "until nslookup rabbitmq.default.svc.cluster.local; do echo waiting for rabbitmq; sleep 2; done",
             ]

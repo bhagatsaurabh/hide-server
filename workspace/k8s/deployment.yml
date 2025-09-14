@@ -15,40 +15,47 @@ spec:
       containers:
         - name: workspace
           image: hideregistry.azurecr.io/hide-server-workspace:latest
-          # imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           env:
             - name: NODE_ENV
               value: production
             - name: SERVICE_PORT
-              value: '80'
+              value: "80"
             - name: RMQ_URL
-              value: 'amqp://rabbitmq:5672'
+              value: "amqp://rabbitmq:5672"
             - name: NATS_URL
-              value: 'nats://nats:4222'
+              value: "nats://nats:4222"
             - name: REDIS_HOST
               value: redis
             - name: REDIS_PORT
-              value: '6379'
+              value: "6379"
             - name: POSTGRES_HOST
               value: postgres
             - name: POSTGRES_PORT
-              value: 5432
+              value: "5432"
             - name: POSTGRES_USER
               value: admin
-            - name: POSTGRES_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
             - name: POSTGRES_DB
               value: workspacedb
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: POSTGRES_PASSWORD
             - name: WORKSPACE_SERVICE_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: workspace-service-secret
+                  name: hide-secrets
                   key: WORKSPACE_SERVICE_SECRET
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500M
+            requests:
+              cpu: 500m
+              memory: 500M
       imagePullSecrets:
         - name: acr-secret
       initContainers:
@@ -56,15 +63,15 @@ spec:
           image: busybox:1.28
           command:
             [
-              'sh',
-              '-c',
-              'until nslookup postgres.default.svc.cluster.local; do echo waiting for postgres; sleep 2; done',
+              "sh",
+              "-c",
+              "until nslookup postgres.default.svc.cluster.local; do echo waiting for postgres; sleep 2; done",
             ]
         - name: init-rmq
           image: busybox:1.28
           command:
             [
-              'sh',
-              '-c',
-              'until nslookup rabbitmq.default.svc.cluster.local; do echo waiting for rabbitmq; sleep 2; done',
+              "sh",
+              "-c",
+              "until nslookup rabbitmq.default.svc.cluster.local; do echo waiting for rabbitmq; sleep 2; done",
             ]
