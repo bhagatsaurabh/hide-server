@@ -12,11 +12,11 @@ spec:
       labels:
         app: provisioner
     spec:
-      serviceAccountName: provisioner
+      serviceAccountName: provisioner-sa
       containers:
         - name: provisioner
           image: hideregistry.azurecr.io/hide-server-provisioner:latest
-          # imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           env:
@@ -25,6 +25,17 @@ spec:
             - name: REDIS_HOST
               value: redis
             - name: REDIS_PORT
-              value: 6379
+              value: "6379"
+            - name: NATS_URL
+              value: "nats://nats:4222"
+            - name: IN_CLUSTER_K8S_CONFIG
+              value: "true"
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500M
+            requests:
+              cpu: 500m
+              memory: 500M
       imagePullSecrets:
         - name: acr-secret

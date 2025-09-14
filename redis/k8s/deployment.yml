@@ -18,3 +18,10 @@ spec:
           ports:
             - containerPort: 6379
           args: ["redis-server", "--notify-keyspace-events", "Ex"]
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500M
+            requests:
+              cpu: 500m
+              memory: 500M

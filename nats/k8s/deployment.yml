@@ -25,6 +25,13 @@ spec:
           volumeMounts:
             - mountPath: /data
               name: nats-data
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500M
+            requests:
+              cpu: 500m
+              memory: 500M
       volumes:
         - name: nats-data
           persistentVolumeClaim:

@@ -137,7 +137,7 @@ services:
       - hide-network
   rabbitmq:
     extends:
-      file: ./rmq/docker-compose.dev.yml
+      file: ./rabbitmq/docker-compose.dev.yml
       service: rabbitmq
     networks:
       - hide-network

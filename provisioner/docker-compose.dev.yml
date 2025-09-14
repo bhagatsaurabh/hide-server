@@ -11,16 +11,15 @@ services:
       - .:/app
       - ~/.kube:/root/.kube
       - /app/.build
-    env_file:
-      - .env
     environment:
-      - SERVICE_PORT=80
-      - K8S_API_SERVER=https://kubernetes.docker.internal:6443
-      - DOCKER_HOST=tcp://host.docker.internal:2375
-      - DEV_PLATFORM=docker
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - NATS_URL=nats://nats:4222
+      SERVICE_PORT: 80
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      NATS_URL: nats://nats:4222
+      K8S_API_SERVER: https://kubernetes.docker.internal:6443
+      DOCKER_HOST: tcp://host.docker.internal:2375
+      DEV_PLATFORM: docker
+      DEV_FS_SOURCE: "${DEV_FS_SOURCE}"
     command: ["/bin/sh", "-c", "air -c .air.toml"]
     deploy:
       resources:

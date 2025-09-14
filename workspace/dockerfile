@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 RUN apk add jq
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN for dir in $(jq ".references[].path" ./workspace/tsconfig.json); do \
   done
 CMD ["/bin/sh", "-c", "cd workspace && npm run start:dev"]
 
-FROM base AS builder
+FROM base AS build
 COPY workspace ./workspace
 COPY libs ./libs
 RUN cd ./workspace && npm ci
@@ -21,9 +21,11 @@ RUN for dir in $(jq ".references[].path" ./workspace/tsconfig.json); do \
 RUN npm run build --prefix workspace
 
 FROM base AS production
-COPY --from=builder /app/workspace/dist ./workspace/dist
-COPY --from=builder /app/workspace/package.json ./workspace/package.json
-COPY --from=builder /app/workspace/package-lock.json ./workspace/package-lock.json
-COPY --from=builder /app/workspace/node_modules ./workspace/node_modules
-COPY --from=builder /app/libs ./libs
+COPY --from=build /app/workspace/dist ./workspace/dist
+COPY --from=build /app/workspace/package.json ./workspace/package.json
+COPY --from=build /app/workspace/package-lock.json ./workspace/package-lock.json
+COPY --from=build /app/workspace/node_modules ./workspace/node_modules
+COPY --from=build /app/libs ./libs
 CMD ["/bin/sh", "-c", "cd workspace && npm run start:prod"]
+
+EXPOSE 80

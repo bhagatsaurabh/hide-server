@@ -3,20 +3,20 @@ WORKDIR /app
 COPY gradle gradle
 COPY gradlew .
 COPY build.gradle settings.gradle ./
+COPY src src
 RUN chmod +x gradlew
 RUN ./gradlew dependencies --no-daemon
 RUN apt update && apt install -y curl
 
 FROM base AS development
-COPY src src
 CMD ["./gradlew", "bootRun", "--no-daemon"]
 
 FROM base AS build
-COPY src src
 RUN ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:23-jdk AS production
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
-EXPOSE 80
 CMD ["java", "-jar", "app.jar"]
+
+EXPOSE 80

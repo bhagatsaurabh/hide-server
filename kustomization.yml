@@ -3,10 +3,10 @@ kind: Kustomization
 
 resources:
   - ./k8s/gateway-ingress.yml
-  - ./k8s/cluster-issuer.yml
-  - ./rmq/k8s/deployment.yml
-  - ./rmq/k8s/service.yml
-  - ./rmq/k8s/pvc.yml
+  - ./k8s/clusterissuer.yml
+  - ./rabbitmq/k8s/deployment.yml
+  - ./rabbitmq/k8s/service.yml
+  - ./rabbitmq/k8s/pvc.yml
   - ./postgres/k8s/deployment.yml
   - ./postgres/k8s/service.yml
   - ./postgres/k8s/pvc.yml

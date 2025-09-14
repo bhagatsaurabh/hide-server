@@ -57,5 +57,5 @@ tasks.named('test') {
 }
 
 task image(type: Exec) {
-    commandLine 'docker', 'build', '--target', 'production', '-f', 'dockerfile', '-t', 'hide-server-auth-release:latest', '.'
+    commandLine 'docker', 'build', '--target', 'production', '-f', 'dockerfile', '-t', 'hide-server-auth:latest', '.'
 }

@@ -18,24 +18,27 @@ spec:
           ports:
             - containerPort: 8108
           volumeMounts:
-            - name: data-volume
+            - name: typesense-data
               mountPath: /data
-          command: ["typesense"]
+          command: ["/bin/sh", "-c"]
           args:
             [
-              "--data-dir",
-              "/data",
-              "--api-key",
-              "$(TYPESENSE_API_KEY)",
-              "--enable-cors",
+              "typesense --data-dir /data --api-key=$TYPESENSE_API_KEY --enable-cors",
             ]
           env:
             - name: TYPESENSE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: typesense-secret
-                  key: api-key
+                  name: hide-secrets
+                  key: TYPESENSE_API_KEY
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500M
+            requests:
+              cpu: 500m
+              memory: 500M
       volumes:
-        - name: data-volume
+        - name: typesense-data
           persistentVolumeClaim:
             claimName: typesense-pvc

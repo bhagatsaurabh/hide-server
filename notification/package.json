@@ -8,7 +8,7 @@
   "scripts": {
     "prebuild": "tsc -b",
     "build": "nest build",
-    "image": "docker build --target production -f dockerfile -t hide-server-notification-release:latest ..",
+    "image": "docker build --target production -f dockerfile -t hide-server-notification:latest ..",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "prestart:dev": "tsc -b",

@@ -3,5 +3,10 @@
   "gopls": {
     "directoryFilters": ["-node_modules", "-vendor", "-out", "-dist", "-build"],
     "completionBudget": "100ms"
+  },
+  "yaml.schemas": {
+    "kubernetes://schema/v1%40secret": [
+      "file:///d%3A/Softwares/Prosoft/Projects/Polyglot/hide-server/k8s/secret.yml"
+    ]
   }
 }

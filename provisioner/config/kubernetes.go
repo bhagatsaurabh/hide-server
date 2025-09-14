@@ -18,7 +18,7 @@ func LoadK8sConfig() (*rest.Config, error) {
 		return config, k8sErr
 	}
 
-	if _, exists := os.LookupEnv("KUBERNETES_SERVICE_HOST"); exists {
+	if _, exists := os.LookupEnv("IN_CLUSTER_K8S_CONFIG"); exists {
 		log.Println("Using in-cluster config.")
 		config, k8sErr = rest.InClusterConfig()
 	} else {

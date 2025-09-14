@@ -9,7 +9,7 @@
 
 typesense/.typesense-data
 postgres/.postgres-data
-rmq/.rabbitmq-data
+rabbitmq/.rabbitmq-data
 
 **/logs
 **/*.log

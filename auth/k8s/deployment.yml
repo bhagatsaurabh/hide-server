@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: auth
-          image: hide-server-auth-release:latest
-          imagePullPolicy: Never
+          image: hideregistry.azurecr.io/hide-server-env:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           env:
@@ -23,8 +23,31 @@ spec:
               value: "-Xms256m -Xmx512m"
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
-            - name: HIDE_FIREBASE_ADMIN_KEY_BASE64
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: FIREBASE_KEY_BASE64
               valueFrom:
                 secretKeyRef:
-                  name: firebase-key
-                  key: HIDE_FIREBASE_ADMIN_KEY_BASE64
+                  name: hide-secrets
+                  key: FIREBASE_KEY_BASE64
+            - name: AZURE_COMM_EMAIL_CONNECTION
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: AZURE_COMM_EMAIL_CONNECTION
+            - name: AZURE_CS_SMTP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: AZURE_CS_SMTP_SECRET
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "500M"
+            limits:
+              cpu: "500m"
+              memory: "500M"
+      imagePullSecrets:
+        - name: acr-secret
