@@ -42,7 +42,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - "PGPASSWORD=$POSTGRES_PASSWORD pg_isready -U admin -d postgres -h localhost"
+                - PGPASSWORD=$POSTGRES_PASSWORD pg_isready -U admin -d postgres -h localhost
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 5
