@@ -32,6 +32,13 @@ spec:
             requests:
               cpu: 500m
               memory: 500M
+          readinessProbe:
+            tcpSocket:
+              port: 4222
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: nats-data
           persistentVolumeClaim:

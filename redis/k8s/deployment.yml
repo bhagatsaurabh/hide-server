@@ -25,3 +25,10 @@ spec:
             requests:
               cpu: 500m
               memory: 500M
+          readinessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3

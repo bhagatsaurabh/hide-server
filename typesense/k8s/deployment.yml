@@ -38,6 +38,14 @@ spec:
             requests:
               cpu: 500m
               memory: 500M
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8108
+            initialDelaySeconds: 7
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: typesense-data
           persistentVolumeClaim:

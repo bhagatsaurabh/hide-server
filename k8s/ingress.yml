@@ -4,15 +4,12 @@ metadata:
   name: gateway-ingress
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
+    traefik.ingress.kubernetes.io/redirect-entry-point: websecure
     traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
-  tls:
-    - hosts:
-        - hide-be.saurabhagat.me
-      secretName: tls-secret
   rules:
-    - host: hide-be.saurabhagat.me
+    - host: api.hide.saurabhagat.me
       http:
         paths:
           - path: /
