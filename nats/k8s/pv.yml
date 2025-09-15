@@ -3,6 +3,7 @@ kind: PersistentVolume
 metadata:
   name: nats-pv
 spec:
+  storageClassName: local-path
   capacity:
     storage: 1Gi
   accessModes:
