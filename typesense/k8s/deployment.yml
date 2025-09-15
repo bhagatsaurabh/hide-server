@@ -20,11 +20,11 @@ spec:
           volumeMounts:
             - name: typesense-data
               mountPath: /data
-          command: ["/bin/sh", "-c"]
           args:
-            [
-              "typesense --data-dir /data --api-key=$TYPESENSE_API_KEY --enable-cors",
-            ]
+            - "--data-dir"
+            - "/data"
+            - "--api-key=$TYPESENSE_API_KEY"
+            - "--enable-cors"
           env:
             - name: TYPESENSE_API_KEY
               valueFrom:
