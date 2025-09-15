@@ -101,7 +101,12 @@ jobs:
           ACR_KEY_BASE64: ${{ secrets.ACR_KEY_BASE64 }}
 
       - name: Deploy ${{ matrix.service }}
-        if: (github.event_name == 'workflow_dispatch' && contains(github.event.inputs.services, matrix.service) && matrix.service != 'k8s') || (github.event_name == 'push' && needs.changes.outputs[matrix.service] == 'true' && matrix.service != 'k8s')
+        if: >
+          matrix.service == 'k8s' &&
+          (
+            (github.event_name == 'workflow_dispatch' && github.event.inputs.services != '' && contains(github.event.inputs.services, matrix.service) && matrix.service != 'k8s') ||
+            (github.event_name == 'push' && contains(fromJSON(needs.changes.outputs.matrix), matrix.service) && matrix.service != 'k8s')
+          )
         run: |
           kubectl apply -f ${{ matrix.service }}/k8s/
           kubectl rollout status deployment -n default -l app=${{ matrix.service }} --timeout=60s
