@@ -105,5 +105,5 @@ jobs:
           (github.event_name == 'workflow_dispatch' && github.event.inputs.services != '' && contains(github.event.inputs.services, matrix.service) && matrix.service != 'k8s') ||
           (github.event_name == 'push' && contains(fromJSON(needs.changes.outputs.matrix), matrix.service) && matrix.service != 'k8s')
         run: |
-          kubectl apply -f ${{ matrix.service }}/k8s/
+          kubectl apply -k ${{ matrix.service }}/k8s/
           kubectl rollout status deployment -n default -l app=${{ matrix.service }} --timeout=60s
