@@ -64,9 +64,20 @@ jobs:
         uses: azure/setup-kubectl@v3
 
       - name: Deploy Configs
-        if: ${{ matrix.service == 'k8s' }}
+        if: ${{ matrix.service == 'k8s' && ((github.event_name == 'workflow_dispatch' && contains(github.event.inputs.services, 'k8s')) || (github.event_name == 'push' && contains(needs.changes.outputs, 'k8s'))) }}
         run: |
-          envsubst < k8s/secret.yml > k8s/secret.yml
+          export FIREBASE_KEY_BASE64=$(echo "$FIREBASE_KEY_BASE64" | tr -d '\r')
+          export POSTGRES_PASSWORD=$(echo "$POSTGRES_PASSWORD" | tr -d '\r')
+          export TYPESENSE_API_KEY=$(echo "$TYPESENSE_API_KEY" | tr -d '\r')
+          export WORKSPACE_SERVICE_SECRET=$(echo "$WORKSPACE_SERVICE_SECRET" | tr -d '\r')
+          export AZURE_COMM_EMAIL_CONNECTION=$(echo "$AZURE_COMM_EMAIL_CONNECTION" | tr -d '\r')
+          export AZURE_CS_SMTP_SECRET=$(echo "$AZURE_CS_SMTP_SECRET" | tr -d '\r')
+          export JWT_PUBLIC_KEY=$(echo "$JWT_PUBLIC_KEY" | tr -d '\r')
+          export ACR_KEY_BASE64=$(echo "$ACR_KEY_BASE64" | tr -d '\r')
+
+          envsubst < k8s/secret.yml > k8s/secret-values.yml
+          rm k8s/secret.yml
+          mv k8s/secret-values.yml k8s/secret.yml
           kubectl apply -f k8s/
         env:
           FIREBASE_KEY_BASE64: ${{ secrets.FIREBASE_KEY_BASE64 }}
