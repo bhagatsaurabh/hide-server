@@ -7,7 +7,7 @@ on:
         description: "Comma-separated list of infra services to deploy (postgres, redis, rabbitmq, nats, typesense, k8s). Leave blank to use paths-filter."
         required: false
         default: ""
-  pull_request:
+  push:
     branches:
       - main
     paths:
