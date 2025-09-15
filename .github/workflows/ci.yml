@@ -32,16 +32,6 @@ jobs:
               - 'auth/**'
             provisioner:
               - 'provisioner/**'
-            postgres:
-              - 'postgres/**'
-            typesense:
-              - 'typesense/**'
-            redis:
-              - 'redis/**'
-            nats:
-              - 'nats/**'
-            rabbitmq:
-              - 'rabbitmq/**'
 
   build:
     needs: changes

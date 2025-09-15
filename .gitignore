@@ -3,3 +3,4 @@ postgres/.postgres-data/
 rabbitmq/.rabbitmq-data/
 .env
 .env.local
+rmq/

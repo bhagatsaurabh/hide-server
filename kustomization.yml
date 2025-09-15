@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ./k8s/gateway-ingress.yml
+  - ./k8s/ingress.yml
   - ./k8s/clusterissuer.yml
   - ./rabbitmq/k8s/deployment.yml
   - ./rabbitmq/k8s/service.yml

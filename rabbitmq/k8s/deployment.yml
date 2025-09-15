@@ -30,6 +30,13 @@ spec:
             requests:
               cpu: 500m
               memory: 500M
+          readinessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "ping"]
+            initialDelaySeconds: 7
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: rabbitmq-data
           persistentVolumeClaim:

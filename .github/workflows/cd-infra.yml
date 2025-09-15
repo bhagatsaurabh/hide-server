@@ -1,0 +1,85 @@
+name: Deploy Infra
+
+on:
+  workflow_dispatch:
+    inputs:
+      services:
+        description: "Comma-separated list of infra services to deploy (postgres, redis, rabbitmq, nats, typesense, k8s). Leave blank to use paths-filter."
+        required: false
+        default: ""
+  push:
+    branches:
+      - main
+    paths:
+      - "k8s/**"
+      - "postgres/k8s/**"
+      - "redis/k8s/**"
+      - "rabbitmq/k8s/**"
+      - "nats/k8s/**"
+      - "typesense/k8s/**"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        name: Filter
+        id: filter
+        with:
+          filters: |
+            k8s:
+              - 'k8s/**'
+            redis:
+              - 'redis/k8s/**'
+            postgres:
+              - 'postgres/k8s/**'
+            rabbitmq:
+              - 'rabbitmq/k8s/**'
+            nats:
+              - 'nats/k8s/**'
+            typesense:
+              - 'typesense/k8s/**'
+
+  deploy:
+    needs: changes
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJSON('["k8s","redis","postgres","rabbitmq","nats","typesense"]') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${K3S_KUBECONFIG}" > ~/.kube/config
+        env:
+          K3S_KUBECONFIG: ${{ secrets.K3S_KUBECONFIG }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Deploy Configs
+        if: ${{ matrix.service == 'k8s' }}
+        run: |
+          envsubst < k8s/secret.yml > k8s/secret.yml
+          kubectl apply -f k8s/
+        env:
+          FIREBASE_KEY_BASE64: ${{ secrets.FIREBASE_KEY_BASE64 }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
+          WORKSPACE_SERVICE_SECRET: ${{ secrets.WORKSPACE_SERVICE_SECRET }}
+          AZURE_COMM_EMAIL_CONNECTION: ${{ secrets.AZURE_COMM_EMAIL_CONNECTION }}
+          AZURE_CS_SMTP_SECRET: ${{ secrets.AZURE_CS_SMTP_SECRET }}
+          JWT_PUBLIC_KEY: ${{ secrets.JWT_PUBLIC_KEY }}
+          ACR_KEY_BASE64: ${{ secrets.ACR_KEY_BASE64 }}
+
+      - name: Deploy ${{ matrix.service }}
+        if: (github.event_name == 'workflow_dispatch' && contains(github.event.inputs.services, matrix.service) && matrix.service != 'k8s') || (github.event_name == 'push' && needs.changes.outputs[matrix.service] == 'true' && matrix.service != 'k8s')
+        run: |
+          kubectl apply -f ${{ matrix.service }}/k8s/
+          kubectl rollout status deployment -n default -l app=${{ matrix.service }} --timeout=60s
