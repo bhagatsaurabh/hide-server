@@ -63,8 +63,19 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
 
+      - name: Debug
+        run: |
+          echo "event: ${{ github.event_name }}"
+          echo "services: ${{ github.event.inputs.services }}"
+          echo "changes: ${{ needs.changes.outputs.matrix }}"
+
       - name: Deploy Configs
-        if: ${{ matrix.service == 'k8s' && ((github.event_name == 'workflow_dispatch' && contains(github.event.inputs.services, 'k8s')) || (github.event_name == 'push' && contains(needs.changes.outputs, 'k8s'))) }}
+        if: >
+          matrix.service == 'k8s' &&
+          (
+            (github.event_name == 'workflow_dispatch' && github.event.inputs.services != '' && contains(github.event.inputs.services, 'k8s')) ||
+            (github.event_name == 'push' && contains(fromJSON(needs.changes.outputs.matrix), 'k8s'))
+          )
         run: |
           export FIREBASE_KEY_BASE64=$(echo "$FIREBASE_KEY_BASE64" | tr -d '\r')
           export POSTGRES_PASSWORD=$(echo "$POSTGRES_PASSWORD" | tr -d '\r')
