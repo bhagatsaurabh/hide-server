@@ -61,7 +61,7 @@ jobs:
           K3S_KUBECONFIG: ${{ secrets.K3S_KUBECONFIG }}
 
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
+        uses: azure/setup-kubectl@v4
 
       - name: Deploy Configs
         if: >
