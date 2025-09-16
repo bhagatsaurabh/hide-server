@@ -8,14 +8,14 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@keyv/redis": "^4.3.1",
-    "@nestjs/cache-manager": "^3.0.0",
-    "@nestjs/common": "^11.0.1",
-    "@nestjs/core": "^11.0.1",
-    "cache-manager": "^6.4.1"
+    "@keyv/redis": "^5.1.2",
+    "@nestjs/cache-manager": "^3.0.1",
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "cache-manager": "^7.2.0"
   },
   "devDependencies": {
-    "@types/node": "^22.13.9",
-    "typescript": "^5.7.3"
+    "@types/node": "^24.5.0",
+    "typescript": "^5.9.2"
   }
 }

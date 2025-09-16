@@ -7,17 +7,17 @@ on:
         description: "Comma-separated list of services to deploy (gateway, env, user, notification, workspace, auth, provisioner). Leave blank to use paths-filter."
         required: false
         default: ""
-  push:
-    branches:
-      - main
-    paths:
-      - "gateway/**"
-      - "env/**"
-      - "user/**"
-      - "notification/**"
-      - "workspace/**"
-      - "auth/**"
-      - "provisioner/**"
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - "gateway/**"
+  #     - "env/**"
+  #     - "user/**"
+  #     - "notification/**"
+  #     - "workspace/**"
+  #     - "auth/**"
+  #     - "provisioner/**"
 
 jobs:
   changes:
