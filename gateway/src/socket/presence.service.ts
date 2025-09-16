@@ -180,7 +180,7 @@ export class PresenceService {
     }
   }
   async setWorkspaceState(
-    workspace: CachedWorkspace | null,
+    workspace: CachedWorkspace | undefined,
     uid: string,
     sessionId: string,
     wsUuid: string | undefined,

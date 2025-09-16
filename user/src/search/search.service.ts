@@ -28,7 +28,7 @@ export class SearchService {
   }
 
   async searchUsers(uid: string, query: string, page = 1): Promise<UserSearchDTO> {
-    const searchParams: SearchParams = {
+    const searchParams: SearchParams<Partial<User>> = {
       q: query,
       query_by: ['name', 'username'],
       exclude_fields: ['email'],
@@ -70,14 +70,14 @@ export class SearchService {
     return this.hideConfidentialFields(profile, actorUid);
   }
 
-  async getUsers(ids: string[], uid: string): Promise<(Partial<User> | null)[]> {
+  async getUsers(ids: string[], uid: string): Promise<(Partial<User> | undefined)[]> {
     let cachedUsers = await Promise.all(
       ids.map((id) => {
         return this.cache.get<Partial<User>>(`users:${id}`);
       }),
     );
     const dbPromises = cachedUsers.map((cachedUser, idx) => {
-      if (cachedUser) return cachedUser;
+      if (cachedUser) return Promise.resolve(cachedUser);
       return this.fetchUserFromDB(ids[idx]);
     });
     cachedUsers = await Promise.all(dbPromises);
@@ -86,7 +86,7 @@ export class SearchService {
     return this.hideConfidentialFields(cachedUsers, uid);
   }
 
-  private hideConfidentialFields<T extends OneOrMore<Partial<User> | null>>(data: T, uid: string) {
+  private hideConfidentialFields<T extends OneOrMore<Partial<User> | undefined>>(data: T, uid: string) {
     if (!Array.isArray(data)) {
       if (data && data.uid !== uid) {
         delete data.email;
@@ -98,7 +98,7 @@ export class SearchService {
     });
     return data;
   }
-  private async fetchUserFromDB(uid: string): Promise<Partial<User> | null> {
+  private async fetchUserFromDB(uid: string): Promise<Partial<User> | undefined> {
     try {
       const snap = await this.db
         .collection('users')
@@ -112,8 +112,8 @@ export class SearchService {
       }
     } catch (error) {
       void error;
-      return null;
+      return;
     }
-    return null;
+    return;
   }
 }
