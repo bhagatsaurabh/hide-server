@@ -37,6 +37,7 @@
     "hide-firebase": "file:../libs/firebase",
     "hide-redis": "file:../libs/redis",
     "hide-rmq": "file:../libs/rmq",
+    "hide-health": "file:../libs/health",
     "ioredis": "^5.7.0",
     "jsonwebtoken": "^9.0.2",
     "minimatch": "^10.0.3",

@@ -53,6 +53,14 @@ spec:
                 secretKeyRef:
                   name: hide-secrets
                   key: JWT_PUBLIC_KEY
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             limits:
               cpu: 500m
@@ -62,20 +70,3 @@ spec:
               memory: 500M
       imagePullSecrets:
         - name: acr-secret
-      initContainers:
-        - name: init-redis
-          image: busybox:1.28
-          command:
-            [
-              "sh",
-              "-c",
-              "until nslookup redis.default.svc.cluster.local; do echo waiting for redis; sleep 2; done",
-            ]
-        - name: init-rmq
-          image: busybox:1.28
-          command:
-            [
-              "sh",
-              "-c",
-              "until nslookup rabbitmq.default.svc.cluster.local; do echo waiting for rabbitmq; sleep 2; done",
-            ]

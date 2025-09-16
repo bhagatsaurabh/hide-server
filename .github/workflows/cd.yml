@@ -1,37 +1,44 @@
-name: Deploy
+name: Deploy Services
 
 on:
   workflow_dispatch:
     inputs:
-      sha:
-        description: "Git commit SHA to deploy"
-        required: true
+      services:
+        description: "Comma-separated list of services to deploy (gateway, env, user, notification, workspace, auth, provisioner). Leave blank to use paths-filter."
+        required: false
+        default: ""
 
 jobs:
-  deploy:
+  prepare:
     runs-on: ubuntu-latest
-
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          services="${{ github.event.inputs.services }}"
+          json=$(printf '[%s]' "$(echo "$services" | sed 's/[^,][^,]*/"&"/g')")
+          echo "matrix=$json" >> $GITHUB_OUTPUT
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.sha }}
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: v1.30.0
-
-      - name: Install Kustomize
+      - name: Setup kubeconfig
         run: |
-          curl -sfLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz
-          tar -xvzf kustomize.tar.gz
-          sudo mv kustomize /usr/local/bin/
-
-      - name: Deploy selected commit
+          mkdir -p ~/.kube
+          echo "${K3S_KUBECONFIG}" > ~/.kube/config
         env:
-          KUBECONFIG: ${{ secrets.KUBECONFIG }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          K3S_KUBECONFIG: ${{ secrets.K3S_KUBECONFIG }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Deploy ${{ matrix.service }}
         run: |
-          python scripts/deploy.py \
-            "gateway,auth,notification,workspace,provisioner" \
-            "${{ github.event.inputs.sha }}"
+          kubectl apply -k ${{ matrix.service }}/k8s/
+          kubectl rollout status deployment -n default -l app=${{ matrix.service }} --timeout=60s
