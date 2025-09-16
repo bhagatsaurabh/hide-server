@@ -4,4 +4,3 @@ export const roleLevels = Object.freeze({
   admin: 1,
   owner: 2,
 });
-

@@ -48,7 +48,7 @@ export class AuthGuard implements CanActivate {
 
       // Check profile validity
       let isProfileCreated = await this.cache.get<boolean>(`profile:${userData.uid}`);
-      if (isProfileCreated === null) {
+      if (!isProfileCreated) {
         const profileSnap = await this.db.collection('users').where('uid', '==', userData.uid).get();
         isProfileCreated = profileSnap.docs.length > 0;
         await this.cache.set(`profile:${userData.uid}`, isProfileCreated);

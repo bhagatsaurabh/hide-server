@@ -31,7 +31,7 @@ export class MembershipService {
 
     return await this.fetchMembership(uid, workspaceUUID, cachedMemberships);
   }
-  async fetchMembership(uid: string, workspaceUUID: string, cache: CachedMembership | null) {
+  async fetchMembership(uid: string, workspaceUUID: string, cache?: CachedMembership) {
     const observable = this.rmq.send<boolean, ServiceMessage<MembershipCheck>>('workspace.membership.check', {
       payload: { uid, uuid: workspaceUUID },
     });
@@ -40,12 +40,7 @@ export class MembershipService {
     await this.cacheMembership(uid, workspaceUUID, isMember, cache);
     return isMember;
   }
-  async cacheMembership(
-    uid: string,
-    workspaceUUID: string,
-    isMember: boolean,
-    cache: CachedMembership | null,
-  ) {
+  async cacheMembership(uid: string, workspaceUUID: string, isMember: boolean, cache?: CachedMembership) {
     if (!cache) {
       cache = {};
     }
@@ -58,7 +53,7 @@ export class MembershipService {
     await this.updateAddedMembers(msg.added, msg.uuid);
   }
   async invalidateRemovedMembers(uids: string[], uuid: string) {
-    const removed = new Map<string, CachedMembership | null>();
+    const removed = new Map<string, CachedMembership | undefined>();
     const cachedMemberships = await Promise.all(
       uids.map((uid) => this.cache.get<CachedMembership>(CACHEKEY_MEMBERSHIP(uid))),
     );
@@ -79,7 +74,7 @@ export class MembershipService {
     }
   }
   async updateAddedMembers(uids: string[], uuid: string) {
-    const added = new Map<string, CachedMembership | null>();
+    const added = new Map<string, CachedMembership | undefined>();
     const cachedMemberships = await Promise.all(
       uids.map((uid) => this.cache.get<CachedMembership>(CACHEKEY_MEMBERSHIP(uid))),
     );
