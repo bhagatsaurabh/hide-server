@@ -1,0 +1,9 @@
+name: Self Hoster Runner Test
+on:
+  workflow_dispatch:
+
+jobs:
+  Test:
+    runs-on: arc-runner-set
+    steps:
+    - run: echo "This job uses runner scale set runners!"
