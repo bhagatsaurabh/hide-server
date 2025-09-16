@@ -92,5 +92,4 @@ jobs:
       - run: |
           IMAGE=${{ secrets.REGISTRY_LOGIN_SERVER }}/hide-server-${{ matrix.service }}:latest
           cd ${{ matrix.service }}
-          docker build --target production -f dockerfile -t $IMAGE ..
-          docker push $IMAGE
+          docker buildx build --platform linux/arm64 --target production -f dockerfile -t $IMAGE --push ..
