@@ -59,7 +59,7 @@ jobs:
             json=$(jq -nc --arg input "$input" '$input | split(",")')
             echo "services=$json" >> $GITHUB_OUTPUT
           else
-            echo "services=${{ needs.changes.outputs.matrix }}" >> $GITHUB_OUTPUT
+            echo 'services=${{ needs.changes.outputs.matrix }}' >> $GITHUB_OUTPUT
           fi
 
   build:
