@@ -18,6 +18,13 @@ on:
       - "workspace/**"
       - "auth/**"
       - "provisioner/**"
+      - "!gateway/k8s/**"
+      - "!env/k8s/**"
+      - "!user/k8s/**"
+      - "!notification/k8s/**"
+      - "!workspace/k8s/**"
+      - "!auth/k8s/**"
+      - "!provisioner/k8s/**"
 
 jobs:
   changes:
