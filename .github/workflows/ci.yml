@@ -73,11 +73,6 @@ jobs:
     needs: [changes, prepare]
     # runs-on: ubuntu-24.04-arm # not for private repos 😭
     runs-on: arm64
-    # container:
-    #   image: ${{ vars.REGISTRY_LOGIN_SERVER }}/arm64-runner:latest
-    #   credentials:
-    #     username: ${{ secrets.REGISTRY_USERNAME }}
-    #     password: ${{ secrets.REGISTRY_PASSWORD }}
     strategy:
       matrix:
         service: ${{ fromJSON(needs.prepare.outputs.services) }}
@@ -109,14 +104,3 @@ jobs:
           platforms: linux/arm64
           tags: |
             ${{ secrets.REGISTRY_LOGIN_SERVER }}/hide-server-${{ matrix.service }}:latest
-
-      # - name: Build and push image
-      #   uses: azure/docker-login@v2
-      #   with:
-      #     login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-      #     username: ${{ secrets.REGISTRY_USERNAME }}
-      #     password: ${{ secrets.REGISTRY_PASSWORD }}
-      # - run: |
-      #     IMAGE=${{ secrets.REGISTRY_LOGIN_SERVER }}/hide-server-${{ matrix.service }}:latest
-      #     cd ${{ matrix.service }}
-      #     docker buildx build --platform linux/arm64 --target production -f dockerfile -t $IMAGE --push ..

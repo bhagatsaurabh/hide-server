@@ -42,6 +42,14 @@ spec:
                 secretKeyRef:
                   name: hide-secrets
                   key: AZURE_CS_SMTP_SECRET
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             requests:
               cpu: "500m"

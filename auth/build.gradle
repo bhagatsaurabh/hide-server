@@ -7,12 +7,6 @@ plugins {
 group = 'me.saurabhagat.hide'
 version = '0.0.1-SNAPSHOT'
 
-/* java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
-    }
-} */
-
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
@@ -40,6 +34,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
 dependencyManagement {

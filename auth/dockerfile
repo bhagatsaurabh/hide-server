@@ -17,6 +17,6 @@ RUN ./gradlew bootJar --no-daemon
 FROM eclipse-temurin:23-jdk AS production
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
-CMD ["java", "-jar", "app.jar"]
 
 EXPOSE 80
+CMD ["java", "-jar", "app.jar"]
