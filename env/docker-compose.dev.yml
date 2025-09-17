@@ -17,7 +17,6 @@ services:
       - REDIS_PORT=6379
       - RMQ_URL=amqp://rabbitmq:5672
       - NATS_URL=nats://nats:4222
-    command: ['/bin/sh', '-c', 'cd env && npm run start:dev']
     deploy:
       resources:
         limits:

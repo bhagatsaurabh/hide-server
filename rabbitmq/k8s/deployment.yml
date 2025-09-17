@@ -25,10 +25,10 @@ spec:
               name: rabbitmq-data
           resources:
             limits:
-              cpu: 500m
+              cpu: 400m
               memory: 500M
             requests:
-              cpu: 500m
+              cpu: 400m
               memory: 500M
           readinessProbe:
             exec:
