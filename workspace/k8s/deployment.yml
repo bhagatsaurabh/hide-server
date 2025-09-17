@@ -51,27 +51,10 @@ spec:
                   key: WORKSPACE_SERVICE_SECRET
           resources:
             limits:
-              cpu: 500m
-              memory: 500M
+              cpu: 350m
+              memory: 350M
             requests:
-              cpu: 500m
-              memory: 500M
+              cpu: 350m
+              memory: 350M
       imagePullSecrets:
         - name: acr-secret
-      initContainers:
-        - name: init-postgres
-          image: busybox:1.28
-          command:
-            [
-              "sh",
-              "-c",
-              "until nslookup postgres.default.svc.cluster.local; do echo waiting for postgres; sleep 2; done",
-            ]
-        - name: init-rmq
-          image: busybox:1.28
-          command:
-            [
-              "sh",
-              "-c",
-              "until nslookup rabbitmq.default.svc.cluster.local; do echo waiting for rabbitmq; sleep 2; done",
-            ]

@@ -38,27 +38,10 @@ spec:
                   key: FIREBASE_KEY_BASE64
           resources:
             limits:
-              cpu: 500m
-              memory: 500M
+              cpu: 250m
+              memory: 300M
             requests:
-              cpu: 500m
-              memory: 500M
+              cpu: 250m
+              memory: 300M
       imagePullSecrets:
         - name: acr-secret
-      initContainers:
-        - name: init-redis
-          image: busybox:1.28
-          command:
-            [
-              "sh",
-              "-c",
-              "until nslookup redis.default.svc.cluster.local; do echo waiting for redis; sleep 2; done",
-            ]
-        - name: init-rmq
-          image: busybox:1.28
-          command:
-            [
-              "sh",
-              "-c",
-              "until nslookup rabbitmq.default.svc.cluster.local; do echo waiting for rabbitmq; sleep 2; done",
-            ]
