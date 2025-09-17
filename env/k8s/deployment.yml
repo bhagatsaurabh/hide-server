@@ -33,19 +33,10 @@ spec:
               value: "nats://nats:4222"
           resources:
             limits:
-              cpu: 350m
+              cpu: 400m
               memory: 500M
             requests:
-              cpu: 350m
+              cpu: 400m
               memory: 500M
       imagePullSecrets:
         - name: acr-secret
-      initContainers:
-        - name: init-redis
-          image: busybox:1.28
-          command:
-            [
-              "sh",
-              "-c",
-              "until nslookup redis.default.svc.cluster.local; do echo waiting for redis; sleep 2; done",
-            ]
