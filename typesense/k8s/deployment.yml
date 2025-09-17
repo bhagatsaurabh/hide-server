@@ -33,11 +33,11 @@ spec:
                   key: TYPESENSE_API_KEY
           resources:
             limits:
-              cpu: 250m
-              memory: 350M
+              cpu: 200m
+              memory: 350Mi
             requests:
-              cpu: 250m
-              memory: 350M
+              cpu: 200m
+              memory: 350Mi
           readinessProbe:
             httpGet:
               path: /health

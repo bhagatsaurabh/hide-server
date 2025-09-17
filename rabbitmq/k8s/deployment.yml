@@ -25,11 +25,11 @@ spec:
               name: rabbitmq-data
           resources:
             limits:
-              cpu: 400m
-              memory: 500M
+              cpu: 300m
+              memory: 500Mi
             requests:
-              cpu: 400m
-              memory: 500M
+              cpu: 300m
+              memory: 500Mi
           readinessProbe:
             exec:
               command: ["rabbitmq-diagnostics", "ping"]
