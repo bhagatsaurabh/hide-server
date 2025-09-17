@@ -73,11 +73,11 @@ jobs:
     needs: [changes, prepare]
     # runs-on: ubuntu-24.04-arm # not for private repos 😭
     runs-on: arm64
-    container:
-      image: ${{ vars.REGISTRY_LOGIN_SERVER }}/arm64-runner:latest
-      credentials:
-        username: ${{ secrets.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}
+    # container:
+    #   image: ${{ vars.REGISTRY_LOGIN_SERVER }}/arm64-runner:latest
+    #   credentials:
+    #     username: ${{ secrets.REGISTRY_USERNAME }}
+    #     password: ${{ secrets.REGISTRY_PASSWORD }}
     strategy:
       matrix:
         service: ${{ fromJSON(needs.prepare.outputs.services) }}
