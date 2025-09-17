@@ -36,6 +36,14 @@ spec:
                 secretKeyRef:
                   name: hide-secrets
                   key: FIREBASE_KEY_BASE64
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             limits:
               cpu: 250m
