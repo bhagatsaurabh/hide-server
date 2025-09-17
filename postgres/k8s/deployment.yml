@@ -32,11 +32,11 @@ spec:
               name: postgres-data
           resources:
             limits:
-              cpu: 250m
-              memory: 300M
+              cpu: 200m
+              memory: 300Mi
             requests:
-              cpu: 250m
-              memory: 300M
+              cpu: 200m
+              memory: 300Mi
           readinessProbe:
             exec:
               command:

@@ -64,9 +64,9 @@ spec:
           resources:
             limits:
               cpu: 500m
-              memory: 500M
+              memory: 500Mi
             requests:
               cpu: 500m
-              memory: 500M
+              memory: 500Mi
       imagePullSecrets:
         - name: acr-secret
