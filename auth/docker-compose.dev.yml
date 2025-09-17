@@ -3,8 +3,8 @@ services:
     expose:
       - 80
     build:
-      context: .
-      dockerfile: dockerfile
+      context: ../
+      dockerfile: auth/dockerfile
       target: development
     image: hide-server-auth
     volumes:
@@ -18,7 +18,6 @@ services:
       AZURE_CS_SMTP_SECRET: "${AZURE_CS_SMTP_SECRET}"
       REDIS_HOST: "redis"
       REDIS_PORT: "6379"
-    command: ./gradlew bootRun --no-daemon
     deploy:
       resources:
         limits:
