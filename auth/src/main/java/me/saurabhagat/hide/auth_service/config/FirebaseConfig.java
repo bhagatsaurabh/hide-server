@@ -32,7 +32,7 @@ public class FirebaseConfig {
 
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
-        if (authEmulator != null) {
+        if (authEmulator != null && !authEmulator.isEmpty()) {
             log.info("Using firebase auth emulator at {}", authEmulator);
             return FirebaseApp.initializeApp(FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.create(AccessToken.newBuilder().build()))
