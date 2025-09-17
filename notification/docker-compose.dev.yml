@@ -21,7 +21,6 @@ services:
       - FIREBASE_AUTH_EMULATOR_HOST=host.docker.internal:9099
       - FIRESTORE_EMULATOR_HOST=host.docker.internal:8085
       - FIREBASE_STORAGE_EMULATOR_HOST=host.docker.internal:9199
-    command: ['/bin/sh', '-c', 'cd notification && npm run start:dev']
     deploy:
       resources:
         limits:

@@ -22,7 +22,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: workspacedb
       WORKSPACE_SERVICE_SECRET: ${WORKSPACE_SERVICE_SECRET}
-    command: ['/bin/sh', '-c', 'cd workspace && npm run start:dev']
     deploy:
       resources:
         limits:
