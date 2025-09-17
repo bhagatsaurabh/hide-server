@@ -6,6 +6,7 @@ import { ManageModule } from './manage/manage.module';
 import { InviteModule } from './invite/invite.module';
 import { Membership } from './common/model/membership.entity';
 import { RedisModule } from 'hide-redis';
+import { HealthModule } from 'hide-health';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { RedisModule } from 'hide-redis';
     }),
     ManageModule,
     InviteModule,
+    HealthModule.register(),
   ],
 })
 export class AppModule {}

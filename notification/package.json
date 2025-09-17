@@ -33,6 +33,7 @@
     "hide-common": "file:../libs/common",
     "hide-firebase": "file:../libs/firebase",
     "hide-redis": "file:../libs/redis",
+    "hide-health": "file:../libs/health",
     "ioredis": "^5.7.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"

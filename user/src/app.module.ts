@@ -5,6 +5,7 @@ import { FirebaseModule } from 'hide-firebase';
 import { ProfileModule } from './profile/profile.module';
 import { SearchModule } from './search/search.module';
 import { RedisModule } from 'hide-redis';
+import { HealthModule } from 'hide-health';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { RedisModule } from 'hide-redis';
     RedisModule.register({ host: process.env.REDIS_HOST!, port: process.env.REDIS_PORT!, database: '1' }),
     ProfileModule,
     SearchModule,
+    HealthModule.register()
   ],
 })
 export class AppModule {}
