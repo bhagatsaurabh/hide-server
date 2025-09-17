@@ -1,22 +1,29 @@
-FROM eclipse-temurin:23-jdk AS base
+FROM gradle:8.12.1-jdk23 AS deps
 WORKDIR /app
-COPY gradle gradle
-COPY gradlew .
-COPY build.gradle settings.gradle ./
-COPY src src
+
+COPY auth/gradle ./gradle
+COPY auth/gradlew .
+COPY auth/build.gradle auth/settings.gradle ./
 RUN chmod +x gradlew
-RUN ./gradlew dependencies --no-daemon
-RUN apt update && apt install -y curl
+RUN gradle dependencies --no-daemon || return 0
 
-FROM base AS development
-CMD ["./gradlew", "bootRun", "--no-daemon"]
+FROM gradle:8.12.1-jdk23 AS build
+WORKDIR /app
 
-FROM base AS build
-RUN ./gradlew bootJar --no-daemon
+COPY --from=deps /root/.gradle /root/.gradle
+COPY auth .
+RUN gradle bootJar --no-daemon
 
-FROM eclipse-temurin:23-jdk AS production
+FROM gradle:8.12.1-jdk23 AS development
+WORKDIR /app
+
+COPY auth .
+RUN chmod +x gradlew
+CMD ["gradle", "bootRun", "--no-daemon"]
+
+FROM eclipse-temurin:24-jre-alpine AS production
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 
 EXPOSE 80
-CMD ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
