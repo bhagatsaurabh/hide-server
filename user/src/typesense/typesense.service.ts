@@ -7,7 +7,7 @@ export class TypesenseService implements OnModuleInit {
 
   onModuleInit() {
     this.client = new Client({
-      apiKey: process.env.TYPESENSE_APIKEY!,
+      apiKey: process.env.TYPESENSE_API_KEY!,
       nodes: [
         {
           host: process.env.TYPESENSE_HOST!,
