@@ -43,12 +43,28 @@ jobs:
             typesense:
               - 'typesense/k8s/**'
 
-  deploy:
+  prepare:
     needs: changes
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.set-matrix.outputs.services }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            input="${{ github.event.inputs.services }}"
+            json=$(jq -nc --arg input "$input" '$input | split(",")')
+            echo "services=$json" >> $GITHUB_OUTPUT
+          else
+            echo 'services=${{ needs.changes.outputs.matrix }}' >> $GITHUB_OUTPUT
+          fi
+
+  deploy:
+    needs: [changes, prepare]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ${{ fromJSON('["k8s","redis","postgres","rabbitmq","nats","typesense"]') }}
+        service: ${{ fromJSON(needs.prepare.outputs.services) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
