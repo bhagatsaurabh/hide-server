@@ -33,6 +33,7 @@
     "hide-common": "file:../libs/common",
     "hide-redis": "file:../libs/redis",
     "hide-rmq": "file:../libs/rmq",
+    "hide-health": "file:../libs/health",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",

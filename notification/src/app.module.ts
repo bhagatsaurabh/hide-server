@@ -6,6 +6,7 @@ import { RedisModule } from 'hide-redis';
 import { AppService } from './app.service';
 import { AppController } from './app.controller';
 import { SharedModule } from './common/shared.module';
+import { HealthModule } from 'hide-health';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { SharedModule } from './common/shared.module';
       emulate: !!process.env.FIREBASE_EMULATION,
     }),
     RedisModule.register({ host: process.env.REDIS_HOST!, port: process.env.REDIS_PORT!, database: '1' }),
+    HealthModule.register(),
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -49,6 +49,14 @@ spec:
                 secretKeyRef:
                   name: hide-secrets
                   key: WORKSPACE_SERVICE_SECRET
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             limits:
               cpu: 350m

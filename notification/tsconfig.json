@@ -21,5 +21,10 @@
   "watchOptions": {
     "watchFile": "fixedPollingInterval"
   },
-  "references": [{ "path": "../libs/common" }, { "path": "../libs/redis" }, { "path": "../libs/firebase" }]
+  "references": [
+    { "path": "../libs/common" },
+    { "path": "../libs/redis" },
+    { "path": "../libs/firebase" },
+    { "path": "../libs/health" }
+  ]
 }
