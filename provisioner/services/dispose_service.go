@@ -26,11 +26,15 @@ func DisposeDevContainer(uuid string, devEnv string) error {
 		return errors.New("Could not update workspace status")
 	}
 
-	if devEnv == "docker" {
+	switch devEnv {
+	case "docker":
 		err = DisposeDockerContainer(uuid)
-	} else {
+	case "":
 		err = DisposeK8sPod(uuid)
+	default:
+		err = errors.New("Unsupported dev env")
 	}
+
 	if err != nil {
 		UpdateWorkspaceStatus(uuid, "ERROR")
 	} else {
@@ -116,4 +120,3 @@ func DisposeK8sPod(uuid string) error {
 	err = clientset.CoreV1().Services("default").Delete(ctx, fmt.Sprintf("workspace-service-%s", uuid), metav1.DeleteOptions{})
 	return err
 }
-

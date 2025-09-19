@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hide-lv-mounter
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: hide-lv-mounter
+  template:
+    metadata:
+      labels:
+        app: hide-lv-mounter
+    spec:
+      hostPID: true
+      hostNetwork: true
+      containers:
+        - name: hide-lv-mounter
+          image: debian:bookworm-slim
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: dev
+              mountPath: /dev
+            - name: sys
+              mountPath: /sys
+            - name: proc
+              mountPath: /proc
+            - name: host-volumes
+              mountPath: /host-volumes
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              while true; do
+                active_lvs=$(lvs --noheadings -o lv_name k8s-vg | awk '{$1=$1};1')
+
+                for lv in $active_lvs; do
+                  dev="/dev/k8s-vg/$lv"
+                  target="/host-volumes/$lv"
+                  mkdir -p "$target"
+                  if ! mountpoint -q "$target"; then
+                    echo "Mounting $dev -> $target"
+                    mount "$dev" "$target" || true
+                  fi
+                done
+
+                for dir in /host-volumes/*; do
+                  [ -d "$dir" ] || continue
+                  name=$(basename "$dir")
+                  dev="/dev/k8s-vg/$name"
+
+                  if [ ! -e "$dev" ]; then
+                    if mountpoint -q "$dir"; then
+                      echo "Unmounting stale $dir"
+                      umount -f "$dir" || true
+                    fi
+                    if [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
+                      echo "Removing empty dir $dir"
+                      rmdir "$dir" || true
+                    fi
+                  fi
+                done
+                sleep 3600
+              done
+      volumes:
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: host-volumes
+          hostPath:
+            path: /var/lib/k8s-volumes
+            type: DirectoryOrCreate

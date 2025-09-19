@@ -3,9 +3,11 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filter/http-exception.filter';
 import { RedisRef } from './common/refs/redis.ref';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.set('trust proxy', 1);
   app.enableCors({ origin: process.env.CORS_ORIGIN || '*' });
   app.useGlobalFilters(new HttpExceptionFilter());
   app.connectMicroservice<MicroserviceOptions>({

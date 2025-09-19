@@ -3,13 +3,12 @@ services:
     expose:
       - 80
     build:
-      context: .
-      dockerfile: dockerfile
+      context: ../
+      dockerfile: provisioner/dockerfile
       target: development
     image: hide-server-provisioner
     volumes:
       - .:/app
-      - ~/.kube:/root/.kube
       - /app/.build
     environment:
       SERVICE_PORT: 80
@@ -20,12 +19,11 @@ services:
       DOCKER_HOST: tcp://host.docker.internal:2375
       DEV_PLATFORM: docker
       DEV_FS_SOURCE: "${DEV_FS_SOURCE}"
-    command: ["/bin/sh", "-c", "air -c .air.toml"]
     deploy:
       resources:
         limits:
-          cpus: "0.6"
-          memory: 0.5g
+          cpus: "4"
+          memory: 1g
         reservations:
-          cpus: "0.6"
-          memory: 0.5g
+          cpus: "4"
+          memory: 1g

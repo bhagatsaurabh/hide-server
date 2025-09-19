@@ -5,8 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"hideserver/provisioner/config"
+	"hideserver/provisioner/util"
 	"log"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 func DeleteDevContainer(uuid string, devEnv string) error {
@@ -20,11 +25,15 @@ func DeleteDevContainer(uuid string, devEnv string) error {
 		log.Println("Could not dispose container", err)
 	}
 
-	if devEnv == "docker" {
+	switch devEnv {
+	case "docker":
 		err = DeleteDockerContainer(uuid)
-	} else {
+	case "":
 		err = DeleteK8sPod(uuid)
+	default:
+		err = errors.New("Unsupported dev env")
 	}
+
 	if err != nil {
 		log.Println("Could not delete container", err)
 	}
@@ -42,17 +51,41 @@ func DeleteDockerContainer(uuid string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	err = cli.VolumeRemove(ctx, fmt.Sprintf("workspace-volume-%s", uuid), false)
+	err = cli.VolumeRemove(ctx, fmt.Sprintf("workspace-data-%s", uuid), false)
 	if err != nil {
 		log.Println("Error removing volume: ", err)
 	}
-	err = cli.VolumeRemove(ctx, fmt.Sprintf("workspaceconfig-volume-%s", uuid), false)
+	err = cli.VolumeRemove(ctx, fmt.Sprintf("workspace-config-%s", uuid), false)
 	if err != nil {
 		log.Println("Error removing volume: ", err)
 	}
 	return err
 }
 
-func DeleteK8sPod(uuid string) error {
-	return DisposeK8sPod(uuid)
+func DeleteK8sPod(wsUuid string) error {
+	config, err := config.LoadK8sConfig()
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Println("Error creating Kubernetes client:", err)
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	clientset.CoreV1().PersistentVolumeClaims("default").Delete(ctx, fmt.Sprintf("workspace-data-%s", wsUuid), v1.DeleteOptions{})
+	clientset.CoreV1().PersistentVolumeClaims("default").Delete(ctx, fmt.Sprintf("workspace-config-%s", wsUuid), v1.DeleteOptions{})
+	clientset.CoreV1().PersistentVolumes().Delete(ctx, fmt.Sprintf("workspace-data-%s", wsUuid), v1.DeleteOptions{})
+	clientset.CoreV1().PersistentVolumes().Delete(ctx, fmt.Sprintf("workspace-config-%s", wsUuid), v1.DeleteOptions{})
+
+	err = DisposeK8sPod(wsUuid)
+	if err != nil {
+		return err
+	}
+
+	job := util.GetCleanupJobSpec(fmt.Sprintf("workspace-data-%s", wsUuid), fmt.Sprintf("workspace-config-%s", wsUuid))
+	_, err = clientset.BatchV1().Jobs("default").Create(context.TODO(), job, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -63,10 +63,10 @@ spec:
             failureThreshold: 3
           resources:
             limits:
-              cpu: 500m
+              cpu: 350m
               memory: 500Mi
             requests:
-              cpu: 500m
+              cpu: 350m
               memory: 500Mi
       imagePullSecrets:
         - name: acr-secret

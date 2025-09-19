@@ -3,5 +3,8 @@ dist
 dockerfile
 .git
 .build
-.build/
 tmp
+tmp/
+*.log
+.dockerignore
+*.md

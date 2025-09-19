@@ -31,6 +31,13 @@ export class PublicController {
     return await this.service.verifyEmail(data);
   }
 
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 1000, limit: 3 } })
+  @Get('templates')
+  getLangs() {
+    return this.service.getTemplates();
+  }
+
   // TODO: Network restrictions
   @Post('webhook')
   @UseGuards(PublicGuard)
