@@ -19,9 +19,9 @@ import { HealthModule } from 'hide-health';
       emulate: !!process.env.FIREBASE_EMULATION,
     }),
     RedisModule.register({ host: process.env.REDIS_HOST!, port: process.env.REDIS_PORT!, database: '1' }),
+    HealthModule.register(),
     ProfileModule,
     SearchModule,
-    HealthModule.register()
   ],
 })
 export class AppModule {}
