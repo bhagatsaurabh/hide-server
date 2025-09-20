@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: hide-lv-mounter
-  namespace: kube-system
+  namespace: hide-system
 spec:
   selector:
     matchLabels:
@@ -28,14 +28,17 @@ spec:
               mountPath: /proc
             - name: host-volumes
               mountPath: /host-volumes
+            - name: host-disks
+              mountPath: /var/lib/k8s-disks
           command:
             - /bin/bash
             - -c
             - |
               set -euo pipefail
+              apt-get update && apt-get install -y lvm2 util-linux
+
               losetup -fP /var/lib/k8s-disks/workspaces.img || true
               vgchange -ay
-              apt-get update && apt-get install -y lvm2 util-linux
 
               while true; do
                 active_lvs=$(lvs --noheadings -o lv_name k8s-vg | awk '{$1=$1};1')
@@ -81,4 +84,8 @@ spec:
         - name: host-volumes
           hostPath:
             path: /var/lib/k8s-volumes
+            type: DirectoryOrCreate
+        - name: host-disks
+          hostPath:
+            path: /var/lib/k8s-disks
             type: DirectoryOrCreate
