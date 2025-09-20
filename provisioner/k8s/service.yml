@@ -6,10 +6,12 @@ spec:
   selector:
     app: provisioner
   ports:
-    - protocol: TCP
+    - name: api
+      protocol: TCP
       port: 80
       targetPort: 80
-    - protocol: TCP
+    - name: ssh
+      protocol: TCP
       port: 22
       targetPort: 22
   type: ClusterIP
