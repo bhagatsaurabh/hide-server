@@ -33,6 +33,10 @@ spec:
             - -c
             - |
               set -euo pipefail
+              losetup -fP /var/lib/k8s-disks/workspaces.img || true
+              vgchange -ay
+              apt-get update && apt-get install -y lvm2 util-linux
+
               while true; do
                 active_lvs=$(lvs --noheadings -o lv_name k8s-vg | awk '{$1=$1};1')
 
