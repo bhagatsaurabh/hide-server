@@ -5,5 +5,5 @@ resources:
   - namespace.yml
   - clusterissuer.yml
   - secret.yml
-  - pod-manager-role.yml
+  - pod-manager.role.yml
   - daemonset.yml
