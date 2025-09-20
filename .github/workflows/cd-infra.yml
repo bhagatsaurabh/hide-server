@@ -99,7 +99,7 @@ jobs:
           envsubst < k8s/secret.yml > k8s/secret-values.yml
           rm k8s/secret.yml
           mv k8s/secret-values.yml k8s/secret.yml
-          kubectl apply -f k8s/
+          kubectl apply -k k8s/
         env:
           FIREBASE_KEY_BASE64: ${{ secrets.FIREBASE_KEY_BASE64 }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}

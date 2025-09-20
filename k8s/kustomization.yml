@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yml
+  - clusterissuer.yml
+  - secret.yml
+  - pod-manager-role.yml
+  - daemonset.yml
