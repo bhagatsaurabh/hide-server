@@ -13,6 +13,8 @@ import { UserRegistered } from 'hide-common/dto/webhook';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
 import Redis from 'ioredis';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import Redlock, { Lock } from 'redlock';
 import { usernameRegex } from 'src/utils/constants';
 
@@ -139,5 +141,18 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
       throw new HttpException(data.message ?? 'UNKNOWN', response.status);
     }
     return (await response.json()) as { token: string };
+  }
+
+  async getTemplates() {
+    const cachedTemplates = await this.cache.get<{ image: string; name: string }[]>('templates');
+    if (cachedTemplates) {
+      return cachedTemplates;
+    }
+
+    const filePath = join(process.cwd(), 'dist', 'static', 'templates.json');
+    const data = readFileSync(filePath, 'utf-8');
+    const templates = JSON.parse(data) as { image: string; name: string }[];
+    await this.cache.set('templates', templates, 3600000);
+    return templates;
   }
 }

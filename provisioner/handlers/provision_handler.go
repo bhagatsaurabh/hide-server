@@ -44,6 +44,16 @@ func ProvisionHandler(w http.ResponseWriter, r *http.Request, redisClient *redis
 		util.SendAPIErr(w, http.StatusBadRequest, "Missing field: image")
 		return
 	}
+	templates, err := services.GetTemplates(redisClient)
+	if err != nil {
+		util.SendAPIErr(w, http.StatusInternalServerError, "Unknown error")
+		return
+	}
+	_, exists := templates[req.Image]
+	if !exists {
+		util.SendAPIErr(w, http.StatusBadRequest, "Invalid field: image")
+		return
+	}
 	userHeader := r.Header.Get("x-auth-user")
 	if userHeader == "" {
 		util.SendAPIErr(w, http.StatusBadRequest, "Missing x-auth-user header")

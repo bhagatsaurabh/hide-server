@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "prebuild": "tsc -b",
-    "build": "nest build",
+    "build": "nest build && cp -r static dist/static",
     "image": "docker build --target production -f dockerfile -t hide-server-gateway:latest ..",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "prestart:dev": "tsc -b",

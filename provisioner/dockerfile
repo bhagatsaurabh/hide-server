@@ -1,20 +1,19 @@
-FROM golang:1.24-alpine AS build
+FROM golang:1.24-bookworm AS build
 WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
+COPY provisioner/go.mod provisioner/go.sum ./
+RUN go mod download && go mod verify
+COPY provisioner .
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./.build/main .
 
-FROM golang:1.24-alpine AS development
+FROM golang:1.24-bookworm AS development
 WORKDIR /app
-RUN go install github.com/air-verse/air@latest
-COPY . .
+RUN go install github.com/air-verse/air@v1.62.0
+COPY provisioner .
 CMD ["air", "-c", ".air.toml"]
 
 FROM alpine:latest AS production
 WORKDIR /app
 COPY --from=build /app/.build/main .
-RUN chmod +x main
-CMD ["./main"]
 
 EXPOSE 80
+CMD ["./main"]

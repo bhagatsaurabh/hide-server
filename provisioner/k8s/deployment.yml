@@ -19,6 +19,7 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
+            - containerPort: 22
           env:
             - name: SERVICE_PORT
               value: "80"
@@ -26,16 +27,20 @@ spec:
               value: redis
             - name: REDIS_PORT
               value: "6379"
-            - name: NATS_URL
-              value: "nats://nats:4222"
-            - name: IN_CLUSTER_K8S_CONFIG
-              value: "true"
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             limits:
-              cpu: 500m
-              memory: 500M
+              cpu: 250m
+              memory: 350Mi
             requests:
-              cpu: 500m
-              memory: 500M
+              cpu: 250m
+              memory: 350Mi
       imagePullSecrets:
         - name: acr-secret

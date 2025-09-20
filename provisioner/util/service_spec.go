@@ -23,6 +23,11 @@ func GetServiceSpec(wsUuid string) *v1.Service {
 					Port:       22,
 					TargetPort: intstr.FromInt(22),
 				},
+				{
+					Protocol:   v1.ProtocolTCP,
+					Port:       80,
+					TargetPort: intstr.FromInt(80),
+				},
 			},
 			Type: v1.ServiceTypeClusterIP,
 		},

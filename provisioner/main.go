@@ -16,6 +16,7 @@ func main() {
 	redisPort := os.Getenv("REDIS_PORT")
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisHost, redisPort),
+		DB:   1,
 	})
 
 	natsURI := os.Getenv("NATS_URL")

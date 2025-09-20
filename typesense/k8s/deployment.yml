@@ -31,13 +31,6 @@ spec:
                 secretKeyRef:
                   name: hide-secrets
                   key: TYPESENSE_API_KEY
-          resources:
-            limits:
-              cpu: 200m
-              memory: 350Mi
-            requests:
-              cpu: 200m
-              memory: 350Mi
           readinessProbe:
             httpGet:
               path: /health
@@ -46,6 +39,13 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 3
+          resources:
+            limits:
+              cpu: 200m
+              memory: 350Mi
+            requests:
+              cpu: 200m
+              memory: 350Mi
       volumes:
         - name: typesense-data
           persistentVolumeClaim:
