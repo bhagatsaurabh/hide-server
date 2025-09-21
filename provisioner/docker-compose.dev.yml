@@ -19,11 +19,3 @@ services:
       DOCKER_HOST: tcp://host.docker.internal:2375
       DEV_PLATFORM: docker
       DEV_FS_SOURCE: "${DEV_FS_SOURCE}"
-    deploy:
-      resources:
-        limits:
-          cpus: "4"
-          memory: 1g
-        reservations:
-          cpus: "4"
-          memory: 1g

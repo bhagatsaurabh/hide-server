@@ -149,7 +149,12 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
       return cachedTemplates;
     }
 
-    const filePath = join(process.cwd(), 'dist', 'static', 'templates.json');
+    let filePath: string;
+    if (process.env.NODE_ENV === 'development') {
+      filePath = join(process.cwd(), 'static', 'templates.json');
+    } else {
+      filePath = join(process.cwd(), 'dist', 'static', 'templates.json');
+    }
     const data = readFileSync(filePath, 'utf-8');
     const templates = JSON.parse(data) as { image: string; name: string }[];
     await this.cache.set('templates', templates, 3600000);
