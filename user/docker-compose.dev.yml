@@ -26,11 +26,3 @@ services:
       REDIS_PORT: 6379
       RMQ_URL: amqp://rabbitmq:5672
       NATS_URL: nats://nats:4222
-    deploy:
-      resources:
-        limits:
-          cpus: '1.5'
-          memory: 2g
-        reservations:
-          cpus: '1.5'
-          memory: 2g

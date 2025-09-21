@@ -9,11 +9,3 @@ services:
     volumes:
       - ./.typesense-data:/data
     command: "--data-dir /data --api-key=test --enable-cors"
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 0.5g
-        reservations:
-          cpus: "0.5"
-          memory: 0.5g

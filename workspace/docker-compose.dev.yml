@@ -22,11 +22,3 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: workspacedb
       WORKSPACE_SERVICE_SECRET: ${WORKSPACE_SERVICE_SECRET}
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1.5g
-        reservations:
-          cpus: '1'
-          memory: 1.5g

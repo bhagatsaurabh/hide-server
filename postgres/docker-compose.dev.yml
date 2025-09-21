@@ -10,11 +10,3 @@ services:
       POSTGRES_DB: workspacedb
     volumes:
       - ./.postgres-data:/var/lib/postgresql/data
-    deploy:
-      resources:
-        limits:
-          cpus: "0.75"
-          memory: 0.5g
-        reservations:
-          cpus: "0.75"
-          memory: 0.5g
