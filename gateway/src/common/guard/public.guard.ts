@@ -22,9 +22,13 @@ export class PublicGuard implements CanActivate {
       if (process.env.NODE_ENV === 'development') {
         payload = (verify as unknown as JWTVerifyFn<ServicePayload>)(token, process.env.JWT_PUBLIC_KEY!);
       } else {
-        payload = (verify as unknown as JWTVerifyFn<ServicePayload>)(token, process.env.JWT_PUBLIC_KEY!, {
-          algorithms: ['RS256'],
-        });
+        payload = (verify as unknown as JWTVerifyFn<ServicePayload>)(
+          token,
+          Buffer.from(process.env.JWT_PUBLIC_KEY!, 'base64').toString(),
+          {
+            algorithms: ['RS256'],
+          },
+        );
       }
 
       if (payload.aud !== 'gateway-api' || payload.iss !== 'firebase-service') {
