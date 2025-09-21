@@ -19,7 +19,18 @@ spec:
                 name: gateway
                 port:
                   number: 80
+    - host: typesense.hide.saurabhagat.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: typesense
+                port:
+                  number: 8108
   tls:
     - hosts:
         - api.hide.saurabhagat.me
+        - typesense.hide.saurabhagat.me
       secretName: gateway-tls
