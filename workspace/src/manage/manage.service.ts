@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -35,6 +36,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { Cache, RedisService } from 'hide-redis';
 import { firstValueFrom } from 'rxjs';
+import { FirebaseService } from 'hide-firebase';
 
 @Injectable()
 export class ManageService {
@@ -49,6 +51,7 @@ export class ManageService {
     private readonly inviteService: InviteService,
     private dataSource: DataSource,
     private cacheService: RedisService,
+    private firebaseService: FirebaseService,
   ) {
     this.cache = this.cacheService.get();
   }
@@ -365,5 +368,30 @@ export class ManageService {
       }
     });
     await this.cache.del(CACHEKEY_WORKSPACE(wsUuid));
+  }
+
+  async checkEligibility(user: User) {
+    let isGuest = true;
+    const authUser = await this.firebaseService.auth.getUser(user.uid);
+    isGuest = !authUser.providerData.length;
+
+    let limit = isGuest
+      ? parseInt(process.env.WORKSPACE_CREATION_LIMIT_GUEST!)
+      : parseInt(process.env.WORKSPACE_CREATION_LIMIT_NON_GUEST!);
+    if (isNaN(limit)) {
+      limit = 1;
+    }
+
+    const existingCount = await this.wsRepository
+      .createQueryBuilder('workspace')
+      .innerJoin('workspace.memberships', 'filterMembership', 'filterMembership.user_id = :userId', {
+        userId: user.uid,
+      })
+      .leftJoinAndSelect('workspace.memberships', 'membership')
+      .getCount();
+
+    if (existingCount >= limit) {
+      throw new ForbiddenException('MAX_WORKSPACE_QUOTA_REACHED');
+    }
   }
 }

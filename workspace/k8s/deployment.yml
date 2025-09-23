@@ -39,6 +39,17 @@ spec:
               value: admin
             - name: POSTGRES_DB
               value: workspacedb
+            - name: FIREBASE_APP_ID
+              value: "hide-43a4b"
+            - name: WORKSPACE_CREATION_LIMIT_GUEST
+              value: "1"
+            - name: WORKSPACE_CREATION_LIMIT_NON_GUEST
+              value: "2"
+            - name: FIREBASE_KEY_BASE64
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: FIREBASE_KEY_BASE64
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:

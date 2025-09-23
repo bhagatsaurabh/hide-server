@@ -81,8 +81,8 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 	return job
 }
 
-func WaitForJobCompletion(clientset *kubernetes.Clientset, jobName string, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func WaitForJobCompletion(bgCtx context.Context, clientset *kubernetes.Clientset, jobName string, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(bgCtx, timeout)
 	defer cancel()
 
 	watcher, err := clientset.BatchV1().Jobs("default").Watch(ctx, metav1.ListOptions{

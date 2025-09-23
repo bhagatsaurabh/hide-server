@@ -8,7 +8,7 @@ services:
       target: development
     image: hide-server-auth
     volumes:
-      - .:/app
+      - ./src:/app/src
       - /app/build
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m"

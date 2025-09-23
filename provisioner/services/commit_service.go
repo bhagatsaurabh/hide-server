@@ -10,31 +10,18 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 )
 
-func CommitK8sImage(uuid string, baseImage string, devEnv string) error {
-	// TODO
-	_, err := config.LoadK8sConfig()
-
-	/* clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Println("Error creating Kubernetes client:", err)
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel() */
-
-	return err
+func CommitK8sImage(bgCtx context.Context, uuid string, baseImage string, devEnv string) error {
+	return nil
 }
 
 // Development-only
-func CommitDockerImage(uuid string, baseImage string) error {
+func CommitDockerImage(bgCtx context.Context, uuid string, baseImage string) error {
 	cli, err := config.LoadDockerConfig()
 
 	if err != nil {
@@ -42,13 +29,10 @@ func CommitDockerImage(uuid string, baseImage string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-	defer cancel()
-
 	tempDir := fmt.Sprintf("./temp_%s", uuid)
 	os.MkdirAll(tempDir, os.ModePerm)
 
-	err = copyWorkspaceFromContainer(ctx, cli, uuid, tempDir)
+	err = copyWorkspaceFromContainer(bgCtx, cli, uuid, tempDir)
 	if err != nil {
 		return err
 	}
@@ -63,11 +47,11 @@ func CommitDockerImage(uuid string, baseImage string) error {
 		return err
 	}
 
-	return buildAndPushImage(ctx, cli, tarCtx, uuid)
+	return buildAndPushImage(bgCtx, cli, tarCtx, uuid)
 }
 
-func copyWorkspaceFromContainer(ctx context.Context, cli *client.Client, containerId string, tempDir string) error {
-	reader, _, err := cli.CopyFromContainer(ctx, containerId, "/workspace")
+func copyWorkspaceFromContainer(bgCtx context.Context, cli *client.Client, containerId string, tempDir string) error {
+	reader, _, err := cli.CopyFromContainer(bgCtx, containerId, "/workspace")
 	if err != nil {
 		return err
 	}
@@ -157,8 +141,8 @@ func createTarContext(tempDir string) (io.Reader, error) {
 	return buf, nil
 }
 
-func buildAndPushImage(ctx context.Context, cli *client.Client, tarCtx io.Reader, imageName string) error {
-	buildResp, err := cli.ImageBuild(ctx, tarCtx, types.ImageBuildOptions{
+func buildAndPushImage(bgCtx context.Context, cli *client.Client, tarCtx io.Reader, imageName string) error {
+	buildResp, err := cli.ImageBuild(bgCtx, tarCtx, types.ImageBuildOptions{
 		Tags:       []string{imageName},
 		Dockerfile: "Dockerfile",
 		Remove:     true,
@@ -170,7 +154,7 @@ func buildAndPushImage(ctx context.Context, cli *client.Client, tarCtx io.Reader
 	io.Copy(os.Stdout, buildResp.Body)
 
 	// Push
-	pushResp, err := cli.ImagePush(ctx, imageName, image.PushOptions{
+	pushResp, err := cli.ImagePush(bgCtx, imageName, image.PushOptions{
 		RegistryAuth: "<base64-auth>",
 	})
 	if err != nil {

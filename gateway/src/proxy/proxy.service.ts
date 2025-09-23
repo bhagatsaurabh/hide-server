@@ -41,7 +41,7 @@ export class ProxyService {
         void err;
       }
       console.error(response.status, error);
-      throw new HttpException('Unknown error', response.status);
+      throw new HttpException((error as { message: string })?.message ?? 'UNKNOWN', response.status);
     }
     if (response.status === 204) return null;
     let data: unknown;

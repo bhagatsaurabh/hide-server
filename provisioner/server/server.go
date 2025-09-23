@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"hideserver/provisioner/handlers"
 	"net/http"
 
@@ -12,15 +13,23 @@ type Server struct {
 	Router *http.ServeMux
 }
 
-func NewServer(redisClient *redis.Client, natsClient *nats.Conn) *Server {
+func NewServer(sysCtx context.Context, redisClient *redis.Client, natsClient *nats.Conn) *Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mux.HandleFunc("/api/provision", func(w http.ResponseWriter, r *http.Request) { handlers.ProvisionHandler(w, r, redisClient, natsClient) })
-	mux.HandleFunc("/api/commit", handlers.CommitHandler)
-	mux.HandleFunc("/api/dispose", handlers.DisposeHandler)
-	mux.HandleFunc("/api/delete", handlers.DeleteHandler)
+	mux.HandleFunc("/api/provision", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ProvisionHandler(sysCtx, w, r, redisClient, natsClient)
+	})
+	mux.HandleFunc("/api/dispose", func(w http.ResponseWriter, r *http.Request) {
+		handlers.DisposeHandler(sysCtx, w, r)
+	})
+	mux.HandleFunc("/api/delete", func(w http.ResponseWriter, r *http.Request) {
+		handlers.DeleteHandler(sysCtx, w, r)
+	})
+	mux.HandleFunc("/api/commit", func(w http.ResponseWriter, r *http.Request) {
+		handlers.CommitHandler(sysCtx, w, r)
+	})
 
 	return &Server{Router: mux}
 }

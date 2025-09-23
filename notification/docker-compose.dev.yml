@@ -8,7 +8,7 @@ services:
       target: development
     image: hide-server-notification
     volumes:
-      - .:/app/notification
+      - ./src:/app/notification/src
       - /app/notification/node_modules
     environment:
       - NODE_ENV=development

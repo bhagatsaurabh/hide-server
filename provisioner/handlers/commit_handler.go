@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"hideserver/provisioner/services"
 	"hideserver/provisioner/util"
 	"log"
@@ -8,7 +9,7 @@ import (
 	"os"
 )
 
-func CommitHandler(w http.ResponseWriter, r *http.Request) {
+func CommitHandler(bgCtx context.Context, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		util.SendAPIErr(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -22,9 +23,9 @@ func CommitHandler(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	if devEnv, exists := os.LookupEnv("DEV_PLATFORM"); exists && devEnv == "docker" {
-		err = services.CommitDockerImage(uuid, baseImage)
+		err = services.CommitDockerImage(bgCtx, uuid, baseImage)
 	} else {
-		err = services.CommitK8sImage(uuid, baseImage, devEnv)
+		err = services.CommitK8sImage(bgCtx, uuid, baseImage, devEnv)
 	}
 	if err != nil {
 		log.Println(err.Error())

@@ -7,7 +7,7 @@ services:
       dockerfile: workspace/dockerfile
       target: development
     volumes:
-      - .:/app/workspace
+      - ./src:/app/workspace/src
       - /app/workspace/node_modules
     environment:
       NODE_ENV: development
@@ -22,3 +22,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: workspacedb
       WORKSPACE_SERVICE_SECRET: ${WORKSPACE_SERVICE_SECRET}
+      FIREBASE_EMULATION: true
+      FIREBASE_AUTH_EMULATOR_HOST: host.docker.internal:9099
+      FIRESTORE_EMULATOR_HOST: host.docker.internal:8085
+      FIREBASE_STORAGE_EMULATOR_HOST: host.docker.internal:9199
+      FIREBASE_APP_ID: hide-43a4b
+      WORKSPACE_CREATION_LIMIT_GUEST: 1
+      WORKSPACE_CREATION_LIMIT_NON_GUEST: 2

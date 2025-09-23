@@ -25,6 +25,7 @@
     { "path": "../libs/common" },
     { "path": "../libs/rmq" },
     { "path": "../libs/redis" },
-    { "path": "../libs/health" }
+    { "path": "../libs/health" },
+    { "path": "../libs/firebase" }
   ]
 }

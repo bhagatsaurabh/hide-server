@@ -8,7 +8,7 @@ services:
       target: development
     image: hide-server-gateway
     volumes:
-      - .:/app/gateway
+      - ./src:/app/gateway/src
       - /app/gateway/node_modules
     environment:
       - NODE_ENV=development

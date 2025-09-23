@@ -38,6 +38,11 @@ export class ManageController {
     return await this.service.getAllWorkspaces(user);
   }
 
+  @Get('check-eligibility')
+  async checkEligibility(@UserHeader() user: User) {
+    return await this.service.checkEligibility(user);
+  }
+
   @Get(':workspaceUUID/check-membership')
   @HttpCode(HttpStatus.NO_CONTENT)
   async checkMembership(@Param('workspaceUUID') workspaceUUID: string, @UserHeader() user: User) {

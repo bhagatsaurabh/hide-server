@@ -1,17 +1,24 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"hideserver/provisioner/server"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
 )
 
 func main() {
+	sysCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	redisHost := os.Getenv("REDIS_HOST")
 	redisPort := os.Getenv("REDIS_PORT")
 	redisClient := redis.NewClient(&redis.Options{
@@ -26,11 +33,30 @@ func main() {
 	}
 	defer natsClient.Drain()
 
-	srv := server.NewServer(redisClient, natsClient)
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {
 		port = "80"
 	}
-	log.Println("Server is running on port", port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), srv.Router))
+	srv := server.NewServer(sysCtx, redisClient, natsClient)
+	httpSrv := &http.Server{
+		Addr:    fmt.Sprintf(":%s", port),
+		Handler: srv.Router,
+	}
+
+	go func() {
+		log.Println("Server is running on port", port)
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	<-sysCtx.Done()
+	log.Println("Shutting down gracefully...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if err := httpSrv.Shutdown(ctx); err != nil {
+		log.Fatalf("Graceful shutdown failed: %+v", err)
+	}
 }

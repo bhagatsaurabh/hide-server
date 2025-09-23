@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
@@ -35,9 +36,13 @@ func UpdateWorkspaceStatus(workspaceUUID string, status string) error {
 	return nil
 }
 
+type TemplateDTO struct {
+	Value   []Template `json:"value"`
+	Expires int64      `json:"expires"`
+}
 type Template struct {
-	Image string `json:"image"`
 	Name  string `json:"name"`
+	Image string `json:"image"`
 }
 
 func GetTemplates(redisClient *redis.Client) (map[string]struct{}, error) {
@@ -48,15 +53,30 @@ func GetTemplates(redisClient *redis.Client) (map[string]struct{}, error) {
 		return nil, errors.New("Failed to get templates from cache")
 	}
 
-	var templates []Template
-	if err := json.Unmarshal([]byte(val), &templates); err != nil {
+	var response TemplateDTO
+	log.Printf("Data: %s", val)
+	if err := json.Unmarshal([]byte(val), &response); err != nil {
+		log.Printf("Error: %v", err)
 		return nil, errors.New("Failed to read templates")
 	}
 
 	imageSet := make(map[string]struct{})
-	for _, c := range templates {
+	for _, c := range response.Value {
 		imageSet[c.Image] = struct{}{}
 	}
 
 	return imageSet, nil
+}
+
+func SendStatus(bgCtx context.Context, redisClient *redis.Client, uid string, sessionId string, message string) {
+	sMsg, cErr := json.Marshal(ServiceEvent[StatusPayload]{
+		Payload: ServiceEventPayload[StatusPayload]{
+			Uid: uid, SessionId: sessionId, Pattern: "provision", Msg: PayloadMessage[StatusPayload]{
+				Action: "status", Payload: StatusPayload{Message: message},
+			}},
+	})
+	if cErr != nil {
+		log.Printf("Warn: %v", cErr)
+	}
+	redisClient.Publish(bgCtx, "socket.send", sMsg)
 }

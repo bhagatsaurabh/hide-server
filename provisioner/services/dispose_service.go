@@ -7,7 +7,6 @@ import (
 	"hideserver/provisioner/config"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/docker/docker/api/types/container"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,7 +19,7 @@ type UpdateStatusRequest struct {
 	Status string `json:"status"`
 }
 
-func DisposeDevContainer(uuid string, devEnv string) error {
+func DisposeDevContainer(bgCtx context.Context, uuid string, devEnv string) error {
 	err := UpdateWorkspaceStatus(uuid, "DEPROVISIONING")
 	if err != nil {
 		return errors.New("Could not update workspace status")
@@ -28,9 +27,9 @@ func DisposeDevContainer(uuid string, devEnv string) error {
 
 	switch devEnv {
 	case "docker":
-		err = DisposeDockerContainer(uuid)
+		err = DisposeDockerContainer(bgCtx, uuid)
 	case "":
-		err = DisposeK8sPod(uuid)
+		err = DisposeK8sPod(bgCtx, uuid)
 	default:
 		err = errors.New("Unsupported dev env")
 	}
@@ -43,7 +42,7 @@ func DisposeDevContainer(uuid string, devEnv string) error {
 	return err
 }
 
-func DisposeDockerContainer(uuid string) error {
+func DisposeDockerContainer(bgCtx context.Context, uuid string) error {
 	cli, err := config.LoadDockerConfig()
 
 	if err != nil {
@@ -51,10 +50,7 @@ func DisposeDockerContainer(uuid string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	containers, err := cli.ContainerList(ctx, container.ListOptions{
+	containers, err := cli.ContainerList(bgCtx, container.ListOptions{
 		All: true,
 	})
 	if err != nil {
@@ -79,14 +75,14 @@ outer:
 		Force:         true,
 		RemoveVolumes: false,
 	}
-	if err := cli.ContainerRemove(ctx, fmt.Sprintf("workspace-%s", uuid), opts); err != nil {
+	if err := cli.ContainerRemove(bgCtx, fmt.Sprintf("workspace-%s", uuid), opts); err != nil {
 		log.Println("Error removing docker container:", err)
 		return err
 	}
 	return nil
 }
 
-func DisposeK8sPod(uuid string) error {
+func DisposeK8sPod(bgCtx context.Context, uuid string) error {
 	config, err := config.LoadK8sConfig()
 
 	clientset, err := kubernetes.NewForConfig(config)
@@ -95,10 +91,7 @@ func DisposeK8sPod(uuid string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	_, err = clientset.CoreV1().Pods("default").Get(ctx, fmt.Sprintf("workspace-%s", uuid), metav1.GetOptions{})
+	_, err = clientset.CoreV1().Pods("default").Get(bgCtx, fmt.Sprintf("workspace-%s", uuid), metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil
@@ -110,13 +103,13 @@ func DisposeK8sPod(uuid string) error {
 
 	deletePolicy := metav1.DeletePropagationForeground
 	gracePeriod := int64(20)
-	err = clientset.CoreV1().Pods("default").Delete(ctx, fmt.Sprintf("workspace-%s", uuid), metav1.DeleteOptions{
+	err = clientset.CoreV1().Pods("default").Delete(bgCtx, fmt.Sprintf("workspace-%s", uuid), metav1.DeleteOptions{
 		PropagationPolicy:  &deletePolicy,
 		GracePeriodSeconds: &gracePeriod,
 	})
 	if err != nil {
 		return err
 	}
-	err = clientset.CoreV1().Services("default").Delete(ctx, fmt.Sprintf("workspace-service-%s", uuid), metav1.DeleteOptions{})
+	err = clientset.CoreV1().Services("default").Delete(bgCtx, fmt.Sprintf("workspace-service-%s", uuid), metav1.DeleteOptions{})
 	return err
 }
