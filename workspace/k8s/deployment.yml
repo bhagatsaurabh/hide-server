@@ -45,6 +45,10 @@ spec:
               value: "1"
             - name: WORKSPACE_CREATION_LIMIT_NON_GUEST
               value: "2"
+            - name: ADMIN_EMAIL
+              value: "personal@saurabhagat.me"
+            - name: WORKSPACE_CPU_REQUEST
+              value: "200m"
             - name: FIREBASE_KEY_BASE64
               valueFrom:
                 secretKeyRef:
@@ -60,6 +64,21 @@ spec:
                 secretKeyRef:
                   name: hide-secrets
                   key: WORKSPACE_SERVICE_SECRET
+            - name: AZURE_COMM_EMAIL_CONNECTION
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: AZURE_COMM_EMAIL_CONNECTION
+            - name: AZURE_CS_SMTP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: AZURE_CS_SMTP_SECRET
+            - name: AZURE_COMM_EMAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: AZURE_COMM_EMAIL_USERNAME
           readinessProbe:
             httpGet:
               path: /api/health

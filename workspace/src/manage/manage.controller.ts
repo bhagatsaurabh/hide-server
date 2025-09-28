@@ -1,10 +1,22 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { MembershipCheck, ServiceMessage, UserHeader } from 'hide-common';
 import { User } from 'hide-common/dto/user';
 import { CreateDTO } from 'src/common/dto/create.dto';
 import { ManageService } from './manage.service';
 import { UpdateDTO, UpdateStatusDTO } from 'src/common/dto/update.dto';
 import { MessagePattern, Transport } from '@nestjs/microservices';
+import { AccessDTO } from 'src/common/dto/access.dto';
 
 @Controller('api')
 export class ManageController {
@@ -41,6 +53,35 @@ export class ManageController {
   @Get('check-eligibility')
   async checkEligibility(@UserHeader() user: User) {
     return await this.service.checkEligibility(user);
+  }
+
+  @Post('access/request')
+  async createAccessRequest(@UserHeader() user: User, @Body() data: AccessDTO) {
+    return await this.service.createAccessRequest(user, data);
+  }
+
+  @Post('access/fulfill')
+  async fulfillAccessRequest(@Body() data: { action: 'approve' | 'reject'; token: string }) {
+    return await this.service.fulfillAccessRequest(data);
+  }
+
+  @Post('access/consume')
+  async consumeAccessCode(@UserHeader() user: User, @Body() data: { code: string }) {
+    return await this.service.consumeAccessCode(user, data.code);
+  }
+
+  @Post('access/reset')
+  async resetAccessCode(@UserHeader() user: User, @Body() data: { code: string }) {
+    return await this.service.resetAccessCode(user, data.code);
+  }
+
+  @Delete('access/delete')
+  async deleteAccess(
+    @UserHeader() user: User,
+    @Query('reqId') reqId: string,
+    @Query('ntfnId') ntfnId: string,
+  ) {
+    await this.service.deleteAccessCode(user, reqId, ntfnId);
   }
 
   @Get(':workspaceUUID/check-membership')

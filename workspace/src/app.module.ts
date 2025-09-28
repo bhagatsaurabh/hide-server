@@ -9,6 +9,7 @@ import { RedisModule } from 'hide-redis';
 import { HealthModule } from 'hide-health';
 import { FirebaseModule } from 'hide-firebase';
 import { readFileSync } from 'node:fs';
+import { AccessCode } from './common/model/access-codes.entity';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { readFileSync } from 'node:fs';
       username: process.env.POSTGRES_USER,
       password: process.env.POSTGRES_PASSWORD,
       database: process.env.POSTGRES_DB,
-      entities: [Workspace, Membership],
+      entities: [Workspace, Membership, AccessCode],
       synchronize: process.env.NODE_ENV === 'development',
     }),
     ManageModule,

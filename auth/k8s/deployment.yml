@@ -42,6 +42,11 @@ spec:
                 secretKeyRef:
                   name: hide-secrets
                   key: AZURE_CS_SMTP_SECRET
+            - name: AZURE_COMM_EMAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: AZURE_COMM_EMAIL_USERNAME
           readinessProbe:
             httpGet:
               path: /actuator/health

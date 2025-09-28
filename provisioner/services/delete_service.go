@@ -9,7 +9,6 @@ import (
 	"log"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -66,10 +65,10 @@ func DeleteK8sPod(bgCtx context.Context, wsUuid string) error {
 		return err
 	}
 
-	clientset.CoreV1().PersistentVolumeClaims("default").Delete(bgCtx, fmt.Sprintf("workspace-data-%s", wsUuid), v1.DeleteOptions{})
-	clientset.CoreV1().PersistentVolumeClaims("default").Delete(bgCtx, fmt.Sprintf("workspace-config-%s", wsUuid), v1.DeleteOptions{})
-	clientset.CoreV1().PersistentVolumes().Delete(bgCtx, fmt.Sprintf("workspace-data-%s", wsUuid), v1.DeleteOptions{})
-	clientset.CoreV1().PersistentVolumes().Delete(bgCtx, fmt.Sprintf("workspace-config-%s", wsUuid), v1.DeleteOptions{})
+	clientset.CoreV1().PersistentVolumeClaims("default").Delete(bgCtx, fmt.Sprintf("workspace-data-%s", wsUuid), metav1.DeleteOptions{})
+	clientset.CoreV1().PersistentVolumeClaims("default").Delete(bgCtx, fmt.Sprintf("workspace-config-%s", wsUuid), metav1.DeleteOptions{})
+	clientset.CoreV1().PersistentVolumes().Delete(bgCtx, fmt.Sprintf("workspace-data-%s", wsUuid), metav1.DeleteOptions{})
+	clientset.CoreV1().PersistentVolumes().Delete(bgCtx, fmt.Sprintf("workspace-config-%s", wsUuid), metav1.DeleteOptions{})
 
 	err = DisposeK8sPod(bgCtx, wsUuid)
 	if err != nil {

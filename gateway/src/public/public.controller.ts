@@ -38,7 +38,8 @@ export class PublicController {
     return this.service.getTemplates();
   }
 
-  // TODO: Network restrictions
+  // Internal
+  // Improvement: Network restrictions (IP ?)
   @Post('webhook')
   @UseGuards(PublicGuard)
   async handleWebhook(@Body() data: WebHookDTO<unknown>) {
@@ -47,5 +48,12 @@ export class PublicController {
       await this.service.addUsername(payload.username);
       await this.service.refreshProfileCheckCache(payload);
     }
+  }
+
+  @Get('access/fulfill')
+  @UseGuards(PublicGuard, ThrottlerGuard)
+  @Throttle({ default: { ttl: 1000, limit: 1 } })
+  async fulfillAccessRequest(@Query('action') action: 'approve' | 'reject', @Query('token') token: string) {
+    await this.service.fulfillAccessRequest(action, token);
   }
 }

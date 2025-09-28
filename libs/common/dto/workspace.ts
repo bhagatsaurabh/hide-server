@@ -12,6 +12,19 @@ export enum WorkspaceStatus {
   COLD = "COLD",
   DELETING = "DELETING",
 }
+export enum AccessStatus {
+  NEW = "NEW",
+  UNUSED = "UNUSED",
+  USED = "USED",
+}
+
+export type AccessRequestPayload = {
+  uid: string;
+  username: string;
+  name: string;
+  reason: string;
+  uuid: string;
+};
 
 export type WorkspaceWaitDTO = {
   wait: boolean;

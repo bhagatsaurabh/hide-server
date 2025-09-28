@@ -28,12 +28,14 @@ import (
 )
 
 type ProvisionRequest struct {
-	Image       string `json:"image"`
 	Uid         string `json:"uid"`
 	SessionId   string `json:"sessionId"`
-	Uuid        string `json:"uuid,omitempty"`
+	Image       string `json:"image"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
+	Uuid        string `json:"uuid,omitempty"`
+	Dedicated   bool   `json:"dedicated,omitempty"`
+	AccessCode  string `json:"accessCode,omitempty"`
 }
 type ProvisionDTO struct {
 	PrivateKey string       `json:"privateKey"`
@@ -45,6 +47,9 @@ type CreateWorkspaceRequest struct {
 	Description string `json:"description"`
 	Uuid        string `json:"uuid"`
 	Image       string `json:"image"`
+}
+type ConsumeAccessCodeRequest struct {
+	Code string `json:"code"`
 }
 type MembershipDTO struct {
 	WorkspaceId int64  `json:"workspaceId"`
@@ -96,7 +101,6 @@ type ServiceEvent[T any] struct {
 }
 
 func CreateDevContainer(bgCtx context.Context, req ProvisionRequest, isNew bool, devEnv string, redisClient *redis.Client) (string, string, error) {
-	var err error = nil
 	if !isNew {
 		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "1/6:Restoring your data")
 		volumeExists, err := VolumeExists(bgCtx, req.Uuid, devEnv)
@@ -108,6 +112,7 @@ func CreateDevContainer(bgCtx context.Context, req ProvisionRequest, isNew bool,
 		}
 	}
 
+	var err error = nil
 	var privateKey, workspaceUuid string
 	switch devEnv {
 	case "docker":
@@ -118,7 +123,6 @@ func CreateDevContainer(bgCtx context.Context, req ProvisionRequest, isNew bool,
 		return "", "", errors.New("Unsupported dev env")
 	}
 
-	err = waitOnDevContainerReady(bgCtx, req, workspaceUuid, 90*time.Second, redisClient)
 	if err != nil {
 		return "", "", err
 	}
@@ -502,24 +506,4 @@ func CheckEligibility(req ProvisionRequest, userHeader string) (bool, error) {
 	defer resp.Body.Close()
 
 	return resp.StatusCode == 200, nil
-}
-
-func waitOnDevContainerReady(bgCtx context.Context, req ProvisionRequest, uuid string, timeout time.Duration, redisClient *redis.Client) error {
-	SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "5/6:Almost there... starting services")
-
-	deadline := time.Now().Add(timeout)
-	client := &http.Client{
-		Timeout: 1 * time.Second,
-	}
-
-	for time.Now().Before(deadline) {
-		resp, err := client.Get(fmt.Sprintf("http://workspace-%s/ready", uuid))
-		if err == nil && resp.StatusCode == http.StatusOK {
-			SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "6/6:Workspace ready !")
-			return nil
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-
-	return errors.New("Workspace timed-out during boot")
 }
