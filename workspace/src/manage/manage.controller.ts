@@ -84,6 +84,11 @@ export class ManageController {
     await this.service.deleteAccessCode(user, reqId, ntfnId);
   }
 
+  @Post('downgrade')
+  async downgradeWorkspace(@Body() data: { uid: string; uuid: string }) {
+    return await this.service.downgradeWorkspace(data);
+  }
+
   @Get(':workspaceUUID/check-membership')
   @HttpCode(HttpStatus.NO_CONTENT)
   async checkMembership(@Param('workspaceUUID') workspaceUUID: string, @UserHeader() user: User) {

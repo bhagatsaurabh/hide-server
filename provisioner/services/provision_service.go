@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -169,7 +170,11 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 	}
 
 	SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "4/6:Setting up your environment")
-	pod := util.GetPodSpec(wsUuid, req.Image, publicKey)
+	wsType := "spot"
+	if req.Dedicated {
+		wsType = "dedicated"
+	}
+	pod := util.GetPodSpec(wsUuid, req.Image, publicKey, wsType)
 	_, err = clientset.CoreV1().Pods("default").Create(bgCtx, pod, metav1.CreateOptions{})
 	if err != nil {
 		return "", "", err
@@ -506,4 +511,53 @@ func CheckEligibility(req ProvisionRequest, userHeader string) (bool, error) {
 	defer resp.Body.Close()
 
 	return resp.StatusCode == 200, nil
+}
+
+func WaitOnDevContainerScheduled(bgCtx context.Context, uuid string) error {
+	config, err := config.LoadK8sConfig()
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Println("Error creating Kubernetes client:", err)
+		return err
+	}
+
+	watcher, err := clientset.CoreV1().Pods("default").Watch(bgCtx, metav1.ListOptions{FieldSelector: "metadata.name=" + fmt.Sprintf("workspace-%s", uuid)})
+	if err != nil {
+		log.Println("Failed to watch pod:", err)
+		return err
+	}
+	defer watcher.Stop()
+
+	for event := range watcher.ResultChan() {
+		pod := event.Object.(*v1.Pod)
+		if pod.Spec.NodeName != "" {
+			return nil
+		}
+		if pod.Status.Phase == v1.PodFailed || pod.Status.Phase == v1.PodSucceeded {
+			return fmt.Errorf("Pod ended before scheduling: %s", pod.Status.Phase)
+		}
+	}
+	return fmt.Errorf("watch closed before scheduling")
+}
+
+func KillK8sPod(bgCtx context.Context, devEnv string, podName string) error {
+	if devEnv == "docker" {
+		return nil
+	}
+
+	config, err := config.LoadK8sConfig()
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Println("Error creating Kubernetes client:", err)
+		return err
+	}
+
+	err = clientset.CoreV1().Pods("default").Delete(
+		bgCtx,
+		podName,
+		metav1.DeleteOptions{
+			GracePeriodSeconds: new(int64),
+		},
+	)
+	return err
 }

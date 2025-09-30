@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -161,11 +162,10 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 var queueLock sync.Mutex
 
 func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader string, isNew bool, devEnv string, redisClient *redis.Client, natsClient *nats.Conn) error {
-	// TODO: Lock + Capacity check + Create + Watch until Scheduled + Unlock
-
 	queueLock.Lock()
 
-	if !hasCapacity() {
+	hasCpuCapacity, preemptPodName, err := hasCapacity(bgCtx, devEnv)
+	if !hasCpuCapacity && preemptPodName == "" {
 		msg, cErr := json.Marshal(services.ServiceEvent[services.StatusPayload]{
 			Payload: services.ServiceEventPayload[services.StatusPayload]{
 				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.StatusPayload]{
@@ -178,6 +178,8 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 		redisClient.Publish(bgCtx, "socket.send", msg)
 		queueLock.Unlock()
 		return errors.New("NO_CAPACITY")
+	} else if preemptPodName != "" {
+		services.KillK8sPod(bgCtx, devEnv, preemptPodName)
 	}
 
 	privateKey, workspaceUuid, err := services.CreateDevContainer(bgCtx, req, isNew, devEnv, redisClient)
@@ -199,7 +201,11 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 		queueLock.Unlock()
 		return err
 	}
-	err = waitOnDevContainerScheduled(bgCtx, workspaceUuid)
+
+	if devEnv == "" {
+		err = services.WaitOnDevContainerScheduled(bgCtx, workspaceUuid)
+	}
+
 	if err != nil {
 		message := "Failed to queue workspace"
 		msg, cErr := json.Marshal(services.ServiceEvent[services.StatusPayload]{
@@ -377,34 +383,104 @@ func waitOnDevContainerReady(bgCtx context.Context, req services.ProvisionReques
 	return errors.New("Workspace timed-out during boot")
 }
 
-func waitOnDevContainerScheduled(bgCtx context.Context, uuid string) error {
+func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
+	if devEnv == "docker" {
+		return true, "", nil
+	}
+
 	config, err := config.LoadK8sConfig()
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Println("Error creating Kubernetes client:", err)
-		return err
+		return false, "", err
 	}
 
-	watcher, err := clientset.CoreV1().Pods("default").Watch(bgCtx, metav1.ListOptions{FieldSelector: "metadata.name=" + fmt.Sprintf("workspace-%s", uuid)})
+	nodes, err := clientset.CoreV1().Nodes().List(bgCtx, metav1.ListOptions{})
 	if err != nil {
-		log.Println("Failed to watch pod:", err)
-		return err
+		return false, "", errors.New("Could not check capacity")
 	}
-	defer watcher.Stop()
 
-	for event := range watcher.ResultChan() {
-		pod := event.Object.(*v1.Pod)
-		if pod.Spec.NodeName != "" {
-			return nil
+	node := nodes.Items[0]
+	cpuQty := node.Status.Allocatable[v1.ResourceCPU]
+	allocatableCpu := cpuQty.MilliValue()
+	idleThresholdCpuStr := os.Getenv("IDLE_THRESHOLD_CPU")
+	if idleThresholdCpuStr == "" {
+		idleThresholdCpuStr = "350"
+	}
+	idleThresholdCpu, err := strconv.ParseInt(idleThresholdCpuStr, 10, 64)
+	if err != nil {
+		return false, "", errors.New("Bad config for idle threshold cpu")
+	}
+	totalAvailableCpu := allocatableCpu - idleThresholdCpu
+
+	var totalRequestedCpu int64 = 0
+	pods, err := clientset.CoreV1().Pods("default").List(bgCtx, metav1.ListOptions{})
+	if err != nil {
+		return false, "", errors.New("Could not list pods")
+	}
+	for _, pod := range pods.Items {
+		if pod.Status.Phase != v1.PodRunning {
+			continue
 		}
-		if pod.Status.Phase == v1.PodFailed || pod.Status.Phase == v1.PodSucceeded {
-			return fmt.Errorf("Pod ended before scheduling: %s", pod.Status.Phase)
+
+		for _, container := range pod.Spec.Containers {
+			reqs := container.Resources.Requests
+			if cpuQty, ok := reqs[v1.ResourceCPU]; ok {
+				totalRequestedCpu += cpuQty.MilliValue()
+			}
 		}
 	}
-	return fmt.Errorf("watch closed before scheduling")
-}
+	wsCpuStr := os.Getenv("WORKSPACE_CPU_REQUEST")
+	if wsCpuStr == "" {
+		wsCpuStr = "350"
+	}
+	wsCpu, err := strconv.ParseInt(wsCpuStr, 10, 64)
+	if err != nil {
+		return false, "", errors.New("Bad config for workspace requested cpu")
+	}
+	totalRequestedCpu += wsCpu
 
-func hasCapacity() bool {
-	// TODO
-	return true
+	if totalRequestedCpu < totalAvailableCpu {
+		return true, "", nil
+	}
+
+	spotPods, err := clientset.CoreV1().Pods("default").List(
+		bgCtx,
+		metav1.ListOptions{LabelSelector: "wstype=spot"},
+	)
+	if err != nil {
+		return false, "", errors.New("Could not list spot pods")
+	}
+	var oldestPod *v1.Pod
+	var oldestTime time.Time
+	for _, pod := range spotPods.Items {
+		if pod.Status.Phase != v1.PodRunning {
+			continue
+		}
+		ct := pod.CreationTimestamp.Time
+		if oldestPod == nil || ct.Before(oldestTime) {
+			oldestPod = &pod
+			oldestTime = ct
+		}
+	}
+
+	spotHoursStr := os.Getenv("PREEMPT_SPOT_OLDER_THAN_HOURS")
+	if spotHoursStr == "" {
+		spotHoursStr = "350"
+	}
+	spotHours, err := strconv.ParseInt(spotHoursStr, 10, 64)
+	if err != nil {
+		return false, "", errors.New("Bad config for spot preempt hours threshold")
+	}
+
+	if oldestPod == nil {
+		return false, "", nil
+	}
+
+	cutoff := time.Now().Add(-1 * time.Duration(spotHours) * time.Hour)
+	if oldestTime.Before(cutoff) {
+		return false, oldestPod.Name, nil
+	} else {
+		return false, "", nil
+	}
 }

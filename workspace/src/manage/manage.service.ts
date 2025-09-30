@@ -36,6 +36,7 @@ import {
   UserProfileRequest,
   WorkspaceAccessRequest,
   WorkspaceDeleted,
+  WorkspaceDowngraded,
   WorkspaceStatus,
 } from 'hide-common';
 import { randomUUID } from 'node:crypto';
@@ -527,16 +528,18 @@ export class ManageService implements OnModuleInit {
       });
       const pods = res.items;
       pods.forEach((pod) => {
-        if (pod.status?.phase === 'Running') {
-          for (const container of pod.spec?.containers ?? []) {
-            const cpuReq = container.resources?.requests?.cpu;
-            if (!cpuReq) continue;
+        if (pod.status?.phase !== 'Running') {
+          return;
+        }
 
-            if (cpuReq.endsWith('m')) {
-              requestedSysCpu += parseInt(cpuReq.replace('m', ''), 10);
-            } else {
-              requestedSysCpu += parseInt(cpuReq, 10) * 1000;
-            }
+        for (const container of pod.spec?.containers ?? []) {
+          const cpuReq = container.resources?.requests?.cpu;
+          if (!cpuReq) continue;
+
+          if (cpuReq.endsWith('m')) {
+            requestedSysCpu += parseInt(cpuReq.replace('m', ''), 10);
+          } else {
+            requestedSysCpu += parseInt(cpuReq, 10) * 1000;
           }
         }
       });
@@ -546,13 +549,11 @@ export class ManageService implements OnModuleInit {
       throw new InternalServerErrorException('UNKNOWN');
     }
 
-    let wsCpu: number = 0;
-    const wsCpuRequested = process.env.WORKSPACE_CPU_REQUEST ?? '200m';
-    if (wsCpuRequested.endsWith('m')) {
-      wsCpu = parseInt(wsCpuRequested.replace('m', ''), 10);
-    } else {
-      wsCpu = parseInt(wsCpuRequested, 10) * 1000;
-    }
+    let wsCpu = parseInt(process.env.WORKSPACE_CPU_REQUEST ?? '200');
+    if (isNaN(wsCpu)) wsCpu = 200;
+
+    let idleThresholdCpu = parseInt(process.env.IDLE_THRESHOLD_CPU ?? '350');
+    if (isNaN(idleThresholdCpu)) idleThresholdCpu = 350;
 
     console.log('Total Dedicated Count: ', totalDedicatedCount);
     console.log('Unused Access Code Count: ', unusedAccessCodeCount);
@@ -560,7 +561,8 @@ export class ManageService implements OnModuleInit {
     console.log('System Requested CPU: ', requestedSysCpu);
     console.log('Allocatable CPU: ', allocatableCpu);
     return (
-      (totalDedicatedCount + unusedAccessCodeCount + 1) * wsCpu + requestedSysCpu < allocatableCpu - 0.35
+      (totalDedicatedCount + unusedAccessCodeCount + 1) * wsCpu + requestedSysCpu <
+      allocatableCpu - idleThresholdCpu
     );
   }
 
@@ -622,5 +624,25 @@ export class ManageService implements OnModuleInit {
     await this.accessRepository.save(accessCode);
 
     return { success: true };
+  }
+
+  async downgradeWorkspace({ uid, uuid }: { uid: string; uuid: string }) {
+    const notificationId = randomUUID();
+    const msg = createMessage<NotifyUser<WorkspaceDowngraded>>(uid, '', {
+      uid: uid,
+      notification: {
+        type: 'workspace-downgraded',
+        id: notificationId,
+        uuid,
+        createdOn: new Date().toISOString(),
+      },
+    });
+    this.rmq.emit<unknown, ServiceMessage<NotifyUser<WorkspaceDowngraded>>>('notification.send', msg);
+
+    const workspace = await this.wsRepository.findOne({ where: { uuid } });
+    if (!workspace) return;
+
+    workspace.dedicated = false;
+    await this.wsRepository.save(workspace);
   }
 }

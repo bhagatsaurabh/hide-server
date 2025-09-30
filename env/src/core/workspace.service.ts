@@ -185,7 +185,7 @@ export class WorkspaceService {
       // Close all user ssh sessions
       await this.sshService.handleSSHClose(uid, sessionId, { uuid: msg.uuid, sshSessionId: '#all' });
 
-      // TODO: Batch Optimization
+      // Improvement: Batch Optimization
       // Close all user opened dirs
       const dirs = Object.entries(workspace.dirs)
         .map(([path, uids]) => (uids.includes(uid) ? path : null))

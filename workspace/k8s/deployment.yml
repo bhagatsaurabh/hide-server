@@ -48,7 +48,9 @@ spec:
             - name: ADMIN_EMAIL
               value: "personal@saurabhagat.me"
             - name: WORKSPACE_CPU_REQUEST
-              value: "200m"
+              value: "200"
+            - name: "IDLE_THRESHOLD_CPU"
+              value: "350"
             - name: FIREBASE_KEY_BASE64
               valueFrom:
                 secretKeyRef:

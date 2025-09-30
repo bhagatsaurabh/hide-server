@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+  - apiGroups: ["workspace.hideserver"]
+    resources: ["workspaces"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["workspace.hideserver"]
+    resources: ["workspaces/finalizers"]
+    verbs: ["update"]
+  - apiGroups: ["workspace.hideserver"]
+    resources: ["workspaces/status"]
+    verbs: ["get", "patch", "update"]

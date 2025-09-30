@@ -14,7 +14,8 @@ export type NotificationPayload = {
 export type NotificationType =
   | "workspace-invite"
   | "workspace-membership-removed"
-  | "workspace-access-code";
+  | "workspace-access-code"
+  | "workspace-downgraded";
 
 export const persistentNotificationTypes: NotificationType[] = [
   "workspace-invite",
@@ -32,6 +33,10 @@ export interface WorkspaceInvite extends UserNotificationPayload {
   inviterId: string;
   workspaceUUID: string;
   token: string;
+}
+
+export interface WorkspaceDowngraded extends UserNotificationPayload {
+  uuid: string;
 }
 
 export interface WorkspaceAccessRequest extends UserNotificationPayload {
