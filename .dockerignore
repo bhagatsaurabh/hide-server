@@ -11,6 +11,8 @@
 typesense/.typesense-data
 postgres/.postgres-data
 rabbitmq/.rabbitmq-data
+logging/alloy/.alloy-data
+logging/loki/.loki-data
 
 **/logs
 **/*.log

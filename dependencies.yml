@@ -12,6 +12,11 @@ auth:
   depends_on: [redis]
 provisioner:
   depends_on: [redis, nats]
+grafana:
+  depends_on: [loki]
+alloy:
+  depends_on: [loki]
+loki: {}
 postgres: {}
 typesense: {}
 nats: {}

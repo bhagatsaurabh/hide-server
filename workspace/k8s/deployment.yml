@@ -51,6 +51,8 @@ spec:
               value: "200"
             - name: "IDLE_THRESHOLD_CPU"
               value: "350"
+            - name: "ACCESS_CODE_EXPIRY_DAYS"
+              value: "5"
             - name: FIREBASE_KEY_BASE64
               valueFrom:
                 secretKeyRef:

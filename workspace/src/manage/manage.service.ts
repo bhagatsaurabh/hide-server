@@ -440,11 +440,17 @@ export class ManageService implements OnModuleInit {
     const token = (sign as JWTSignFn<AccessRequestPayload>)(payload, process.env.WORKSPACE_SERVICE_SECRET!);
     await this.emailService.sendAccessRequestEmail(process.env.ADMIN_EMAIL!, payload, token);
 
+    let days = parseInt(process.env.ACCESS_CODE_EXPIRY_DAYS ?? '5');
+    if (isNaN(days)) days = 5;
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setDate(now.getDate() + days);
     const newAccessCode = new AccessCode({
       uid: user.uid,
       status: AccessStatus.NEW,
       code: accessCode(16),
       uuid: payload.uuid,
+      expiresAt,
     });
     await this.accessRepository.save(newAccessCode);
   }
@@ -583,6 +589,9 @@ export class ManageService implements OnModuleInit {
     }
     if (accessCode.status === AccessStatus.USED) {
       throw new ForbiddenException('ACCESS_CODE_ALREADY_USED');
+    }
+    if (accessCode.expiresAt < new Date()) {
+      throw new BadRequestException('ACCESS_CODE_EXPIRED');
     }
 
     const success = await this.markCodeAsUsed(user.uid, code);

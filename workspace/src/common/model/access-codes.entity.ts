@@ -1,5 +1,5 @@
 import { AccessStatus } from 'hide-common';
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class AccessCode {
@@ -12,6 +12,9 @@ export class AccessCode {
     }
     if (data.usedAt) {
       this.usedAt = data.usedAt;
+    }
+    if (data.expiresAt) {
+      this.expiresAt = data.expiresAt;
     }
     if (data.status) {
       this.status = data.status;
@@ -36,6 +39,9 @@ export class AccessCode {
   @Column({ nullable: false })
   status: AccessStatus;
 
-  @CreateDateColumn({ name: 'used_at', nullable: true, type: 'timestamptz' })
-  usedAt: string;
+  @Column({ name: 'used_at', nullable: true, type: 'timestamptz' })
+  usedAt: Date;
+
+  @Column({ name: 'expires_at', nullable: true, type: 'timestamptz' })
+  expiresAt: Date;
 }

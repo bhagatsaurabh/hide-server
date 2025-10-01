@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: alloy
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: alloy
+  template:
+    metadata:
+      labels:
+        app: alloy
+        logging: "off"
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: alloy
+          image: grafana/alloy:latest
+          ports:
+            - name: api
+              containerPort: 12345
+          args:
+            - "run"
+            - "--server.http.listen-addr=0.0.0.0:12345"
+            - "--storage.path=/var/lib/alloy/data"
+            - "/etc/alloy/config.alloy"
+          volumeMounts:
+            - mountPath: /var/lib/alloy/data
+              name: alloy-data
+            - mountPath: /var/log/containers
+              name: varlog
+              readOnly: true
+            - mountPath: /etc/alloy
+              name: config
+          resources:
+            limits:
+              cpu: 100m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 12345
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-config
+        - name: varlog
+          hostPath:
+            path: /var/log/containers

@@ -1,0 +1,51 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+discovery.docker "local" {
+  host = "tcp://host.docker.internal:2375"
+}
+
+discovery.relabel "filter_no_selflogs" {
+  targets = discovery.docker.local.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_logging"]
+    regex         = "(?i)^(off|false|0)$"
+    action        = "drop"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "service_name"
+    regex         = "^/(.*)"
+    replacement   = "$1"
+    action        = "replace"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "service_name"
+    action        = "replace"
+  }
+}
+
+loki.source.docker "docker_source" {
+  host       = "tcp://host.docker.internal:2375"
+  targets    = discovery.relabel.filter_no_selflogs.output
+  labels     = { job = "docker" }
+  forward_to = [loki.process.docker_processor.receiver]
+}
+
+loki.process "docker_processor" {
+  forward_to = [loki.write.local.receiver]
+
+  stage.docker { }
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
