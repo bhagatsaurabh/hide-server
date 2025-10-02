@@ -71,6 +71,13 @@ spec:
                 done
                 sleep 3600
               done
+      resources:
+        limits:
+          cpu: 100m
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
       volumes:
         - name: dev
           hostPath:
