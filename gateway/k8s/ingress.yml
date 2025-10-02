@@ -43,4 +43,5 @@ spec:
     - hosts:
         - api.hide.saurabhagat.me
         - typesense.hide.saurabhagat.me
+        - grafana.hide.saurabhagat.me
       secretName: gateway-tls
