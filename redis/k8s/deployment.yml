@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: redis
-          image: redis:alpine
+          image: redis:8-alpine
           ports:
             - containerPort: 6379
           args: ["redis-server", "--notify-keyspace-events", "Ex"]

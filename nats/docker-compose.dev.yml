@@ -1,6 +1,6 @@
 services:
   nats:
-    image: nats:alpine
+    image: nats:2.11.10-alpine
     container_name: nats
     expose:
       - 4222

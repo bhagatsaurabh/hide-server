@@ -16,7 +16,7 @@ spec:
       hostNetwork: true
       containers:
         - name: hide-lv-mounter
-          image: debian:bookworm-slim
+          image: debian:bookworm-20250929-slim
           securityContext:
             privileged: true
           volumeMounts:

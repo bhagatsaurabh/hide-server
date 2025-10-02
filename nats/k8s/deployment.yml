@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: nats
-          image: nats:alpine
+          image: nats:2.11.10-alpine
           ports:
             - name: client
               containerPort: 4222

@@ -16,12 +16,20 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: grafana/grafana:latest
+          image: grafana/grafana:12.2
           ports:
             - containerPort: 3000
-          envFrom:
-            - secretRef:
-                name: grafana-oauth
+          env:
+            - name: GRAFANA_GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: GRAFANA_GITHUB_CLIENT_ID
+            - name: GRAFANA_GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: GRAFANA_GITHUB_CLIENT_SECRET
           volumeMounts:
             - name: config
               mountPath: /etc/grafana/grafana.ini

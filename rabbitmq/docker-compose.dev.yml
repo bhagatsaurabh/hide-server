@@ -1,6 +1,6 @@
 services:
   rabbitmq:
-    image: rabbitmq:management-alpine
+    image: rabbitmq:4-management-alpine
     container_name: rabbitmq
     expose:
       - 5672

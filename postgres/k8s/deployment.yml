@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:alpine
+          image: postgres:17-alpine
           env:
             - name: POSTGRES_DB
               value: "workspacedb"
