@@ -16,7 +16,7 @@ spec:
       serviceAccountName: default
       containers:
         - name: alloy
-          image: grafana/alloy:latest
+          image: grafana/alloy:v1.11.0
           ports:
             - name: api
               containerPort: 12345

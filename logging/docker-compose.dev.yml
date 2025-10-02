@@ -1,6 +1,6 @@
 services:
   alloy:
-    image: grafana/alloy:latest
+    image: grafana/alloy:v1.11.0
     container_name: alloy
     labels:
       - logging=off
@@ -14,7 +14,7 @@ services:
     command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:12.2
     container_name: grafana
     labels:
       - logging=off
@@ -52,7 +52,7 @@ services:
       retries: 5
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.5
     container_name: loki
     labels:
       - logging=off

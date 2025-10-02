@@ -17,14 +17,18 @@ spec:
       serviceAccountName: default
       containers:
         - name: loki
-          image: grafana/loki:latest
+          image: grafana/loki:3.5
           ports:
             - name: api
               containerPort: 3100
             - name: client
               containerPort: 7946
-          command:
-            - "-config.file=/etc/loki/config.yaml -target=all -legacy-read-mode=false"
+          args:
+            [
+              "-config.file=/etc/loki/config.yaml",
+              "-target=all",
+              "-legacy-read-mode=false",
+            ]
           volumeMounts:
             - mountPath: /var/loki
               name: loki-data

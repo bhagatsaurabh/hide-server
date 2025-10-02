@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:alpine
+    image: postgres:17-alpine
     container_name: postgres
     expose:
       - 5432
