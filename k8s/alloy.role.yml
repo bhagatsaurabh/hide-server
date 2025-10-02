@@ -4,8 +4,6 @@ metadata:
   name: alloy
 rules:
   - apiGroups: [""]
-    resources: ["pods", "namespaces"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["nodes"]
+    resources:
+      ["pods", "pods/log", "namespaces", "nodes", "services", "endpoints"]
     verbs: ["get", "list", "watch"]
