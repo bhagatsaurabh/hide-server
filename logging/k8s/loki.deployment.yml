@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loki
+  template:
+    metadata:
+      labels:
+        app: loki
+        logging: "off"
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: loki
+          image: grafana/loki:latest
+          ports:
+            - name: api
+              containerPort: 3100
+            - name: client
+              containerPort: 7946
+          command:
+            - "-config.file=/etc/loki/config.yaml -target=all -legacy-read-mode=false"
+          volumeMounts:
+            - mountPath: /var/loki
+              name: loki-data
+            - mountPath: /etc/loki
+              name: config
+          resources:
+            limits:
+              cpu: 150m
+              memory: 512Mi
+            requests:
+              cpu: 150m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: loki-data
+          persistentVolumeClaim:
+            claimName: loki-data-pvc
+        - name: config
+          configMap:
+            name: loki-config

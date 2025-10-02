@@ -18,7 +18,9 @@ on:
       - "workspace/**"
       - "auth/**"
       - "provisioner/**"
+      - "lease-controller/**"
       - "!**/k8s/**"
+      - "!logging/**"
       - "!**/docker-compose.dev.yml"
 
 jobs:
@@ -47,6 +49,8 @@ jobs:
               - 'auth/**'
             provisioner:
               - 'provisioner/**'
+            lease-controller:
+              - 'lease-controller/**'
 
   prepare:
     needs: changes

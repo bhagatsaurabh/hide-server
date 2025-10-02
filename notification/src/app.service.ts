@@ -6,6 +6,7 @@ import {
   CachedPresence,
   CACHEKEY_PRESENCE,
   NotifyUser,
+  persistentNotificationTypes,
   ServiceEvent,
   ServiceMessage,
   SocketSend,
@@ -86,7 +87,7 @@ export class AppService {
 
     if (!doc.exists) return;
     const ntfn = doc.data()!;
-    if (ignorePersistent && ntfn.action === 'workspace-invite') return;
+    if (ignorePersistent && persistentNotificationTypes.includes(ntfn.type)) return;
 
     await docRef.delete();
   }

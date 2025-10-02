@@ -8,23 +8,23 @@ services:
       target: development
     image: hide-server-gateway
     volumes:
-      - .:/app/gateway
+      - ./src:/app/gateway/src
       - /app/gateway/node_modules
     environment:
-      - NODE_ENV=development
-      - SERVICE_PORT=80
-      - CORS_ORIGIN=*
-      - RMQ_URL=amqp://rabbitmq:5672
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - NATS_URL=nats://nats:4222
-      - FIREBASE_EMULATION=true
-      - FIREBASE_AUTH_EMULATOR_HOST=host.docker.internal:9099
-      - FIRESTORE_EMULATOR_HOST=host.docker.internal:8085
-      - FIREBASE_STORAGE_EMULATOR_HOST=host.docker.internal:9199
-      - FIREBASE_APP_ID=hide-43a4b
-      - JWT_PUBLIC_KEY=test
-      - WORKSPACE_PING_TIMEOUT=20000
-      - WORKSPACE_ACTIVITY_TIMEOUT=3600000
-      - SESSION_PING_TIMEOUT=20000
-      - SESSION_ACTIVITY_TIMEOUT=3600000
+      NODE_ENV: development
+      SERVICE_PORT: 80
+      CORS_ORIGIN: '*'
+      RMQ_URL: 'amqp://rabbitmq:5672'
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      NATS_URL: 'nats://nats:4222'
+      FIREBASE_EMULATION: true
+      FIREBASE_AUTH_EMULATOR_HOST: 'host.docker.internal:9099'
+      FIRESTORE_EMULATOR_HOST: 'host.docker.internal:8085'
+      FIREBASE_STORAGE_EMULATOR_HOST: 'host.docker.internal:9199'
+      FIREBASE_APP_ID: 'hide-43a4b'
+      JWT_PUBLIC_KEY: 'test'
+      WORKSPACE_PING_TIMEOUT: 20000
+      WORKSPACE_ACTIVITY_TIMEOUT: 3600000
+      SESSION_PING_TIMEOUT: 20000
+      SESSION_ACTIVITY_TIMEOUT: 3600000

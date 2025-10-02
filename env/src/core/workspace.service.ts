@@ -64,7 +64,7 @@ export class WorkspaceService {
     if (!msg.sessionId) {
       throw new RpcError(400, 'Required session id');
     }
-    let workspace: { image: string } | null;
+    let workspace: { image: string; dedicated: boolean } | null;
     try {
       workspace = await this.isAMember(uid, msg.uuid);
     } catch (error) {
@@ -84,7 +84,13 @@ export class WorkspaceService {
           Accept: 'application/json',
           'x-auth-user': Buffer.from(JSON.stringify(user)).toString('base64'),
         },
-        body: JSON.stringify({ image: workspace.image, uuid: msg.uuid, sessionId: msg.sessionId, uid }),
+        body: JSON.stringify({
+          image: workspace.image,
+          uuid: msg.uuid,
+          sessionId: msg.sessionId,
+          uid,
+          dedicated: workspace.dedicated,
+        }),
       });
       if (res.status < 200 || res.status > 299) {
         throw new Error();
@@ -179,7 +185,7 @@ export class WorkspaceService {
       // Close all user ssh sessions
       await this.sshService.handleSSHClose(uid, sessionId, { uuid: msg.uuid, sshSessionId: '#all' });
 
-      // TODO: Batch Optimization
+      // Improvement: Batch Optimization
       // Close all user opened dirs
       const dirs = Object.entries(workspace.dirs)
         .map(([path, uids]) => (uids.includes(uid) ? path : null))
@@ -390,12 +396,12 @@ export class WorkspaceService {
   }
   async isAMember(uid: string, wsUuid: string) {
     try {
-      const observable = this.rmq.send<{ image: string }, ServiceMessage<MembershipCheck>>(
-        'workspace.membership.check',
-        {
-          payload: { uid, uuid: wsUuid },
-        },
-      );
+      const observable = this.rmq.send<
+        { image: string; dedicated: boolean },
+        ServiceMessage<MembershipCheck>
+      >('workspace.membership.check', {
+        payload: { uid, uuid: wsUuid },
+      });
       return await firstValueFrom(observable);
     } catch (error) {
       void error;

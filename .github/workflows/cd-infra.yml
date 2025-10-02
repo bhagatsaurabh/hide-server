@@ -17,6 +17,7 @@ on:
       - "rabbitmq/k8s/**"
       - "nats/k8s/**"
       - "typesense/k8s/**"
+      - "logging/k8s/**"
 
 jobs:
   changes:
@@ -42,6 +43,8 @@ jobs:
               - 'nats/k8s/**'
             typesense:
               - 'typesense/k8s/**'
+            logging:
+              - 'logging/k8s/**'
 
   prepare:
     needs: changes
@@ -95,6 +98,8 @@ jobs:
           export AZURE_CS_SMTP_SECRET=$(echo "$AZURE_CS_SMTP_SECRET" | tr -d '\r')
           export JWT_PUBLIC_KEY=$(echo "$JWT_PUBLIC_KEY" | tr -d '\r')
           export ACR_KEY_BASE64=$(echo "$ACR_KEY_BASE64" | tr -d '\r')
+          export GRAFANA_GITHUB_CLIENT_ID=$(echo "$GRAFANA_GITHUB_CLIENT_ID" | tr -d '\r')
+          export GRAFANA_GITHUB_CLIENT_SECRET=$(echo "$GRAFANA_GITHUB_CLIENT_SECRET" | tr -d '\r')
 
           envsubst < k8s/secret.yml > k8s/secret-values.yml
           rm k8s/secret.yml
@@ -109,6 +114,8 @@ jobs:
           AZURE_CS_SMTP_SECRET: ${{ secrets.AZURE_CS_SMTP_SECRET }}
           JWT_PUBLIC_KEY: ${{ secrets.JWT_PUBLIC_KEY }}
           ACR_KEY_BASE64: ${{ secrets.ACR_KEY_BASE64 }}
+          GRAFANA_GITHUB_CLIENT_ID: ${{ secrets.GRAFANA_GITHUB_CLIENT_ID }}
+          GRAFANA_GITHUB_CLIENT_SECRET: ${{ secrets.GRAFANA_GITHUB_CLIENT_SECRET }}
 
       - name: Deploy ${{ matrix.service }}
         if: >

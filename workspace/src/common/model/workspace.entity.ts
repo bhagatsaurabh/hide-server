@@ -20,6 +20,11 @@ export class Workspace {
     if (data.status) {
       this.status = data.status;
     }
+    if (typeof data.dedicated !== 'undefined') {
+      this.dedicated = data.dedicated;
+    } else {
+      this.dedicated = false;
+    }
   }
 
   @PrimaryGeneratedColumn()
@@ -40,6 +45,9 @@ export class Workspace {
 
   @Column({ nullable: false, length: 30 })
   status: WorkspaceStatus;
+
+  @Column({ nullable: false })
+  dedicated: boolean;
 
   @CreateDateColumn({ nullable: false, name: 'created_at', type: 'timestamptz' })
   createdAt: string;

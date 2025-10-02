@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: provisioner-deployment
+  namespace: default
 spec:
   replicas: 1
   selector:
@@ -31,6 +32,12 @@ spec:
               value: "6379"
             - name: NATS_URL
               value: "nats://nats:4222"
+            - name: WORKSPACE_CPU_REQUEST
+              value: "200"
+            - name: IDLE_THRESHOLD_CPU
+              value: "350"
+            - name: PREEMPT_SPOT_OLDER_THAN_HOURS
+              value: "12"
           readinessProbe:
             httpGet:
               path: /api/health
@@ -41,10 +48,10 @@ spec:
             failureThreshold: 3
           resources:
             limits:
-              cpu: 250m
-              memory: 350Mi
+              cpu: 100m
+              memory: 256Mi
             requests:
-              cpu: 250m
-              memory: 350Mi
+              cpu: 100m
+              memory: 256Mi
       imagePullSecrets:
         - name: acr-secret

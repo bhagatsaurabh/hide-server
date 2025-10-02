@@ -141,3 +141,25 @@ services:
       service: rabbitmq
     networks:
       - hide-network
+  loki:
+    extends:
+      file: ./logging/docker-compose.dev.yml
+      service: loki
+    networks:
+      - hide-network
+  alloy:
+    extends:
+      file: ./logging/docker-compose.dev.yml
+      service: alloy
+    depends_on:
+      - loki
+    networks:
+      - hide-network
+  grafana:
+    extends:
+      file: ./logging/docker-compose.dev.yml
+      service: grafana
+    depends_on:
+      - loki
+    networks:
+      - hide-network

@@ -3,10 +3,12 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Equal, Not, Or, Repository } from 'typeorm';
 import { User } from 'hide-common/dto/user';
 import { CreateDTO } from 'src/common/dto/create.dto';
 import { Membership } from 'src/common/model/membership.entity';
@@ -17,6 +19,8 @@ import { MembershipDTO, WorkspaceDTO } from 'src/common/dto/workspace.dto';
 import { InviteService } from 'src/invite/invite.service';
 import { ClientProxy } from '@nestjs/microservices';
 import {
+  AccessRequestPayload,
+  AccessStatus,
   CachedPresence,
   CACHEKEY_PRESENCE,
   CACHEKEY_PRESENCE_WORKSPACE,
@@ -24,33 +28,55 @@ import {
   createMessage,
   ExclusionData,
   MembersModified,
+  NotificationRead,
   NotifyUser,
   ServiceEvent,
   ServiceMessage,
   SocketSend,
   UserProfileRequest,
+  WorkspaceAccessRequest,
   WorkspaceDeleted,
+  WorkspaceDowngraded,
   WorkspaceStatus,
 } from 'hide-common';
 import { randomUUID } from 'node:crypto';
 import { Cache, RedisService } from 'hide-redis';
 import { firstValueFrom } from 'rxjs';
+import { FirebaseService } from 'hide-firebase';
+import { AccessDTO } from 'src/common/dto/access.dto';
+import { AccessCode } from 'src/common/model/access-codes.entity';
+import { sign, verify } from 'jsonwebtoken';
+import { EmailService } from './email.service';
+import { accessCode } from 'src/utils';
+import { JWTSignFn, JWTVerifyFn } from 'src/utils/types';
+import { loadK8sConfig } from 'src/common/config/k8s';
+import { ObjectCoreV1Api } from '@kubernetes/client-node/dist/gen/types/ObjectParamAPI';
 
 @Injectable()
-export class ManageService {
+export class ManageService implements OnModuleInit {
   cache: Cache;
+  k8sApi: ObjectCoreV1Api;
 
   constructor(
     @InjectRepository(Workspace) private wsRepository: Repository<Workspace>,
     @InjectRepository(Membership) private msRepository: Repository<Membership>,
+    @InjectRepository(AccessCode) private accessRepository: Repository<AccessCode>,
     @Inject('WORKSPACE_SERVICE_REDIS') private redis: ClientProxy,
     @Inject('WORKSPACE_SERVICE_NATS') private nats: ClientProxy,
     @Inject('WORKSPACE_SERVICE_RMQ') private rmq: ClientProxy,
     private readonly inviteService: InviteService,
     private dataSource: DataSource,
     private cacheService: RedisService,
+    private firebaseService: FirebaseService,
+    private emailService: EmailService,
   ) {
     this.cache = this.cacheService.get();
+  }
+
+  onModuleInit() {
+    if (process.env.DEV_PLATFORM_SIMULATE) return;
+
+    this.k8sApi = loadK8sConfig();
   }
 
   async createWorkspace(user: User, data: Partial<CreateDTO>) {
@@ -289,7 +315,7 @@ export class ManageService {
     if (!membership) {
       throw new ForbiddenException('User is not a member of the workspace');
     }
-    return { image: workspace.image };
+    return { image: workspace.image, dedicated: workspace.dedicated };
   }
 
   async deleteWorkspace(uid: string, workspaceUUID: string) {
@@ -365,5 +391,267 @@ export class ManageService {
       }
     });
     await this.cache.del(CACHEKEY_WORKSPACE(wsUuid));
+  }
+
+  async checkEligibility(user: User) {
+    let isGuest = true;
+    const authUser = await this.firebaseService.auth.getUser(user.uid);
+    isGuest = !authUser.providerData.length;
+
+    let limit = isGuest
+      ? parseInt(process.env.WORKSPACE_CREATION_LIMIT_GUEST!)
+      : parseInt(process.env.WORKSPACE_CREATION_LIMIT_NON_GUEST!);
+    if (isNaN(limit)) {
+      limit = 1;
+    }
+
+    const existingCount = await this.wsRepository
+      .createQueryBuilder('workspace')
+      .innerJoin('workspace.memberships', 'filterMembership', 'filterMembership.user_id = :userId', {
+        userId: user.uid,
+      })
+      .leftJoinAndSelect('workspace.memberships', 'membership')
+      .getCount();
+
+    if (existingCount >= limit) {
+      throw new ForbiddenException('MAX_WORKSPACE_QUOTA_REACHED');
+    }
+  }
+
+  async createAccessRequest(user: User, req: AccessDTO) {
+    const activeCount = await this.accessRepository.count({
+      where: { uid: user.uid, status: Or(Equal(AccessStatus.UNUSED), Equal(AccessStatus.NEW)) },
+    });
+    if (activeCount) {
+      throw new BadRequestException('ACCESS_CODE_LIMIT');
+    }
+
+    if (!(await this.canProvision())) {
+      throw new ForbiddenException('NO_CAPACITY');
+    }
+
+    const payload: AccessRequestPayload = {
+      uid: user.uid,
+      username: user.username,
+      name: user.name,
+      reason: req.reason,
+      uuid: randomUUID(),
+    };
+    const token = (sign as JWTSignFn<AccessRequestPayload>)(payload, process.env.WORKSPACE_SERVICE_SECRET!);
+    await this.emailService.sendAccessRequestEmail(process.env.ADMIN_EMAIL!, payload, token);
+
+    let days = parseInt(process.env.ACCESS_CODE_EXPIRY_DAYS ?? '5');
+    if (isNaN(days)) days = 5;
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setDate(now.getDate() + days);
+    const newAccessCode = new AccessCode({
+      uid: user.uid,
+      status: AccessStatus.NEW,
+      code: accessCode(16),
+      uuid: payload.uuid,
+      expiresAt,
+    });
+    await this.accessRepository.save(newAccessCode);
+  }
+
+  async fulfillAccessRequest({ action, token }: { action: 'approve' | 'reject'; token: string }) {
+    let payload: AccessRequestPayload;
+    try {
+      payload = (verify as unknown as JWTVerifyFn<AccessRequestPayload>)(
+        token,
+        process.env.WORKSPACE_SERVICE_SECRET!,
+      );
+    } catch (error) {
+      void error;
+      throw new BadRequestException('BAD_TOKEN');
+    }
+
+    let code = '',
+      success = false;
+    if (action === 'reject') {
+      await this.accessRepository.delete({ uuid: payload.uuid });
+    } else {
+      const accessCode = await this.accessRepository.findOne({ where: { uuid: payload.uuid } });
+      if (!accessCode) {
+        throw new BadRequestException('NOT_FOUND');
+      }
+      code = accessCode.code;
+      success = true;
+
+      accessCode.status = AccessStatus.UNUSED;
+      await this.accessRepository.save(accessCode);
+    }
+
+    const notificationId = randomUUID();
+    const msg = createMessage<NotifyUser<WorkspaceAccessRequest>>(payload.uid, '', {
+      uid: payload.uid,
+      notification: {
+        type: 'workspace-access-code',
+        id: notificationId,
+        success,
+        code,
+        reqId: payload.uuid,
+        createdOn: new Date().toISOString(),
+      },
+    });
+
+    this.rmq.emit<unknown, ServiceMessage<NotifyUser<WorkspaceAccessRequest>>>('notification.send', msg);
+  }
+
+  async canProvision() {
+    if (process.env.DEV_PLATFORM_SIMULATE) {
+      return process.env.DEV_PLATFORM_SIMULATE.split(',')[1] === 'true';
+    }
+
+    const totalDedicatedCount = await this.wsRepository.count({
+      where: { dedicated: true, status: Not(WorkspaceStatus.DELETING) },
+    });
+    const unusedAccessCodeCount = await this.accessRepository.count({
+      where: { status: AccessStatus.UNUSED },
+    });
+
+    let allocatableCpu: number = 0,
+      requestedSysCpu: number = 0;
+    try {
+      const nodeRes = await this.k8sApi.listNode();
+      if (!nodeRes.items.length) {
+        console.error('No nodes in cluster');
+        throw new InternalServerErrorException('UNKNOWN');
+      }
+      const node = nodeRes.items[0];
+      allocatableCpu =
+        parseInt(node.status?.allocatable?.cpu ?? '') * 1000 ||
+        parseInt(node.status?.allocatable?.cpu?.replace('m', '') ?? '');
+      if (!allocatableCpu || isNaN(allocatableCpu)) {
+        console.error('Cannot get node allocatable');
+        throw new InternalServerErrorException('UNKNOWN');
+      }
+
+      const res = await this.k8sApi.listNamespacedPod({
+        namespace: 'default',
+        labelSelector: 'wstype!=dedicated,wstype!=spot',
+      });
+      const pods = res.items;
+      pods.forEach((pod) => {
+        if (pod.status?.phase !== 'Running') {
+          return;
+        }
+
+        for (const container of pod.spec?.containers ?? []) {
+          const cpuReq = container.resources?.requests?.cpu;
+          if (!cpuReq) continue;
+
+          if (cpuReq.endsWith('m')) {
+            requestedSysCpu += parseInt(cpuReq.replace('m', ''), 10);
+          } else {
+            requestedSysCpu += parseInt(cpuReq, 10) * 1000;
+          }
+        }
+      });
+    } catch (error) {
+      void error;
+      console.error('Failed to get allocatable and requested capacity');
+      throw new InternalServerErrorException('UNKNOWN');
+    }
+
+    let wsCpu = parseInt(process.env.WORKSPACE_CPU_REQUEST ?? '200');
+    if (isNaN(wsCpu)) wsCpu = 200;
+
+    let idleThresholdCpu = parseInt(process.env.IDLE_THRESHOLD_CPU ?? '350');
+    if (isNaN(idleThresholdCpu)) idleThresholdCpu = 350;
+
+    console.log('Total Dedicated Count: ', totalDedicatedCount);
+    console.log('Unused Access Code Count: ', unusedAccessCodeCount);
+    console.log('WS CPU: ', wsCpu);
+    console.log('System Requested CPU: ', requestedSysCpu);
+    console.log('Allocatable CPU: ', allocatableCpu);
+    return (
+      (totalDedicatedCount + unusedAccessCodeCount + 1) * wsCpu + requestedSysCpu <
+      allocatableCpu - idleThresholdCpu
+    );
+  }
+
+  async deleteAccessCode(user: User, uuid: string, ntfnId: string) {
+    await this.accessRepository.delete({ uid: user.uid, uuid });
+
+    const msg: ServiceMessage<NotificationRead> = createMessage(user.uid, '', {
+      uid: user.uid,
+      notificationId: ntfnId,
+    });
+    this.rmq.emit<ServiceMessage<NotificationRead>>('notification.read', msg);
+  }
+
+  async consumeAccessCode(user: User, code: string) {
+    const accessCode = await this.accessRepository.findOne({ where: { uid: user.uid, code } });
+    if (!accessCode) {
+      throw new NotFoundException('ACCESS_CODE_INVALID');
+    }
+    if (accessCode.status === AccessStatus.USED) {
+      throw new ForbiddenException('ACCESS_CODE_ALREADY_USED');
+    }
+    if (accessCode.expiresAt < new Date()) {
+      throw new BadRequestException('ACCESS_CODE_EXPIRED');
+    }
+
+    const success = await this.markCodeAsUsed(user.uid, code);
+    if (!success) {
+      throw new ForbiddenException('ACCESS_CODE_IN_USE');
+    }
+    /* accessCode.status = AccessStatus.USED;
+    await this.accessRepository.save(accessCode); */
+
+    return { success: true };
+  }
+
+  async markCodeAsUsed(uid: string, code: string) {
+    const result = await this.accessRepository
+      .createQueryBuilder()
+      .update(AccessCode)
+      .set({
+        status: AccessStatus.USED,
+        usedAt: () => 'NOW()',
+      })
+      .where('uid = :uid', { uid })
+      .andWhere('code = :code', { code })
+      .returning(['uuid', 'uid'])
+      .execute();
+
+    return result.affected !== 0;
+  }
+
+  async resetAccessCode(user: User, code: string) {
+    const accessCode = await this.accessRepository.findOne({ where: { uid: user.uid, code } });
+    if (!accessCode) {
+      throw new NotFoundException('ACCESS_CODE_INVALID');
+    }
+    if (accessCode.status !== AccessStatus.USED) {
+      throw new BadRequestException('ACCESS_CODE_NOT_IN_USE');
+    }
+
+    accessCode.status = AccessStatus.UNUSED;
+    await this.accessRepository.save(accessCode);
+
+    return { success: true };
+  }
+
+  async downgradeWorkspace({ uid, uuid }: { uid: string; uuid: string }) {
+    const notificationId = randomUUID();
+    const msg = createMessage<NotifyUser<WorkspaceDowngraded>>(uid, '', {
+      uid: uid,
+      notification: {
+        type: 'workspace-downgraded',
+        id: notificationId,
+        uuid,
+        createdOn: new Date().toISOString(),
+      },
+    });
+    this.rmq.emit<unknown, ServiceMessage<NotifyUser<WorkspaceDowngraded>>>('notification.send', msg);
+
+    const workspace = await this.wsRepository.findOne({ where: { uuid } });
+    if (!workspace) return;
+
+    workspace.dedicated = false;
+    await this.wsRepository.save(workspace);
   }
 }

@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func GetPodSpec(wsUuid string, image string, publicKey string) *v1.Pod {
+func GetPodSpec(wsUuid string, image string, publicKey string, wsType string) *v1.Pod {
 	envs := []v1.EnvVar{
 		{
 			Name:  "SERVICE_PORT",
@@ -39,6 +39,9 @@ func GetPodSpec(wsUuid string, image string, publicKey string) *v1.Pod {
 	podSpec := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("workspace-%s", wsUuid),
+			Labels: map[string]string{
+				"wstype": wsType,
+			},
 		},
 		Spec: v1.PodSpec{
 			RestartPolicy: v1.RestartPolicyAlways,
@@ -77,11 +80,11 @@ func GetPodSpec(wsUuid string, image string, publicKey string) *v1.Pod {
 					Resources: v1.ResourceRequirements{
 						Requests: v1.ResourceList{
 							v1.ResourceCPU:    resource.MustParse("200m"),
-							v1.ResourceMemory: resource.MustParse("512Mi"),
+							v1.ResourceMemory: resource.MustParse("330Mi"),
 						},
 						Limits: v1.ResourceList{
 							v1.ResourceCPU:    resource.MustParse("200m"),
-							v1.ResourceMemory: resource.MustParse("512Mi"),
+							v1.ResourceMemory: resource.MustParse("330Mi"),
 						},
 					},
 				},

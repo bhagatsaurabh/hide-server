@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,12 +29,14 @@ import (
 )
 
 type ProvisionRequest struct {
-	Image       string `json:"image"`
 	Uid         string `json:"uid"`
 	SessionId   string `json:"sessionId"`
-	Uuid        string `json:"uuid,omitempty"`
+	Image       string `json:"image"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
+	Uuid        string `json:"uuid,omitempty"`
+	Dedicated   bool   `json:"dedicated,omitempty"`
+	AccessCode  string `json:"accessCode,omitempty"`
 }
 type ProvisionDTO struct {
 	PrivateKey string       `json:"privateKey"`
@@ -45,6 +48,9 @@ type CreateWorkspaceRequest struct {
 	Description string `json:"description"`
 	Uuid        string `json:"uuid"`
 	Image       string `json:"image"`
+}
+type ConsumeAccessCodeRequest struct {
+	Code string `json:"code"`
 }
 type MembershipDTO struct {
 	WorkspaceId int64  `json:"workspaceId"`
@@ -95,22 +101,10 @@ type ServiceEvent[T any] struct {
 	Payload ServiceEventPayload[T] `json:"payload"`
 }
 
-func CreateDevContainer(req ProvisionRequest, isNew bool, devEnv string, redisClient *redis.Client) (string, string, error) {
-	message := "Provisioning"
+func CreateDevContainer(bgCtx context.Context, req ProvisionRequest, isNew bool, devEnv string, redisClient *redis.Client) (string, string, error) {
 	if !isNew {
-		message = "Restoring"
-	}
-	sMsg, _ := json.Marshal(ServiceEvent[StatusPayload]{
-		Payload: ServiceEventPayload[StatusPayload]{
-			Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: PayloadMessage[StatusPayload]{
-				Action: "status", Payload: StatusPayload{Message: message},
-			}},
-	})
-	redisClient.Publish(context.Background(), "socket.send", sMsg)
-
-	var err error = nil
-	if !isNew {
-		volumeExists, err := VolumeExists(req.Uuid, devEnv)
+		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "1/6:Restoring your data")
+		volumeExists, err := VolumeExists(bgCtx, req.Uuid, devEnv)
 		if err != nil {
 			return "", "", err
 		}
@@ -119,32 +113,30 @@ func CreateDevContainer(req ProvisionRequest, isNew bool, devEnv string, redisCl
 		}
 	}
 
+	var err error = nil
 	var privateKey, workspaceUuid string
 	switch devEnv {
 	case "docker":
-		privateKey, workspaceUuid, err = CreateDockerContainer(req, isNew)
+		privateKey, workspaceUuid, err = CreateDockerContainer(bgCtx, redisClient, req, isNew)
 	case "":
-		privateKey, workspaceUuid, err = CreateK8sPod(req, isNew)
+		privateKey, workspaceUuid, err = CreateK8sPod(bgCtx, redisClient, req, isNew)
 	default:
 		return "", "", errors.New("Unsupported dev env")
 	}
 
-	err = waitOnDevContainerReady(req, workspaceUuid, 90*time.Second, redisClient)
 	if err != nil {
 		return "", "", err
 	}
 
 	return privateKey, workspaceUuid, nil
 }
-func CreateK8sPod(req ProvisionRequest, isNew bool) (string, string, error) {
+func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req ProvisionRequest, isNew bool) (string, string, error) {
 	config, err := config.LoadK8sConfig()
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Println("Error creating Kubernetes client:", err)
 		return "", "", err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
 
 	wsUuid := req.Uuid
 	if isNew {
@@ -165,26 +157,33 @@ func CreateK8sPod(req ProvisionRequest, isNew bool) (string, string, error) {
 	}
 
 	if isNew {
-		err = PerpareK8sVolume(clientset, ctx, wsUuid)
+		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "2/6:Preparing storage")
+		err = PerpareK8sVolume(clientset, bgCtx, wsUuid)
 		if err != nil {
 			return "", "", err
 		}
-		err = CreateK8sVolume(clientset, ctx, wsUuid)
+		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "3/6:Allocating storage")
+		err = CreateK8sVolume(clientset, bgCtx, wsUuid)
 	}
 	if err != nil {
 		return "", "", err
 	}
 
-	pod := util.GetPodSpec(wsUuid, req.Image, publicKey)
-	_, err = clientset.CoreV1().Pods("default").Create(ctx, pod, metav1.CreateOptions{})
+	SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "4/6:Setting up your environment")
+	wsType := "spot"
+	if req.Dedicated {
+		wsType = "dedicated"
+	}
+	pod := util.GetPodSpec(wsUuid, req.Image, publicKey, wsType)
+	_, err = clientset.CoreV1().Pods("default").Create(bgCtx, pod, metav1.CreateOptions{})
 	if err != nil {
 		return "", "", err
 	}
 	service := util.GetServiceSpec(wsUuid)
-	_, err = clientset.CoreV1().Services("default").Create(ctx, service, metav1.CreateOptions{})
+	_, err = clientset.CoreV1().Services("default").Create(bgCtx, service, metav1.CreateOptions{})
 	if err != nil {
 		gracePeriod := int64(0)
-		clientset.CoreV1().Pods("default").Delete(ctx, fmt.Sprintf("workspace-%s", wsUuid), metav1.DeleteOptions{
+		clientset.CoreV1().Pods("default").Delete(bgCtx, fmt.Sprintf("workspace-%s", wsUuid), metav1.DeleteOptions{
 			GracePeriodSeconds: &gracePeriod,
 		})
 		return "", "", err
@@ -192,14 +191,12 @@ func CreateK8sPod(req ProvisionRequest, isNew bool) (string, string, error) {
 
 	return privateKey, wsUuid, err
 }
-func CreateDockerContainer(req ProvisionRequest, isNew bool) (string, string, error) {
+func CreateDockerContainer(bgCtx context.Context, redisClient *redis.Client, req ProvisionRequest, isNew bool) (string, string, error) {
 	cli, err := config.LoadDockerConfig()
 	if err != nil {
 		log.Println("Error creating docker client:", err)
 		return "", "", err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-	defer cancel()
 
 	wsUuid := req.Uuid
 	if isNew {
@@ -220,18 +217,21 @@ func CreateDockerContainer(req ProvisionRequest, isNew bool) (string, string, er
 	}
 
 	if isNew {
-		err = CreateDockerVolume(cli, ctx, fmt.Sprintf("workspace-data-%s", wsUuid))
+		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "2/6:Preparing storage")
+
+		err = CreateDockerVolume(cli, bgCtx, fmt.Sprintf("workspace-data-%s", wsUuid))
 		if err != nil {
 			return "", "", err
 		}
-		err = CreateDockerVolume(cli, ctx, fmt.Sprintf("workspace-config-%s", wsUuid))
+		err = CreateDockerVolume(cli, bgCtx, fmt.Sprintf("workspace-config-%s", wsUuid))
 	}
 	if err != nil {
 		return "", "", err
 	}
 
+	SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "3/6:Allocating storage")
 	resp, err := cli.ContainerCreate(
-		ctx,
+		bgCtx,
 		util.GetContainerSpec(wsUuid, req.Image, publicKey),
 		util.GetHostConfig(wsUuid),
 		&network.NetworkingConfig{
@@ -244,7 +244,9 @@ func CreateDockerContainer(req ProvisionRequest, isNew bool) (string, string, er
 		log.Println("Failed to create container", err)
 		return "", "", err
 	}
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+
+	SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "4/6:Setting up your environment")
+	if err := cli.ContainerStart(bgCtx, resp.ID, container.StartOptions{}); err != nil {
 		log.Println("Failed to start container", err)
 		return "", "", err
 	}
@@ -252,26 +254,24 @@ func CreateDockerContainer(req ProvisionRequest, isNew bool) (string, string, er
 	return privateKey, wsUuid, err
 }
 
-func VolumeExists(uuid string, devEnv string) (bool, error) {
+func VolumeExists(bgCtx context.Context, uuid string, devEnv string) (bool, error) {
 	switch devEnv {
 	case "docker":
-		return DockerVolumeExists(uuid)
+		return DockerVolumeExists(bgCtx, uuid)
 	case "":
-		return K8sVolumeExists(uuid)
+		return K8sVolumeExists(bgCtx, uuid)
 	default:
 		return false, errors.New("Unsupported dev env")
 	}
 }
-func DockerVolumeExists(uuid string) (bool, error) {
+func DockerVolumeExists(bgCtx context.Context, uuid string) (bool, error) {
 	cli, err := config.LoadDockerConfig()
 	if err != nil {
 		return false, err
 	}
 	defer cli.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
 
-	_, err = cli.VolumeInspect(ctx, fmt.Sprintf("workspace-data-%s", uuid))
+	_, err = cli.VolumeInspect(bgCtx, fmt.Sprintf("workspace-data-%s", uuid))
 	if err != nil {
 		if client.IsErrNotFound(err) {
 			return false, nil
@@ -281,19 +281,17 @@ func DockerVolumeExists(uuid string) (bool, error) {
 
 	return true, nil
 }
-func K8sVolumeExists(uuid string) (bool, error) {
+func K8sVolumeExists(bgCtx context.Context, uuid string) (bool, error) {
 	config, err := config.LoadK8sConfig()
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Println("Error creating Kubernetes client:", err)
 		return false, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
 
 	_, err = clientset.CoreV1().
 		PersistentVolumes().
-		Get(ctx, fmt.Sprintf("workspace-data-%s", uuid), metav1.GetOptions{})
+		Get(bgCtx, fmt.Sprintf("workspace-data-%s", uuid), metav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return false, nil
@@ -302,7 +300,7 @@ func K8sVolumeExists(uuid string) (bool, error) {
 	}
 	_, err = clientset.CoreV1().
 		PersistentVolumeClaims("default").
-		Get(ctx, fmt.Sprintf("workspace-data-%s", uuid), metav1.GetOptions{})
+		Get(bgCtx, fmt.Sprintf("workspace-data-%s", uuid), metav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return false, nil
@@ -311,7 +309,7 @@ func K8sVolumeExists(uuid string) (bool, error) {
 	}
 	_, err = clientset.CoreV1().
 		PersistentVolumes().
-		Get(ctx, fmt.Sprintf("workspace-config-%s", uuid), metav1.GetOptions{})
+		Get(bgCtx, fmt.Sprintf("workspace-config-%s", uuid), metav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return false, nil
@@ -320,7 +318,7 @@ func K8sVolumeExists(uuid string) (bool, error) {
 	}
 	_, err = clientset.CoreV1().
 		PersistentVolumeClaims("default").
-		Get(ctx, fmt.Sprintf("workspace-config-%s", uuid), metav1.GetOptions{})
+		Get(bgCtx, fmt.Sprintf("workspace-config-%s", uuid), metav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return false, nil
@@ -331,27 +329,25 @@ func K8sVolumeExists(uuid string) (bool, error) {
 	return true, nil
 }
 
-func DevContainerExists(wsUuid string, devEnv string) (bool, error) {
+func DevContainerExists(bgCtx context.Context, wsUuid string, devEnv string) (bool, error) {
 	containerName := fmt.Sprintf("workspace-%s", wsUuid)
 	switch devEnv {
 	case "docker":
-		return DockerContainerExists(containerName)
+		return DockerContainerExists(bgCtx, containerName)
 	case "":
-		return K8sPodExists(containerName)
+		return K8sPodExists(bgCtx, containerName)
 	default:
 		return false, errors.New("Unsupported dev env")
 	}
 }
-func DockerContainerExists(containerName string) (bool, error) {
+func DockerContainerExists(bgCtx context.Context, containerName string) (bool, error) {
 	cli, err := config.LoadDockerConfig()
 	if err != nil {
 		return false, err
 	}
 	defer cli.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
 
-	containers, err := cli.ContainerList(ctx, container.ListOptions{
+	containers, err := cli.ContainerList(bgCtx, container.ListOptions{
 		All: true,
 	})
 	if err != nil {
@@ -374,17 +370,15 @@ outer:
 	}
 	return true, nil
 }
-func K8sPodExists(containerName string) (bool, error) {
+func K8sPodExists(bgCtx context.Context, containerName string) (bool, error) {
 	config, err := config.LoadK8sConfig()
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Println("Error creating Kubernetes client:", err)
 		return false, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
-	_, err = clientset.CoreV1().Pods("default").Get(ctx, containerName, metav1.GetOptions{})
+	_, err = clientset.CoreV1().Pods("default").Get(bgCtx, containerName, metav1.GetOptions{})
 
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -417,51 +411,51 @@ func CreateDockerVolume(cli *client.Client, ctx context.Context, volumeName stri
 	}
 	return nil
 }
-func PerpareK8sVolume(clientset *kubernetes.Clientset, ctx context.Context, wsUuid string) error {
+func PerpareK8sVolume(clientset *kubernetes.Clientset, bgCtx context.Context, wsUuid string) error {
 	jobSpec := util.GetPrepareVolumeJobSpec(wsUuid, "1G", "32M")
-	job, err := clientset.BatchV1().Jobs("default").Create(ctx, jobSpec, metav1.CreateOptions{})
+	job, err := clientset.BatchV1().Jobs("default").Create(bgCtx, jobSpec, metav1.CreateOptions{})
 	if err != nil {
 		return errors.New("Could not create job to prepare volumes")
 	}
 
-	err = util.WaitForJobCompletion(clientset, job.Name, 1*time.Minute)
+	err = util.WaitForJobCompletion(bgCtx, clientset, job.Name, 1*time.Minute)
 	if err != nil {
 		log.Printf("Prepare volume job failed %v\n", err)
 	}
 
 	return nil
 }
-func CreateK8sVolume(clientset *kubernetes.Clientset, ctx context.Context, wsUuid string) error {
+func CreateK8sVolume(clientset *kubernetes.Clientset, bgCtx context.Context, wsUuid string) error {
 	dataStorageQty := resource.MustParse("1Gi")
 	configStorageQty := resource.MustParse("32Mi")
 	dataVolumeName := fmt.Sprintf("workspace-data-%s", wsUuid)
 	configVolumeName := fmt.Sprintf("workspace-config-%s", wsUuid)
 
 	dataPVSpec := util.GetPersistentVolumeSpec(wsUuid, dataVolumeName, dataStorageQty)
-	_, err := clientset.CoreV1().PersistentVolumes().Create(ctx, dataPVSpec, metav1.CreateOptions{})
+	_, err := clientset.CoreV1().PersistentVolumes().Create(bgCtx, dataPVSpec, metav1.CreateOptions{})
 	if err != nil {
 		return errors.New("Could not create 'data' PV")
 	}
 	configPVSpec := util.GetPersistentVolumeSpec(wsUuid, configVolumeName, configStorageQty)
-	_, err = clientset.CoreV1().PersistentVolumes().Create(ctx, configPVSpec, metav1.CreateOptions{})
+	_, err = clientset.CoreV1().PersistentVolumes().Create(bgCtx, configPVSpec, metav1.CreateOptions{})
 	if err != nil {
-		clientset.CoreV1().PersistentVolumes().Delete(ctx, dataPVSpec.Name, metav1.DeleteOptions{})
+		clientset.CoreV1().PersistentVolumes().Delete(bgCtx, dataPVSpec.Name, metav1.DeleteOptions{})
 		return errors.New("Could not create 'config' PV, cleaning up")
 	}
 
 	dataPVCSpec := util.GetPersistentVolumeClaimSpec(dataVolumeName, dataStorageQty)
-	_, err = clientset.CoreV1().PersistentVolumeClaims("default").Create(ctx, dataPVCSpec, metav1.CreateOptions{})
+	_, err = clientset.CoreV1().PersistentVolumeClaims("default").Create(bgCtx, dataPVCSpec, metav1.CreateOptions{})
 	if err != nil {
-		clientset.CoreV1().PersistentVolumes().Delete(ctx, dataVolumeName, metav1.DeleteOptions{})
-		clientset.CoreV1().PersistentVolumes().Delete(ctx, configVolumeName, metav1.DeleteOptions{})
+		clientset.CoreV1().PersistentVolumes().Delete(bgCtx, dataVolumeName, metav1.DeleteOptions{})
+		clientset.CoreV1().PersistentVolumes().Delete(bgCtx, configVolumeName, metav1.DeleteOptions{})
 		return errors.New("Could not create 'data' PVC, cleaning up")
 	}
 	configPVCSpec := util.GetPersistentVolumeClaimSpec(configVolumeName, configStorageQty)
-	_, err = clientset.CoreV1().PersistentVolumeClaims("default").Create(ctx, configPVCSpec, metav1.CreateOptions{})
+	_, err = clientset.CoreV1().PersistentVolumeClaims("default").Create(bgCtx, configPVCSpec, metav1.CreateOptions{})
 	if err != nil {
-		clientset.CoreV1().PersistentVolumes().Delete(ctx, dataVolumeName, metav1.DeleteOptions{})
-		clientset.CoreV1().PersistentVolumes().Delete(ctx, configVolumeName, metav1.DeleteOptions{})
-		clientset.CoreV1().PersistentVolumeClaims("default").Delete(ctx, dataVolumeName, metav1.DeleteOptions{})
+		clientset.CoreV1().PersistentVolumes().Delete(bgCtx, dataVolumeName, metav1.DeleteOptions{})
+		clientset.CoreV1().PersistentVolumes().Delete(bgCtx, configVolumeName, metav1.DeleteOptions{})
+		clientset.CoreV1().PersistentVolumeClaims("default").Delete(bgCtx, dataVolumeName, metav1.DeleteOptions{})
 		return errors.New("Could not create 'config' PVC, cleaning up")
 	}
 	return nil
@@ -501,27 +495,69 @@ func CreateWorkspace(req ProvisionRequest, userHeader string, workspaceUUID stri
 	return err
 }
 
-func waitOnDevContainerReady(req ProvisionRequest, uuid string, timeout time.Duration, redisClient *redis.Client) error {
-	sMsg, _ := json.Marshal(ServiceEvent[StatusPayload]{
-		Payload: ServiceEventPayload[StatusPayload]{
-			Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: PayloadMessage[StatusPayload]{
-				Action: "status", Payload: StatusPayload{Message: "Booting up"},
-			}},
-	})
-	redisClient.Publish(context.Background(), "socket.send", sMsg)
+func CheckEligibility(req ProvisionRequest, userHeader string) (bool, error) {
+	var wsReq *http.Request
+	wsReq, err := http.NewRequest("GET", "http://workspace/api/check-eligibility", nil)
+	if err != nil {
+		return false, errors.New("Failed to create request")
+	}
+	wsReq.Header.Set("Content-Type", "application/json")
+	wsReq.Header.Set("x-auth-user", userHeader)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(wsReq)
+	if err != nil {
+		return false, errors.New("Workspace creation eligibility check failed")
+	}
+	defer resp.Body.Close()
 
-	deadline := time.Now().Add(timeout)
-	client := &http.Client{
-		Timeout: 1 * time.Second,
+	return resp.StatusCode == 200, nil
+}
+
+func WaitOnDevContainerScheduled(bgCtx context.Context, uuid string) error {
+	config, err := config.LoadK8sConfig()
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Println("Error creating Kubernetes client:", err)
+		return err
 	}
 
-	for time.Now().Before(deadline) {
-		resp, err := client.Get(fmt.Sprintf("http://workspace-%s/ready", uuid))
-		if err == nil && resp.StatusCode == http.StatusOK {
+	watcher, err := clientset.CoreV1().Pods("default").Watch(bgCtx, metav1.ListOptions{FieldSelector: "metadata.name=" + fmt.Sprintf("workspace-%s", uuid)})
+	if err != nil {
+		log.Println("Failed to watch pod:", err)
+		return err
+	}
+	defer watcher.Stop()
+
+	for event := range watcher.ResultChan() {
+		pod := event.Object.(*v1.Pod)
+		if pod.Spec.NodeName != "" {
 			return nil
 		}
-		time.Sleep(500 * time.Millisecond)
+		if pod.Status.Phase == v1.PodFailed || pod.Status.Phase == v1.PodSucceeded {
+			return fmt.Errorf("Pod ended before scheduling: %s", pod.Status.Phase)
+		}
+	}
+	return fmt.Errorf("watch closed before scheduling")
+}
+
+func KillK8sPod(bgCtx context.Context, devEnv string, podName string) error {
+	if devEnv == "docker" {
+		return nil
 	}
 
-	return errors.New("Workspace timed-out during boot")
+	config, err := config.LoadK8sConfig()
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Println("Error creating Kubernetes client:", err)
+		return err
+	}
+
+	err = clientset.CoreV1().Pods("default").Delete(
+		bgCtx,
+		podName,
+		metav1.DeleteOptions{
+			GracePeriodSeconds: new(int64),
+		},
+	)
+	return err
 }

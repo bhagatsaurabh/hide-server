@@ -1,0 +1,8 @@
+apiVersion: workspace.hideserver/v1alpha1
+kind: Workspace
+metadata:
+  name: workspace-7f235bc7-0069-45ab-9d3b-a74b3dd5a096
+spec:
+  leaseExpiry: "2025-12-03T00:00:00Z"
+  podName: "workspace-7f235bc7-0069-45ab-9d3b-a74b3dd5a096"
+  uid: "4e9yFdvBB4nAw4gebJPq1SFGIWlN"

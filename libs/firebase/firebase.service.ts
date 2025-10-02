@@ -2,6 +2,7 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { credential } from "firebase-admin";
 import { App, initializeApp } from "firebase-admin/app";
 import { Firestore, getFirestore } from "firebase-admin/firestore";
+import { Auth, getAuth } from "firebase-admin/auth";
 import { getStorage, Storage } from "firebase-admin/storage";
 import { FirebaseOptions } from "./firebase.module";
 
@@ -10,6 +11,7 @@ export class FirebaseService implements OnModuleInit, OnModuleDestroy {
   readonly app: App;
   readonly firestore: Firestore;
   readonly storage: Storage;
+  readonly auth: Auth;
   constructor(private readonly options: FirebaseOptions) {
     if (this.options.emulate) {
       this.app = initializeApp({ projectId: process.env.FIREBASE_APP_ID });
@@ -24,6 +26,7 @@ export class FirebaseService implements OnModuleInit, OnModuleDestroy {
 
     this.firestore = getFirestore(this.app);
     this.storage = getStorage(this.app);
+    this.auth = getAuth(this.app);
   }
 
   async onModuleInit() {}

@@ -29,6 +29,16 @@ spec:
                 name: typesense
                 port:
                   number: 8108
+    - host: grafana.hide.saurabhagat.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
   tls:
     - hosts:
         - api.hide.saurabhagat.me

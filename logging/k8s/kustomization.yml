@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - loki.configmap.yml
+  - alloy.configmap.yml
+  - grafana.configmap.yml
+  - loki-data.pv.yml
+  - grafana.pv.yml
+  - loki-data.pvc.yml
+  - grafana.pvc.yml
+  - loki.deployment.yml
+  - loki.service.yml
+  - alloy.daemonset.yml
+  - grafana.deployment.yml
+  - grafana.service.yml

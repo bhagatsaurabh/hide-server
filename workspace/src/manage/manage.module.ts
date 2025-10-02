@@ -6,9 +6,10 @@ import { Workspace } from 'src/common/model/workspace.entity';
 import { Membership } from 'src/common/model/membership.entity';
 import { InviteModule } from 'src/invite/invite.module';
 import { SharedModule } from 'src/common/shared.module';
+import { AccessCode } from 'src/common/model/access-codes.entity';
 
 @Module({
-  imports: [InviteModule, TypeOrmModule.forFeature([Workspace, Membership]), SharedModule],
+  imports: [InviteModule, TypeOrmModule.forFeature([Workspace, Membership, AccessCode]), SharedModule],
   controllers: [ManageController],
   providers: [ManageService],
 })
