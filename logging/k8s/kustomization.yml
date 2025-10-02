@@ -2,6 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
+  - alloy.serviceaccount.yml
+  - alloy.cluster-role-binding.yml
   - loki.configmap.yml
   - alloy.configmap.yml
   - grafana.configmap.yml

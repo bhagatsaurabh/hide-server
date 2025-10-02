@@ -13,7 +13,7 @@ spec:
         app: alloy
         logging: "off"
     spec:
-      serviceAccountName: default
+      serviceAccountName: alloy
       containers:
         - name: alloy
           image: grafana/alloy:v1.11.0
