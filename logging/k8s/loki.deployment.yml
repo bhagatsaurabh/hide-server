@@ -17,6 +17,13 @@ spec:
       securityContext:
         fsGroup: 10001
       serviceAccountName: default
+      initContainers:
+        - name: fs-perm
+          image: busybox
+          command: ["sh", "-c", "chown -R 10001:10001 /var/loki"]
+          volumeMounts:
+            - mountPath: /var/loki
+              name: loki-data
       containers:
         - name: loki
           image: grafana/loki:3.5
