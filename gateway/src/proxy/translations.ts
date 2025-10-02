@@ -131,7 +131,7 @@ export const rules: Rules = [
           sourceProtocol: ExtTransport.HTTP,
           targetProtocol: ExtTransport.HTTP,
         },
-      }
+      },
       '*': {
         DELETE: {
           sourceProtocol: ExtTransport.HTTP,
