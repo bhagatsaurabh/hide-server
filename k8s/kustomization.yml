@@ -6,4 +6,5 @@ resources:
   - clusterissuer.yml
   - secret.yml
   - pod-manager.role.yml
+  - alloy.role.yml
   - daemonset.yml
