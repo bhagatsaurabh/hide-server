@@ -10,50 +10,12 @@ data:
       format = "logfmt"
     }
 
-    file.match "k8slogs" {
-      path_targets = ["/var/log/containers/*.log"]
+    discovery.kubernetes "pods" {
+      role = "pod"
     }
 
-    discovery.relabel "k8sfilter" {
-      targets = file.match.k8slogs.targets
-
-      rule {
-        source_labels = ["__meta_kubernetes_namespace"]
-        regex         = "default"
-        action        = "keep"
-      }
-
-      rule {
-        source_labels = ["__meta_kubernetes_pod_label_logging"]
-        regex         = "off"
-        action        = "drop"
-      }
-
-      rule {
-        source_labels = ["__meta_kubernetes_pod_label_app"]
-        target_label  = "service_name"
-        action        = "replace"
-      }
-
-      rule {
-        source_labels = ["__meta_kubernetes_namespace"]
-        target_label  = "namespace"
-        action        = "replace"
-      }
-      rule {
-        source_labels = ["__meta_kubernetes_pod_name"]
-        target_label  = "pod"
-        action        = "replace"
-      }
-      rule {
-        source_labels = ["__meta_kubernetes_container_name"]
-        target_label  = "container"
-        action        = "replace"
-      }
-    }
-
-    file.source "k8s" {
-      targets    = discovery.relabel.k8sfilter.output
+    loki.source.kubernetes "pods" {
+      targets    = discovery.kubernetes.pods.targets
       forward_to = [loki.process.k8s.receiver]
     }
 
@@ -61,6 +23,44 @@ data:
       forward_to = [loki.write.local.receiver]
 
       stage.docker {}
+
+      stage.relabel {
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          regex         = "default"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_logging"]
+          regex         = "off"
+          action        = "drop"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          target_label  = "service_name"
+          action        = "replace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+          action        = "replace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+          action        = "replace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_container_name"]
+          target_label  = "container"
+          action        = "replace"
+        }
+      }
     }
 
     loki.write "local" {
