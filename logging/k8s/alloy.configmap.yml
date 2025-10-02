@@ -10,12 +10,12 @@ data:
       format = "logfmt"
     }
 
-    file.match "k8s-logs" {
+    file.match "k8slogs" {
       path_targets = ["/var/log/containers/*.log"]
     }
 
-    discovery.relabel "k8s-filter" {
-      targets = file.match.k8s-logs.targets
+    discovery.relabel "k8sfilter" {
+      targets = file.match.k8slogs.targets
 
       rule {
         source_labels = ["__meta_kubernetes_namespace"]
@@ -53,7 +53,7 @@ data:
     }
 
     file.source "k8s" {
-      targets    = discovery.relabel.k8s-filter.output
+      targets    = discovery.relabel.k8sfilter.output
       forward_to = [loki.process.k8s.receiver]
     }
 
