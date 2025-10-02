@@ -55,15 +55,15 @@ data:
     }
 
     loki.source.kubernetes "pods" {
-      targets    = discovery.kubernetes.pods.targets
+      targets    = discovery.relabel.filtered.output
       forward_to = [loki.process.k8s.receiver]
     }
 
     loki.process "k8s" {
       forward_to = [loki.write.local.receiver]
-      targets    = loki.source.kubernetes.pods.targets
 
       stage.docker {}
+
       stage.template {
         source   = "log"
         template = "[{{ printf \"%16s\" .service_name }}] {{ .Value }}"
