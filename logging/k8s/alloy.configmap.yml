@@ -14,6 +14,46 @@ data:
       role = "pod"
     }
 
+    discovery.relabel "filtered" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "default"
+        action        = "keep"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_logging"]
+        regex         = "off"
+        action        = "drop"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app"]
+        target_label  = "service_name"
+        action        = "replace"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+        action        = "replace"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+        action        = "replace"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_container_name"]
+        target_label  = "container"
+        action        = "replace"
+      }
+    }
+
     loki.source.kubernetes "pods" {
       targets    = discovery.kubernetes.pods.targets
       forward_to = [loki.process.k8s.receiver]
@@ -21,45 +61,12 @@ data:
 
     loki.process "k8s" {
       forward_to = [loki.write.local.receiver]
+      targets    = loki.source.kubernetes.pods.targets
 
       stage.docker {}
-
-      stage.relabel {
-        rule {
-          source_labels = ["__meta_kubernetes_namespace"]
-          regex         = "default"
-          action        = "keep"
-        }
-
-        rule {
-          source_labels = ["__meta_kubernetes_pod_label_logging"]
-          regex         = "off"
-          action        = "drop"
-        }
-
-        rule {
-          source_labels = ["__meta_kubernetes_pod_label_app"]
-          target_label  = "service_name"
-          action        = "replace"
-        }
-
-        rule {
-          source_labels = ["__meta_kubernetes_namespace"]
-          target_label  = "namespace"
-          action        = "replace"
-        }
-
-        rule {
-          source_labels = ["__meta_kubernetes_pod_name"]
-          target_label  = "pod"
-          action        = "replace"
-        }
-
-        rule {
-          source_labels = ["__meta_kubernetes_container_name"]
-          target_label  = "container"
-          action        = "replace"
-        }
+      stage.template {
+        source   = "log"
+        template = "[{{ printf \"%16s\" .service_name }}] {{ .Value }}"
       }
     }
 
