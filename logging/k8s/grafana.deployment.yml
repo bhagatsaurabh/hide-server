@@ -30,10 +30,10 @@ spec:
               mountPath: /var/lib/grafana
           resources:
             limits:
-              cpu: 100m
+              cpu: 75m
               memory: 256Mi
             requests:
-              cpu: 100m
+              cpu: 75m
               memory: 256Mi
           readinessProbe:
             httpGet:

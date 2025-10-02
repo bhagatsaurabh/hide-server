@@ -20,6 +20,7 @@ on:
       - "provisioner/**"
       - "lease-controller/**"
       - "!**/k8s/**"
+      - "!logging/**"
       - "!**/docker-compose.dev.yml"
 
 jobs:
