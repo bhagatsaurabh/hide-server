@@ -20,7 +20,7 @@ spec:
             - containerPort: 80
           env:
             - name: JAVA_OPTS
-              value: "-Xms200m -Xmx200m"
+              value: "-Xms512m -Xmx512m"
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
             - name: REDIS_HOST
@@ -58,9 +58,9 @@ spec:
           resources:
             requests:
               cpu: 150m
-              memory: 200Mi
+              memory: 512Mi
             limits:
               cpu: 150m
-              memory: 200Mi
+              memory: 512Mi
       imagePullSecrets:
         - name: acr-secret
