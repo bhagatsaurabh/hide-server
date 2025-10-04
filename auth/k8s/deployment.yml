@@ -20,7 +20,7 @@ spec:
             - containerPort: 80
           env:
             - name: JAVA_OPTS
-              value: "-Xms256m -Xmx256m"
+              value: "-Xms200m -Xmx200m"
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
             - name: REDIS_HOST
