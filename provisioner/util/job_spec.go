@@ -45,7 +45,7 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 							},
 							Command: []string{"/bin/bash", "-c"},
 							Args: []string{`
-											apt-install -y lvm2
+											apt-get update && apt-install -y lvm2
 											set -eux
 
 											WORKSPACE_DIR=/host-volumes/workspaces/$WORKSPACE_UUID

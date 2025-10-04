@@ -33,7 +33,7 @@ spec:
             - -c
             - |
               set -euo pipefail
-              apt-get install -y lvm2 util-linux
+              apt-get update && apt-get install -y lvm2 util-linux
 
               vgchange -ay workspace-vg || true
 

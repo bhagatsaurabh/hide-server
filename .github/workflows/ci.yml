@@ -34,23 +34,32 @@ jobs:
         name: Filter
         id: filter
         with:
+          predicate-quantifier: "every"
           filters: |
             gateway:
               - 'gateway/**'
+              - '!gateway/k8s/**'
             env:
               - 'env/**'
+              - '!env/k8s/**'
             user:
               - 'user/**'
+              - '!user/k8s/**'
             notification:
               - 'notification/**'
+              - '!notification/k8s/**'
             workspace:
               - 'workspace/**'
+              - '!workspace/k8s/**'
             auth:
               - 'auth/**'
+              - '!auth/k8s/**'
             provisioner:
               - 'provisioner/**'
+              - '!provisioner/k8s/**'
             lease-controller:
               - 'lease-controller/**'
+              - '!lease-controller/k8s/**'
 
   prepare:
     needs: changes
