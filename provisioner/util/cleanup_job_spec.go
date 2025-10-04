@@ -34,7 +34,7 @@ func GetCleanupJobSpec(wsUuid string) *v1.Job {
 							},
 							Command: []string{"/bin/bash", "-c"},
 							Args: []string{`
-								apt-get install -y lvm2
+								apt-get update && apt-get install -y lvm2
 								set -eux
 
 								WORKSPACE_DIR=/host-volumes/workspaces/$WORKSPACE_UUID
