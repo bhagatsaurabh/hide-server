@@ -27,6 +27,8 @@ data:
             period: 24h
     compactor:
       retention_enabled: true
+      working_directory: /var/loki/compactor
+      delete_request_store: filesystem
     storage_config:
       filesystem:
         directory: /var/loki/chunks
