@@ -11,7 +11,7 @@ services:
       - ./src:/app/src
       - /app/build
     environment:
-      JAVA_OPTS: "-Xms200m -Xmx200m"
+      JAVA_OPTS: "-Xms512m -Xmx512m"
       SPRING_PROFILES_ACTIVE: local
       FIREBASE_AUTH_EMULATOR_HOST: "host.docker.internal:9099"
       AZURE_COMM_EMAIL_CONNECTION: "${AZURE_COMM_EMAIL_CONNECTION}"
