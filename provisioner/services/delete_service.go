@@ -75,7 +75,7 @@ func DeleteK8sPod(bgCtx context.Context, wsUuid string) error {
 		return err
 	}
 
-	job := util.GetCleanupJobSpec(fmt.Sprintf("workspace-data-%s", wsUuid), fmt.Sprintf("workspace-config-%s", wsUuid))
+	job := util.GetCleanupJobSpec(wsUuid)
 	_, err = clientset.BatchV1().Jobs("default").Create(bgCtx, job, metav1.CreateOptions{})
 	if err != nil {
 		return err

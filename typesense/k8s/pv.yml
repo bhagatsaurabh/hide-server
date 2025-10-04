@@ -9,6 +9,6 @@ spec:
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: /data/typesense
+    path: /var/hide/typesense
     type: DirectoryOrCreate
   persistentVolumeReclaimPolicy: Retain

@@ -39,9 +39,8 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 								},
 							},
 							Env: []corev1.EnvVar{
-								{Name: "DATA_VOLUME_NAME", Value: fmt.Sprintf("workspace-data-%s", wsUuid)},
+								{Name: "WORKSPACE_UUID", Value: wsUuid},
 								{Name: "DATA_VOLUME_SIZE", Value: "1G"},
-								{Name: "CONFIG_VOLUME_NAME", Value: fmt.Sprintf("workspace-config-%s", wsUuid)},
 								{Name: "CONFIG_VOLUME_SIZE", Value: "32M"},
 							},
 							Command: []string{"/bin/bash", "-c"},
@@ -49,17 +48,18 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 											apt-install -y lvm2
 											set -eux
 
-											DATA_MNT=/host-volumes/$DATA_VOLUME_NAME
-											lvcreate -L $DATA_VOLUME_SIZE -n $DATA_VOLUME_NAME k8s-vg
-											mkfs.ext4 /dev/k8s-vg/$DATA_VOLUME_NAME
-											mkdir -p $DATA_MNT
-											mount /dev/k8s-vg/$DATA_VOLUME_NAME $DATA_MNT
+											WORKSPACE_DIR=/host-volumes/workspaces/$WORKSPACE_UUID
 
-											CONFIG_MNT=/host-volumes/$CONFIG_VOLUME_NAME
-											lvcreate -L $CONFIG_VOLUME_SIZE -n $CONFIG_VOLUME_NAME k8s-vg
-											mkfs.ext4 /dev/k8s-vg/$CONFIG_VOLUME_NAME
-											mkdir -p $CONFIG_MNT
-											mount /dev/k8s-vg/$CONFIG_VOLUME_NAME $CONFIG_MNT
+											mkdir -p $WORKSPACE_DIR/data
+											mkdir -p $WORKSPACE_DIR/config
+
+											lvcreate -L $DATA_VOLUME_SIZE -n ${WORKSPACE_UUID}-data workspace-vg
+											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-data
+											mount /dev/workspace-vg/${WORKSPACE_UUID}-data $WORKSPACE_DIR/data
+
+											lvcreate -L $CONFIG_VOLUME_SIZE -n ${WORKSPACE_UUID}-config workspace-vg
+											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-config
+											mount /dev/workspace-vg/${WORKSPACE_UUID}-config $WORKSPACE_DIR/config
                     `},
 						},
 					},
@@ -68,7 +68,7 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 							Name: "host-volumes",
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/var/lib/k8s-volumes",
+									Path: "/data/workspace-volumes",
 									Type: &hostPathType,
 								},
 							},

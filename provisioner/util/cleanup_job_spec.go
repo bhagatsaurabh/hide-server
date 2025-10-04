@@ -6,8 +6,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GetCleanupJobSpec(dataVolumeName string, configVolumeName string) *v1.Job {
+func GetCleanupJobSpec(wsUuid string) *v1.Job {
 	priviledged := true
+	hostPathType := corev1.HostPathDirectoryOrCreate
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "cleanup-volume",
@@ -22,17 +23,41 @@ func GetCleanupJobSpec(dataVolumeName string, configVolumeName string) *v1.Job {
 							Name:            "cleaner",
 							Image:           "debian:bookworm-slim",
 							SecurityContext: &corev1.SecurityContext{Privileged: &priviledged},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "host-volumes",
+									MountPath: "/host-volumes",
+								},
+							},
 							Env: []corev1.EnvVar{
-								{Name: "DATA_VOLUME_NAME", Value: dataVolumeName},
-								{Name: "CONFIG_VOLUME_NAME", Value: configVolumeName},
+								{Name: "WORKSPACE_UUID", Value: wsUuid},
 							},
 							Command: []string{"/bin/bash", "-c"},
 							Args: []string{`
+								apt-get install -y lvm2
 								set -eux
-								apt-get update && apt-get install -y lvm2
-								lvremove -y /dev/k8s-vg/$DATA_VOLUME_NAME
-								lvremove -y /dev/k8s-vg/$CONFIG_VOLUME_NAME
+
+								WORKSPACE_DIR=/host-volumes/workspaces/$WORKSPACE_UUID
+
+								umount $WORKSPACE_DIR/data || true
+								umount $WORKSPACE_DIR/config || true
+
+								lvremove -y workspace-vg/${WORKSPACE_UUID}-data || true
+								lvremove -y workspace-vg/${WORKSPACE_UUID}-config || true
+
+								rm -rf $WORKSPACE_DIR
 								`},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "host-volumes",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/data/workspace-volumes",
+									Type: &hostPathType,
+								},
+							},
 						},
 					},
 				},

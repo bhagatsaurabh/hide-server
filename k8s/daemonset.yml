@@ -28,23 +28,20 @@ spec:
               mountPath: /proc
             - name: host-volumes
               mountPath: /host-volumes
-            - name: host-disks
-              mountPath: /var/lib/k8s-disks
           command:
             - /bin/bash
             - -c
             - |
               set -euo pipefail
-              apt-get update && apt-get install -y lvm2 util-linux
+              apt-get install -y lvm2 util-linux
 
-              losetup -fP /var/lib/k8s-disks/workspaces.img || true
-              vgchange -ay
+              vgchange -ay workspace-vg || true
 
               while true; do
-                active_lvs=$(lvs --noheadings -o lv_name k8s-vg | awk '{$1=$1};1')
+                active_lvs=$(lvs --noheadings -o lv_name workspace-vg | awk '{$1=$1};1')
 
                 for lv in $active_lvs; do
-                  dev="/dev/k8s-vg/$lv"
+                  dev="/dev/workspace-vg/$lv"
                   target="/host-volumes/$lv"
                   mkdir -p "$target"
                   if ! mountpoint -q "$target"; then
@@ -56,7 +53,7 @@ spec:
                 for dir in /host-volumes/*; do
                   [ -d "$dir" ] || continue
                   name=$(basename "$dir")
-                  dev="/dev/k8s-vg/$name"
+                  dev="/dev/workspace-vg/$name"
 
                   if [ ! -e "$dev" ]; then
                     if mountpoint -q "$dir"; then
@@ -74,10 +71,10 @@ spec:
       resources:
         limits:
           cpu: 100m
-          memory: 256Mi
+          memory: 200Mi
         requests:
           cpu: 100m
-          memory: 256Mi
+          memory: 200Mi
       volumes:
         - name: dev
           hostPath:
@@ -90,9 +87,5 @@ spec:
             path: /proc
         - name: host-volumes
           hostPath:
-            path: /var/lib/k8s-volumes
-            type: DirectoryOrCreate
-        - name: host-disks
-          hostPath:
-            path: /var/lib/k8s-disks
+            path: /data/workspace-volumes
             type: DirectoryOrCreate
