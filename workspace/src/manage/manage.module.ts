@@ -7,10 +7,11 @@ import { Membership } from 'src/common/model/membership.entity';
 import { InviteModule } from 'src/invite/invite.module';
 import { SharedModule } from 'src/common/shared.module';
 import { AccessCode } from 'src/common/model/access-codes.entity';
+import { EmailService } from './email.service';
 
 @Module({
   imports: [InviteModule, TypeOrmModule.forFeature([Workspace, Membership, AccessCode]), SharedModule],
   controllers: [ManageController],
-  providers: [ManageService],
+  providers: [ManageService, EmailService],
 })
 export class ManageModule {}
