@@ -28,10 +28,10 @@ spec:
           resources:
             limits:
               cpu: 150m
-              memory: 256Mi
+              memory: 200Mi
             requests:
               cpu: 150m
-              memory: 256Mi
+              memory: 200Mi
           readinessProbe:
             tcpSocket:
               port: 4222

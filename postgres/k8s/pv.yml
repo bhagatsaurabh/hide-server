@@ -9,6 +9,6 @@ spec:
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: /data/postgres
+    path: /var/hide/postgres
     type: DirectoryOrCreate
   persistentVolumeReclaimPolicy: Retain

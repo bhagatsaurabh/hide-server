@@ -9,6 +9,6 @@ spec:
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: /data/grafana-data
+    path: /var/hide/grafana-data
     type: DirectoryOrCreate
   persistentVolumeReclaimPolicy: Retain

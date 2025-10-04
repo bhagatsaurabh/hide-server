@@ -36,10 +36,10 @@ spec:
           resources:
             limits:
               cpu: 75m
-              memory: 256Mi
+              memory: 200Mi
             requests:
               cpu: 75m
-              memory: 256Mi
+              memory: 200Mi
           readinessProbe:
             httpGet:
               path: /
@@ -53,7 +53,7 @@ spec:
             name: alloy-config
         - name: alloy-data
           hostPath:
-            path: /data/alloy-data
+            path: /var/hide/alloy-data
         - name: varlog
           hostPath:
             path: /var/log/containers

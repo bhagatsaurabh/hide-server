@@ -9,6 +9,6 @@ spec:
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: /data/loki-data
+    path: /var/hide/loki-data
     type: DirectoryOrCreate
   persistentVolumeReclaimPolicy: Retain

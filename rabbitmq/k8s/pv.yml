@@ -9,6 +9,6 @@ spec:
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: /data/rmq
+    path: /var/hide/rmq
     type: DirectoryOrCreate
   persistentVolumeReclaimPolicy: Retain
