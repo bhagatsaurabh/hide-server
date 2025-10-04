@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       services:
-        description: "Comma-separated list of infra services to deploy (postgres, redis, rabbitmq, nats, typesense, k8s). Leave blank to use paths-filter."
+        description: "Comma-separated list of infra services to deploy (postgres, redis, rabbitmq, nats, typesense, k8s, logging). Leave blank to use paths-filter."
         required: false
         default: ""
   push:
