@@ -153,7 +153,7 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
     if (process.env.NODE_ENV === 'development') {
       filePath = join(process.cwd(), 'static', 'templates.json');
     } else {
-      filePath = join(process.cwd(), 'dist', 'static', 'templates.json');
+      filePath = join(process.cwd(), 'gateway', 'dist', 'static', 'templates.json');
     }
     const data = readFileSync(filePath, 'utf-8');
     const templates = JSON.parse(data) as { image: string; name: string }[];
