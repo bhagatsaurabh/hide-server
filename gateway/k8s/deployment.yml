@@ -24,7 +24,7 @@ spec:
             - name: SERVICE_PORT
               value: "80"
             - name: CORS_ORIGIN
-              value: "hide.saurabhagat.me"
+              value: "https://hide.saurabhagat.me"
             - name: RMQ_URL
               value: "amqp://rabbitmq:5672"
             - name: REDIS_HOST
