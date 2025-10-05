@@ -37,3 +37,8 @@ services:
       IDLE_THRESHOLD_CPU: '350'
       DEV_PLATFORM_SIMULATE: docker,true
       ACCESS_CODE_EXPIRY_DAYS: '5'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512m

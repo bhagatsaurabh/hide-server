@@ -22,3 +22,8 @@ services:
       WORKSPACE_CPU_REQUEST: "200"
       IDLE_THRESHOLD_CPU: "350"
       PREEMPT_SPOT_OLDER_THAN_HOURS: "12"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512m
