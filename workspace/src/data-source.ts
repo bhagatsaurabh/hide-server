@@ -1,4 +1,11 @@
+import * as dotenv from 'dotenv';
+import { join } from 'path';
+
+dotenv.config({ path: join(__dirname, '../.env.local') });
+
 import { DataSource } from 'typeorm';
+
+console.log('HOST:', process.env.POSTGRES_HOST);
 
 export default new DataSource({
   type: 'postgres',
