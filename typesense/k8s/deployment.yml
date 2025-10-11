@@ -23,7 +23,7 @@ spec:
           args:
             - "--data-dir"
             - "/data"
-            - "--api-key=$TYPESENSE_API_KEY"
+            - "--api-key=$(TYPESENSE_API_KEY)"
             - "--enable-cors"
           env:
             - name: TYPESENSE_API_KEY
