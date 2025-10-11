@@ -3,4 +3,3 @@ dist
 .env
 dockerfile
 .git
-src/migrations
