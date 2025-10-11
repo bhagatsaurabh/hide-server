@@ -31,6 +31,7 @@ import { AccessCode } from './common/model/access-codes.entity';
       password: process.env.POSTGRES_PASSWORD,
       database: process.env.POSTGRES_DB,
       entities: [Workspace, Membership, AccessCode],
+      autoLoadEntities: true,
       synchronize: process.env.NODE_ENV === 'development',
     }),
     ManageModule,
