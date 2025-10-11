@@ -28,3 +28,8 @@ services:
       WORKSPACE_ACTIVITY_TIMEOUT: 3600000
       SESSION_PING_TIMEOUT: 20000
       SESSION_ACTIVITY_TIMEOUT: 3600000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512m

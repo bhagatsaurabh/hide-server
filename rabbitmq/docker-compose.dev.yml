@@ -8,3 +8,8 @@ services:
       - 15672:15672
     volumes:
       - ./.rabbitmq-data:/var/lib/rabbitmq
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m

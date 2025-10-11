@@ -5,3 +5,8 @@ services:
     expose:
       - 6379
     command: ["redis-server", "--notify-keyspace-events", "Ex"]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m

@@ -11,3 +11,8 @@ services:
       - 6222:6222
     volumes:
       - ./.nats-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m

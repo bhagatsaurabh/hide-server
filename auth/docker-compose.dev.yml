@@ -19,3 +19,8 @@ services:
       AZURE_CS_SMTP_SECRET: "${AZURE_CS_SMTP_SECRET}"
       REDIS_HOST: "redis"
       REDIS_PORT: "6379"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
