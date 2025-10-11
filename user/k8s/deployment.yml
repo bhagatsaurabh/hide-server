@@ -39,6 +39,8 @@ spec:
               value: nats://nats:4222
             - name: RMQ_URL
               value: "amqp://rabbitmq:5672"
+            - name: GUEST_ACCOUNT_EXPIRY_DAYS
+              value: "2"
             - name: FIREBASE_KEY_BASE64
               valueFrom:
                 secretKeyRef:
