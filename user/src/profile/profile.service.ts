@@ -1,7 +1,8 @@
 import { Firestore } from '@google-cloud/firestore';
+import { Auth } from 'firebase-admin/auth';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from 'hide-common/model/user';
-import { FirestoreService } from 'hide-firebase';
+import { FirebaseService, FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
 import { CreateUserDTO } from 'src/common/dto';
 import { emailRegex, nameRegex, usernameRegex } from 'src/utils/constants';
@@ -12,13 +13,16 @@ import { Cache } from '@nestjs/cache-manager';
 @Injectable()
 export class ProfileService {
   private readonly db: Firestore;
+  private readonly auth: Auth;
   cache: Cache;
 
   constructor(
+    private readonly firebase: FirebaseService,
     private readonly firestore: FirestoreService,
     private readonly cacheService: RedisService,
   ) {
-    this.db = this.firestore.db;
+    this.db = this.firebase.firestore;
+    this.auth = this.firebase.auth;
     this.cache = this.cacheService.get();
   }
 
@@ -30,11 +34,25 @@ export class ProfileService {
 
     const countSnap = await this.db.collection('users').where('uid', '==', user.uid).count().get();
     if (countSnap.data().count <= 0) {
+      const additionalFields: { expireAt?: string } = {};
+      const usr = await this.auth.getUser(user.uid);
+      if (!usr.providerData.length) {
+        additionalFields.expireAt = new Date(
+          Date.now() + +(process.env.GUEST_ACCOUNT_EXPIRY_DAYS ?? '2') * 24 * 60 * 60 * 1000,
+        ).toISOString();
+      }
+
       await this.db
         .collection('users')
         .withConverter(userConverter)
         .doc(data.username)
-        .set({ ...user, name: data.name, username: data.username, picture: data.picture ?? '' });
+        .set({
+          ...user,
+          name: data.name,
+          username: data.username,
+          picture: data.picture ?? '',
+          ...additionalFields,
+        });
 
       await this.cache.set(`profile:${user.uid}`, true);
     } else {

@@ -5,4 +5,5 @@ export interface User {
   email: string;
   picture: string;
   issuer: string;
+  expireAt?: string;
 }

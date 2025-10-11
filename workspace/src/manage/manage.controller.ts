@@ -10,7 +10,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { MembershipCheck, ServiceMessage, UserHeader } from 'hide-common';
+import { MembershipCheck, ServiceMessage, UserHeader, WorkspaceDeleteOwned } from 'hide-common';
 import { User } from 'hide-common/dto/user';
 import { CreateDTO } from 'src/common/dto/create.dto';
 import { ManageService } from './manage.service';
@@ -98,5 +98,10 @@ export class ManageController {
   @MessagePattern('workspace.membership.check', Transport.RMQ)
   async handleCheckMembership(msg: ServiceMessage<MembershipCheck>) {
     return await this.service.isUserMemberOf(msg.payload.uid, msg.payload.uuid);
+  }
+
+  @MessagePattern('workspace.delete.owned', Transport.RMQ)
+  async handleWorkspaceDelete(msg: ServiceMessage<WorkspaceDeleteOwned>) {
+    return await this.service.deleteOwnedWorkspaces(msg.payload.ownerUid);
   }
 }

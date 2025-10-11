@@ -1,4 +1,4 @@
-export type WebHookType = "user.registered";
+export type WebHookType = "user.registered" | "user.deleted";
 
 export type WebHookDTO<T> = {
   type: WebHookType;
@@ -10,3 +10,5 @@ export type UserRegistered = {
   username: string;
   name: string;
 };
+
+export type UserDeleted = UserRegistered;

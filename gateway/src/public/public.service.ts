@@ -3,12 +3,23 @@ import { Cache } from '@nestjs/cache-manager';
 import {
   BadRequestException,
   HttpException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { VerifyEmailDTO } from 'hide-common';
+import { ClientProxy } from '@nestjs/microservices';
+import {
+  CachedPresence,
+  CACHEKEY_MEMBERSHIP,
+  CACHEKEY_PRESENCE,
+  CACHEKEY_PRESENCE_SESSION,
+  CACHEKEY_USER_PROFILE,
+  ServiceMessage,
+  VerifyEmailDTO,
+  WorkspaceDeleteOwned,
+} from 'hide-common';
 import { UserRegistered } from 'hide-common/dto/webhook';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
@@ -16,6 +27,7 @@ import Redis from 'ioredis';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Redlock, { Lock } from 'redlock';
+import { firstValueFrom } from 'rxjs';
 import { usernameRegex } from 'src/utils/constants';
 
 @Injectable()
@@ -26,6 +38,7 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
   cache: Cache;
 
   constructor(
+    @Inject('GATEWAY_SERVICE_RMQ') private rmq: ClientProxy,
     private readonly firestore: FirestoreService,
     private readonly cacheService: RedisService,
   ) {
@@ -38,7 +51,7 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
     this.redlock = new Redlock([this.redis], { retryCount: 0 });
 
     try {
-      const lock = await this.redlock.acquire(['locks:usernames_bloom_init'], 120 * 1000);
+      const lock = await this.redlock.acquire(['locks:usernames_cuckoo_init'], 120 * 1000);
       await this.seed(lock);
     } catch (error) {
       void error;
@@ -53,8 +66,8 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Not a valid username');
     }
 
-    const existsInBloom = await this.bloomCheck('usernames', username.toLowerCase());
-    if (!existsInBloom) {
+    const existsInFilter = await this.cuckooCheck('usernames', username.toLowerCase());
+    if (!existsInFilter) {
       return { available: true };
     }
 
@@ -67,34 +80,40 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
   }
 
   async addUsername(username: string) {
-    await this.bloomAdd('usernames', username.toLowerCase());
+    await this.cuckooAdd('usernames', username.toLowerCase());
+  }
+  async removeUsername(username: string) {
+    await this.cuckooRemove('usernames', username.toLowerCase());
   }
 
-  async bloomCheck(filter: string, value: string): Promise<boolean> {
-    const res = await this.redis.call('BF.EXISTS', filter, value);
+  async cuckooCheck(filter: string, value: string): Promise<boolean> {
+    const res = await this.redis.call('CF.EXISTS', filter, value);
     return res === 1;
   }
-  async bloomAdd(filter: string, value: string): Promise<void> {
-    await this.redis.call('BF.ADD', filter, value);
+  async cuckooAdd(filter: string, value: string): Promise<void> {
+    await this.redis.call('CF.ADD', filter, value);
   }
-  async bloomReserve(filter: string, errorRate = 0.01, capacity = 10000) {
-    await this.redis.call('BF.RESERVE', filter, errorRate, capacity);
+  async cuckooRemove(filter: string, value: string): Promise<void> {
+    await this.redis.call('CF.DEL', filter, value);
+  }
+  async cuckooReserve(filter: string, capacity = 10000) {
+    await this.redis.call('CF.RESERVE', filter, capacity);
   }
   async seed(lock: Lock) {
     const exists = await this.redis.exists('usernames');
     if (!exists) {
-      await this.bloomReserve('usernames', 0.01, 100_000);
+      await this.cuckooReserve('usernames', 100_000);
     }
 
     try {
       const docRefs = await this.db.collection('users').listDocuments();
       const usernames = docRefs.map((ref) => ref.id);
-      await Promise.all(usernames.map((username) => this.bloomAdd('usernames', username)));
+      await Promise.all(usernames.map((username) => this.cuckooAdd('usernames', username)));
 
       await lock.release();
-      console.log('[BloomInit] "usernames" populated');
+      console.log('[FilterInit] "usernames" populated');
     } catch (err) {
-      console.error('[BloomInit] "usernames" failed', err);
+      console.error('[FilterInit] "usernames" failed', err);
     }
   }
   async refreshProfileCheckCache(data: UserRegistered) {
@@ -180,5 +199,27 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
     }
 
     return { success: true };
+  }
+
+  async removeCaches(uid: string) {
+    await this.cache.del(CACHEKEY_MEMBERSHIP(uid));
+    await this.cache.del(CACHEKEY_USER_PROFILE(uid));
+    const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
+    if (presence) {
+      await Promise.allSettled(
+        Object.keys(presence).map((sessionId) => this.cache.del(CACHEKEY_PRESENCE_SESSION(uid, sessionId))),
+      );
+      await this.cache.del(CACHEKEY_PRESENCE(uid));
+    }
+  }
+
+  async deleteOwnedWorkspaces(uid: string) {
+    const observable = this.rmq.send<unknown, ServiceMessage<WorkspaceDeleteOwned>>(
+      'workspace.delete.owned',
+      {
+        payload: { ownerUid: uid },
+      },
+    );
+    await firstValueFrom(observable);
   }
 }

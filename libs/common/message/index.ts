@@ -93,6 +93,9 @@ export interface MembershipCheck extends ServiceMessagePayload {
   uid: string;
   uuid: string;
 }
+export interface WorkspaceDeleteOwned extends ServiceMessagePayload {
+  ownerUid: string;
+}
 export interface EnvOpenRequest extends ServiceMessagePayload {
   uuid: string;
   sessionId: string;

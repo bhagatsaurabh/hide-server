@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { PublicService } from './public.service';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { UsernameAvailabilityDTO } from 'hide-common/dto/user';
-import { UserRegistered, WebHookDTO } from 'hide-common/dto/webhook';
+import { UserDeleted, UserRegistered, WebHookDTO } from 'hide-common/dto/webhook';
 import { PublicGuard } from 'src/common/guard/public.guard';
 import { RegisterEmailDTO, VerifyEmailDTO } from 'hide-common';
 
@@ -47,6 +47,11 @@ export class PublicController {
       const payload = data.payload as UserRegistered;
       await this.service.addUsername(payload.username);
       await this.service.refreshProfileCheckCache(payload);
+    } else if (data.type === 'user.deleted') {
+      const payload = data.payload as UserDeleted;
+      await this.service.removeUsername(payload.username);
+      await this.service.removeCaches(payload.uid);
+      await this.service.deleteOwnedWorkspaces(payload.uid);
     }
   }
 

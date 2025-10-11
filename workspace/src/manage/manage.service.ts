@@ -236,6 +236,7 @@ export class ManageService implements OnModuleInit {
       sshKey,
     });
 
+    // Notify
     if (removed.length) {
       const mbrs = new Set(members);
       removed.forEach((uid) => mbrs.delete(uid));
@@ -363,6 +364,77 @@ export class ManageService implements OnModuleInit {
     this.redis.emit<any, ServiceEvent<WorkspaceDeleted>>('workspace.deleted', {
       payload: { uuid: workspaceUUID, members },
     });
+  }
+
+  async deleteOwnedWorkspaces(uid: string) {
+    const workspaces = await this.wsRepository
+      .createQueryBuilder('workspace')
+      .innerJoin('workspace.memberships', 'filterMembership', 'filterMembership.user_id = :userId', {
+        userId: uid,
+      })
+      .leftJoinAndSelect('workspace.memberships', 'membership')
+      .getMany();
+
+    const ownedWorkspaces = workspaces.filter(
+      (workspace) =>
+        !!workspace.memberships.find(
+          (membership) => membership.userId === uid && membership.role === 'owner',
+        ),
+    );
+    const memberWorkspaces = workspaces.filter(
+      (workspace) =>
+        !!workspace.memberships.find(
+          (membership) => membership.userId === uid && membership.role === 'member',
+        ),
+    );
+
+    // Delete all owned workspaces
+    await Promise.allSettled(
+      ownedWorkspaces.map((ownedWorkspace) => this.deleteWorkspace(uid, ownedWorkspace.uuid)),
+    );
+
+    // Delete all memberships
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.startTransaction();
+    try {
+      await queryRunner.manager.delete(Membership, { userId: uid });
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+
+    // Notify
+    for (const memberWorkspace of memberWorkspaces) {
+      const mbrs = new Set(memberWorkspace.memberships.map((membership) => membership.userId));
+      mbrs.delete(uid);
+      const mbrsToNotify = [...mbrs];
+      const presences = await Promise.all(
+        mbrsToNotify.map((userId) => this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(userId))),
+      );
+      mbrsToNotify.forEach((userId, idx) => {
+        const presence = presences[idx];
+        if (!presence) return;
+        Object.keys(presence).forEach((sessionId) => {
+          this.redis.emit<any, ServiceEvent<SocketSend<'workspace'>>>('socket.send', {
+            meta: { uid: userId, sessionId },
+            payload: {
+              pattern: 'workspace',
+              uid: userId,
+              sessionId,
+              msg: { action: 'members.modified', payload: { uuid: memberWorkspace.uuid } },
+            },
+          });
+        });
+      });
+      this.redis.emit<any, ServiceEvent<MembersModified>>('workspace.members.modified', {
+        payload: { uuid: memberWorkspace.uuid, added: [], removed: [uid] },
+      });
+    }
+
+    return { ok: true };
   }
 
   async clearCacheOnDelete(members: string[], wsUuid: string) {
