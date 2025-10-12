@@ -3,7 +3,7 @@ import {
   FirestoreDataConverter,
   Timestamp,
 } from "@google-cloud/firestore";
-import { User } from "model/user";
+import { User } from "../model/user";
 
 export const userConverter: FirestoreDataConverter<User> = {
   toFirestore: (data: User): DocumentData => {
