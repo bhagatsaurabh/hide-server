@@ -21,6 +21,7 @@ import {
   WorkspaceDeleteOwned,
 } from 'hide-common';
 import { UserRegistered } from 'hide-common/dto/webhook';
+import { User } from 'hide-common/model/user';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
 import Redis from 'ioredis';
@@ -117,9 +118,9 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
     }
   }
   async refreshProfileCheckCache(data: UserRegistered) {
-    const isProfileCreated = await this.cache.get<boolean>(`profile:${data.uid}`);
-    if (isProfileCreated !== null && isProfileCreated === false) {
-      await this.cache.set(`profile:${data.uid}`, true);
+    const userProfile = await this.cache.get<User>(CACHEKEY_USER_PROFILE(data.uid));
+    if (!userProfile) {
+      await this.cache.set(CACHEKEY_USER_PROFILE(data.uid), data);
     }
   }
 

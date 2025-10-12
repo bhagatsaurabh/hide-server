@@ -12,6 +12,7 @@ import { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { Cache } from '@nestjs/cache-manager';
 import { RedisService } from 'hide-redis';
 import { User } from 'hide-common/dto/user';
+import { User as UserModel } from 'hide-common/model/user';
 import { ClientProxy } from '@nestjs/microservices';
 import {
   InSocketMessage,
@@ -31,6 +32,7 @@ import {
   HealthCheck,
   CACHEKEY_PRESENCE,
   CachedSession,
+  CACHEKEY_USER_PROFILE,
 } from 'hide-common';
 import { FirestoreService } from 'hide-firebase';
 import { Firestore } from '@google-cloud/firestore';
@@ -42,6 +44,7 @@ import { RedisRef } from 'src/common/refs/redis.ref';
 import Redlock from 'redlock';
 import { MembershipService } from './membership.service';
 import { PresenceService } from './presence.service';
+import { userConverter } from 'hide-common/utils/converter';
 
 export type ClientEvents = {
   ssh: (msg: OutSocketMessage<'ssh'>) => void;
@@ -200,11 +203,17 @@ export class SocketGateway
 
       const user = (await response.json()) as User;
 
-      let isProfileCreated = await this.cache.get<boolean>(`profile:${user.uid}`);
-      if (!isProfileCreated) {
-        const profileSnap = await this.db.collection('users').where('uid', '==', user.uid).get();
-        isProfileCreated = profileSnap.docs.length > 0;
-        await this.cache.set(`profile:${user.uid}`, isProfileCreated);
+      let userProfile = await this.cache.get<UserModel>(CACHEKEY_USER_PROFILE(user.uid));
+      if (!userProfile) {
+        const profileSnap = await this.db
+          .collection('users')
+          .withConverter(userConverter)
+          .where('uid', '==', user.uid)
+          .get();
+        userProfile = profileSnap.docs.length > 0 ? profileSnap.docs[0].data() : undefined;
+        if (userProfile) {
+          await this.cache.set(CACHEKEY_USER_PROFILE(user.uid), userProfile);
+        }
       }
 
       return user;
