@@ -24,10 +24,10 @@ spec:
           resources:
             limits:
               cpu: 150m
-              memory: 300Mi
+              memory: 400Mi
             requests:
               cpu: 150m
-              memory: 300Mi
+              memory: 400Mi
           readinessProbe:
             exec:
               command: ["rabbitmq-diagnostics", "ping"]
