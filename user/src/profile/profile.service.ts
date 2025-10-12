@@ -9,6 +9,7 @@ import { emailRegex, nameRegex, usernameRegex } from 'src/utils/constants';
 import { userConverter } from 'src/utils/converters';
 import { isObjEmpty } from 'src/utils/helpers';
 import { Cache } from '@nestjs/cache-manager';
+import { CACHEKEY_USER_PROFILE } from 'hide-common';
 
 @Injectable()
 export class ProfileService {
@@ -54,7 +55,7 @@ export class ProfileService {
           ...additionalFields,
         });
 
-      await this.cache.set(`profile:${user.uid}`, true);
+      await this.cache.set(CACHEKEY_USER_PROFILE(user.uid), user);
     } else {
       throw new BadRequestException('User is already registered');
     }
@@ -91,6 +92,7 @@ export class ProfileService {
       if (updatedUser.username && updatedUser.username !== oldUser.username) {
         await this.db
           .collection('users')
+          .withConverter(userConverter)
           .doc(updatedUser.username)
           .set({ ...oldUser, ...updatedUser });
       } else {
@@ -122,5 +124,6 @@ export class ProfileService {
       return 'Not a valid email';
     }
     if (user.uid !== uid) return 'Not a valid uid';
+    if (user.expireAt) return 'Not allowed';
   }
 }

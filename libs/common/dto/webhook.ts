@@ -1,3 +1,5 @@
+import { User } from "model/user";
+
 export type WebHookType = "user.registered" | "user.deleted";
 
 export type WebHookDTO<T> = {
@@ -5,10 +7,5 @@ export type WebHookDTO<T> = {
   payload: T;
 };
 
-export type UserRegistered = {
-  uid: string;
-  username: string;
-  name: string;
-};
-
+export type UserRegistered = User;
 export type UserDeleted = UserRegistered;
