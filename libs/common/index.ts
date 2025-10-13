@@ -3,3 +3,4 @@ export * from "./message";
 export * from "./cache";
 export * from "./dto";
 export * from "./utils";
+export * from "./utils/converter";
