@@ -44,7 +44,7 @@ import { RedisRef } from 'src/common/refs/redis.ref';
 import Redlock from 'redlock';
 import { MembershipService } from './membership.service';
 import { PresenceService } from './presence.service';
-import { userConverter } from 'hide-common/utils/converter';
+import { userConverter } from 'hide-common';
 
 export type ClientEvents = {
   ssh: (msg: OutSocketMessage<'ssh'>) => void;

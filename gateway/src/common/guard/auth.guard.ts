@@ -4,7 +4,7 @@ import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from
 import { Request } from 'express';
 import { CACHEKEY_USER_PROFILE } from 'hide-common';
 import { User } from 'hide-common/model/user';
-import { userConverter } from 'hide-common/utils/converter';
+import { userConverter } from 'hide-common';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
 
