@@ -35,7 +35,6 @@ import {
   CACHEKEY_USER_PROFILE,
 } from 'hide-common';
 import { FirestoreService } from 'hide-firebase';
-import { Firestore } from '@google-cloud/firestore';
 import { firstValueFrom, timeout } from 'rxjs';
 import { CommonRef } from 'src/common/refs/common.ref';
 import { randomUUID } from 'node:crypto';
@@ -45,6 +44,7 @@ import Redlock from 'redlock';
 import { MembershipService } from './membership.service';
 import { PresenceService } from './presence.service';
 import { userConverter } from 'hide-common';
+import { firestore } from 'firebase-admin';
 
 export type ClientEvents = {
   ssh: (msg: OutSocketMessage<'ssh'>) => void;
@@ -70,7 +70,7 @@ export class SocketGateway
   @WebSocketServer()
   private server: Server<DefaultEventsMap, ClientEvents, DefaultEventsMap, SocketData>;
   private cache: Cache;
-  private db: Firestore;
+  private db: firestore.Firestore;
   private redisClients: [Redis, Redis];
   private lockClient: Redis;
   private allowConnections = true;
@@ -207,7 +207,7 @@ export class SocketGateway
       if (!userProfile) {
         const profileSnap = await this.db
           .collection('users')
-          .withConverter(userConverter)
+          .withConverter(userConverter(this.firestore.Timestamp))
           .where('uid', '==', user.uid)
           .get();
         userProfile = profileSnap.docs.length > 0 ? profileSnap.docs[0].data() : undefined;

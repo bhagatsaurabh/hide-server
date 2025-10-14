@@ -1,4 +1,3 @@
-import { Firestore } from '@google-cloud/firestore';
 import { Cache } from '@nestjs/cache-manager';
 import {
   BadRequestException,
@@ -23,6 +22,7 @@ import {
 import { UserRegistered } from 'hide-common/dto/webhook';
 import { User } from 'hide-common/model/user';
 import { FirestoreService } from 'hide-firebase';
+import { firestore } from 'firebase-admin';
 import { RedisService } from 'hide-redis';
 import Redis from 'ioredis';
 import { readFileSync } from 'node:fs';
@@ -34,7 +34,7 @@ import { usernameRegex } from 'src/utils/constants';
 @Injectable()
 export class PublicService implements OnModuleInit, OnModuleDestroy {
   redis: Redis;
-  db: Firestore;
+  db: firestore.Firestore;
   redlock: Redlock;
   cache: Cache;
 

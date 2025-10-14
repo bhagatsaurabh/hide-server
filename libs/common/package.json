@@ -8,10 +8,10 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@google-cloud/firestore": "^7.11.6",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
-    "@nestjs/platform-express": "^11.1.6"
+    "@nestjs/platform-express": "^11.1.6",
+    "firebase-admin": "^13.5.0"
   },
   "devDependencies": {
     "@nestjs/microservices": "^11.1.6",

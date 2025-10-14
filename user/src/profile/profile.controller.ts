@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
 import { type User } from 'hide-common/dto/user';
 import { UserHeader } from 'hide-common';
 import { ProfileService } from './profile.service';
@@ -12,6 +12,12 @@ export class ProfileController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async register(@UserHeader() user: User, @Body() data: CreateUserDTO) {
     await this.profileService.createUser(user, data);
+  }
+
+  @Delete('delete')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async delete(@UserHeader() user: User) {
+    await this.profileService.deleteUser(user);
   }
 
   @Patch('update')

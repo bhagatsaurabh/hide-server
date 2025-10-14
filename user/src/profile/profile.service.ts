@@ -1,25 +1,24 @@
-import { Firestore } from '@google-cloud/firestore';
 import { Auth } from 'firebase-admin/auth';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from 'hide-common/model/user';
-import { FirebaseService, FirestoreService } from 'hide-firebase';
+import { FirebaseService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
 import { CreateUserDTO } from 'src/common/dto';
 import { emailRegex, nameRegex, usernameRegex } from 'src/utils/constants';
-import { userConverter } from 'src/utils/converters';
+import { userConverter } from 'hide-common';
 import { isObjEmpty } from 'src/utils/helpers';
 import { Cache } from '@nestjs/cache-manager';
 import { CACHEKEY_USER_PROFILE } from 'hide-common';
+import { firestore } from 'firebase-admin';
 
 @Injectable()
 export class ProfileService {
-  private readonly db: Firestore;
+  private readonly db: firestore.Firestore;
   private readonly auth: Auth;
   cache: Cache;
 
   constructor(
     private readonly firebase: FirebaseService,
-    private readonly firestore: FirestoreService,
     private readonly cacheService: RedisService,
   ) {
     this.db = this.firebase.firestore;
@@ -45,7 +44,7 @@ export class ProfileService {
 
       await this.db
         .collection('users')
-        .withConverter(userConverter)
+        .withConverter(userConverter(this.firebase.Timestamp))
         .doc(data.username)
         .set({
           ...user,
@@ -59,6 +58,20 @@ export class ProfileService {
     } else {
       throw new BadRequestException('User is already registered');
     }
+  }
+
+  async deleteUser(user: User) {
+    const snap = await this.db
+      .collection('users')
+      .withConverter(userConverter(this.firebase.Timestamp))
+      .where('uid', '==', user.uid)
+      .get();
+    if (snap.empty) {
+      throw new NotFoundException('USER_DOES_NOT_EXIST');
+    }
+    const { username } = snap.docs[0].data();
+
+    await this.db.collection('users').doc(username).delete();
   }
 
   async updateUser(uid: string, user: Partial<User>) {
@@ -83,7 +96,11 @@ export class ProfileService {
 
     if (isObjEmpty(updatedUser)) return;
 
-    const snap = await this.db.collection('users').withConverter(userConverter).where('uid', '==', uid).get();
+    const snap = await this.db
+      .collection('users')
+      .withConverter(userConverter(this.firebase.Timestamp))
+      .where('uid', '==', uid)
+      .get();
     if (snap.empty || !snap.docs.length) {
       throw new NotFoundException('User not found');
     } else {
@@ -92,7 +109,7 @@ export class ProfileService {
       if (updatedUser.username && updatedUser.username !== oldUser.username) {
         await this.db
           .collection('users')
-          .withConverter(userConverter)
+          .withConverter(userConverter(this.firebase.Timestamp))
           .doc(updatedUser.username)
           .set({ ...oldUser, ...updatedUser });
       } else {
