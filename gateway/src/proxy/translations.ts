@@ -34,6 +34,12 @@ export const rules: Rules = [
           targetProtocol: ExtTransport.HTTP,
         },
       },
+      delete: {
+        DELETE: {
+          sourceProtocol: ExtTransport.HTTP,
+          targetProtocol: ExtTransport.HTTP,
+        },
+      },
       '*': {
         GET: {
           sourceProtocol: ExtTransport.HTTP,

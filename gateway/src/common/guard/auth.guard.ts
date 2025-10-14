@@ -1,4 +1,3 @@
-import { Firestore } from '@google-cloud/firestore';
 import { Cache } from '@nestjs/cache-manager';
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
@@ -7,6 +6,7 @@ import { User } from 'hide-common/model/user';
 import { userConverter } from 'hide-common';
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
+import { firestore } from 'firebase-admin';
 
 export interface AuthenticatedRequest extends Request {
   user?: User;
@@ -15,7 +15,7 @@ export interface AuthenticatedRequest extends Request {
 @Injectable()
 export class AuthGuard implements CanActivate {
   cache: Cache;
-  db: Firestore;
+  db: firestore.Firestore;
 
   constructor(
     private readonly redis: RedisService,
@@ -53,7 +53,7 @@ export class AuthGuard implements CanActivate {
       if (!userProfile) {
         const profileSnap = await this.db
           .collection('users')
-          .withConverter(userConverter)
+          .withConverter(userConverter(this.firestore.Timestamp))
           .where('uid', '==', userData.uid)
           .get();
         userProfile = profileSnap.docs.length > 0 ? profileSnap.docs[0].data() : undefined;

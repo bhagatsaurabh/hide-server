@@ -1,11 +1,14 @@
-import {
-  DocumentData,
-  FirestoreDataConverter,
-  Timestamp,
-} from "@google-cloud/firestore";
 import { User } from "../model/user";
+import {
+  type DocumentData,
+  type FirestoreDataConverter,
+  type QueryDocumentSnapshot,
+  type Timestamp,
+} from "firebase-admin/firestore";
 
-export const userConverter: FirestoreDataConverter<User> = {
+export const userConverter: (Timestamp: {
+  fromDate: (d: Date) => any;
+}) => FirestoreDataConverter<User> = (Timestamp) => ({
   toFirestore: (data: User): DocumentData => {
     const user: DocumentData = {
       uid: data.uid,
@@ -22,7 +25,7 @@ export const userConverter: FirestoreDataConverter<User> = {
 
     return user;
   },
-  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot): User => {
+  fromFirestore: (snap: QueryDocumentSnapshot): User => {
     const data = snap.data();
     const user: User = {
       uid: data.uid as string,
@@ -37,4 +40,4 @@ export const userConverter: FirestoreDataConverter<User> = {
     }
     return user;
   },
-};
+});

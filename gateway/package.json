@@ -45,7 +45,8 @@
     "redlock": "^5.0.0-beta.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "ssh2": "^1.17.0"
+    "ssh2": "^1.17.0",
+    "firebase-admin": "^13.5.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

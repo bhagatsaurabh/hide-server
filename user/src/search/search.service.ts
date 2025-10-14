@@ -4,18 +4,18 @@ import { RedisService } from 'hide-redis';
 import { SearchParams } from 'typesense/lib/Typesense/Documents';
 import { Cache } from 'cache-manager';
 import { FirestoreService } from 'hide-firebase';
-import { CollectionReference, DocumentData, Firestore } from '@google-cloud/firestore';
 import { UserSearchDTO } from 'src/common/dto';
 import { TypesenseService } from 'src/typesense/typesense.service';
-import { userConverter } from 'src/utils/converters';
+import { userConverter } from 'hide-common';
 import { OneOrMore } from 'src/utils/helpers';
 import { CACHEKEY_USER_PROFILE } from 'hide-common';
+import { firestore } from 'firebase-admin';
 
 @Injectable()
 export class SearchService {
   private cache: Cache;
-  private db: Firestore;
-  private collection: CollectionReference<Partial<User>, DocumentData>;
+  private db: firestore.Firestore;
+  private collection: firestore.CollectionReference<Partial<User>, firestore.DocumentData>;
 
   constructor(
     private readonly typesenseService: TypesenseService,
@@ -24,7 +24,9 @@ export class SearchService {
   ) {
     this.cache = this.redisService.get();
     this.db = this.firestoreService.db;
-    this.collection = this.db.collection('users').withConverter(userConverter);
+    this.collection = this.db
+      .collection('users')
+      .withConverter(userConverter(this.firestoreService.Timestamp));
   }
 
   async searchUsers(uid: string, query: string, page = 1): Promise<UserSearchDTO> {
@@ -102,7 +104,7 @@ export class SearchService {
     try {
       const snap = await this.db
         .collection('users')
-        .withConverter(userConverter)
+        .withConverter(userConverter(this.firestoreService.Timestamp))
         .where('uid', '==', uid)
         .get();
       if (!snap.empty && snap.docs.length) {

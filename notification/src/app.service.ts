@@ -1,4 +1,3 @@
-import { Firestore } from '@google-cloud/firestore';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Cache } from '@nestjs/cache-manager';
@@ -16,10 +15,11 @@ import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
 import { notificationConverter } from './utils/converter';
 import { NotificationReadDTO } from './common/dto';
+import { firestore } from 'firebase-admin';
 
 @Injectable()
 export class AppService {
-  private db: Firestore;
+  private db: firestore.Firestore;
   private cache: Cache;
 
   constructor(
