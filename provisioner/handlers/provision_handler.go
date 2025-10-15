@@ -75,7 +75,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 		cancel()
 		return
 	}
-	_, exists := templates[strings.TrimSuffix(req.Image, "-dev")]
+	_, exists := templates[strings.TrimSuffix(req.Image, ":dev")]
 	if !exists {
 		util.SendAPIErr(w, http.StatusBadRequest, "Invalid field: image")
 		cancel()
