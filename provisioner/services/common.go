@@ -54,7 +54,6 @@ func GetTemplates(redisClient *redis.Client) (map[string]struct{}, error) {
 	}
 
 	var response TemplateDTO
-	log.Printf("Data: %s", val)
 	if err := json.Unmarshal([]byte(val), &response); err != nil {
 		log.Printf("Error: %v", err)
 		return nil, errors.New("Failed to read templates")
