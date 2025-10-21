@@ -27,11 +27,11 @@ spec:
               name: nats-data
           resources:
             limits:
-              cpu: 150m
-              memory: 200Mi
+              cpu: 250m
+              memory: 256Mi
             requests:
-              cpu: 150m
-              memory: 200Mi
+              cpu: 250m
+              memory: 256Mi
           readinessProbe:
             tcpSocket:
               port: 4222

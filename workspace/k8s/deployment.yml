@@ -46,13 +46,15 @@ spec:
             - name: WORKSPACE_CREATION_LIMIT_NON_GUEST
               value: "2"
             - name: ADMIN_EMAIL
-              value: "personal@saurabhagat.me"
+              value: "support.hide@saurabhagat.me"
             - name: WORKSPACE_CPU_REQUEST
               value: "200"
             - name: "IDLE_THRESHOLD_CPU"
               value: "350"
             - name: "ACCESS_CODE_EXPIRY_DAYS"
               value: "5"
+            - name: WEBHOOK_URL
+              value: "https://api.hide.saurabhagat.me/api"
             - name: FIREBASE_KEY_BASE64
               valueFrom:
                 secretKeyRef:
@@ -93,10 +95,10 @@ spec:
             failureThreshold: 3
           resources:
             limits:
-              cpu: 150m
-              memory: 200Mi
+              cpu: 200m
+              memory: 256Mi
             requests:
-              cpu: 150m
-              memory: 200Mi
+              cpu: 200m
+              memory: 256Mi
       imagePullSecrets:
         - name: acr-secret

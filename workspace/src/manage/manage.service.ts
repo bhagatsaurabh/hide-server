@@ -24,6 +24,7 @@ import {
   CachedPresence,
   CACHEKEY_PRESENCE,
   CACHEKEY_PRESENCE_WORKSPACE,
+  CACHEKEY_USER_PROFILE,
   CACHEKEY_WORKSPACE,
   createMessage,
   ExclusionData,
@@ -33,6 +34,7 @@ import {
   ServiceEvent,
   ServiceMessage,
   SocketSend,
+  userConverter,
   UserProfileRequest,
   WorkspaceAccessRequest,
   WorkspaceDeleted,
@@ -42,7 +44,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { Cache, RedisService } from 'hide-redis';
 import { firstValueFrom } from 'rxjs';
-import { FirebaseService } from 'hide-firebase';
+import { FirebaseService, FirestoreService } from 'hide-firebase';
 import { AccessDTO } from 'src/common/dto/access.dto';
 import { AccessCode } from 'src/common/model/access-codes.entity';
 import { sign, verify } from 'jsonwebtoken';
@@ -64,6 +66,7 @@ export class ManageService implements OnModuleInit {
     @Inject('WORKSPACE_SERVICE_REDIS') private redis: ClientProxy,
     @Inject('WORKSPACE_SERVICE_NATS') private nats: ClientProxy,
     @Inject('WORKSPACE_SERVICE_RMQ') private rmq: ClientProxy,
+    private readonly firestore: FirestoreService,
     private readonly inviteService: InviteService,
     private dataSource: DataSource,
     private cacheService: RedisService,
@@ -502,10 +505,11 @@ export class ManageService implements OnModuleInit {
       throw new ForbiddenException('NO_CAPACITY');
     }
 
+    const profile = await this.getUserProfile(user.uid);
     const payload: AccessRequestPayload = {
       uid: user.uid,
-      username: user.username,
-      name: user.name,
+      username: profile?.username ?? 'Unknown',
+      name: profile?.name ?? 'Unknown',
       reason: req.reason,
       uuid: randomUUID(),
     };
@@ -525,6 +529,22 @@ export class ManageService implements OnModuleInit {
       expiresAt,
     });
     await this.accessRepository.save(newAccessCode);
+  }
+
+  async getUserProfile(uid: string) {
+    let userProfile = await this.cache.get<User>(CACHEKEY_USER_PROFILE(uid));
+    if (!userProfile) {
+      const profileSnap = await this.firebaseService.firestore
+        .collection('users')
+        .withConverter(userConverter(this.firestore.Timestamp))
+        .where('uid', '==', uid)
+        .get();
+      userProfile = profileSnap.docs.length > 0 ? profileSnap.docs[0].data() : undefined;
+      if (userProfile) {
+        await this.cache.set(CACHEKEY_USER_PROFILE(uid), userProfile);
+      }
+    }
+    return userProfile;
   }
 
   async fulfillAccessRequest({ action, token }: { action: 'approve' | 'reject'; token: string }) {
