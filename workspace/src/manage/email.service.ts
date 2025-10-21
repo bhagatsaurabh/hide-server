@@ -16,7 +16,7 @@ export class EmailService implements OnModuleInit {
     this.transporter = createTransport({
       host: 'smtp.azurecomm.net',
       port: 587,
-      secure: true,
+      secure: false,
       auth: {
         user: process.env.AZURE_COMM_EMAIL_USERNAME!,
         pass: process.env.AZURE_CS_SMTP_SECRET!,
@@ -33,8 +33,8 @@ export class EmailService implements OnModuleInit {
     <span>Reason: <br/>${req.reason ?? 'NA'}</span>
     <br/>
     <br/>
-    <a href="https://api.hide.saurabhagat.me/api/access/fulfill?action=approve&token=${token}"><button>Approve</button></a>&nbsp;
-    <a href="https://api.hide.saurabhagat.me/api/access/fulfill?action=reject&token=${token}"><button>Reject</button></a>
+    <a href="${process.env.WEBHOOK_URL}/access/fulfill?action=approve&token=${token}"><button>Approve</button></a>&nbsp;
+    <a href="${process.env.WEBHOOK_URL}/access/fulfill?action=reject&token=${token}"><button>Reject</button></a>
     `;
 
     const mailOptions = {

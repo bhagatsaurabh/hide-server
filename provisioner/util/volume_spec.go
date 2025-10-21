@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GetPersistentVolumeSpec(wsUuid string, volumeName string, storageQty resource.Quantity) *v1.PersistentVolume {
+func GetPersistentVolumeSpec(wsUuid string, volumeName string, directoryName string, storageQty resource.Quantity) *v1.PersistentVolume {
 	hostPathType := v1.HostPathDirectoryOrCreate
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -25,7 +25,7 @@ func GetPersistentVolumeSpec(wsUuid string, volumeName string, storageQty resour
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				HostPath: &v1.HostPathVolumeSource{
-					Path: fmt.Sprintf("/var/lib/k8s-volumes/%s", volumeName),
+					Path: fmt.Sprintf("/data/workspace-volumes/workspaces/%s/%s", wsUuid, directoryName),
 					Type: &hostPathType,
 				},
 			},

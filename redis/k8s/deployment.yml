@@ -20,11 +20,11 @@ spec:
           args: ["redis-server", "--notify-keyspace-events", "Ex"]
           resources:
             limits:
-              cpu: 150m
-              memory: 200Mi
+              cpu: 200m
+              memory: 256Mi
             requests:
-              cpu: 150m
-              memory: 200Mi
+              cpu: 200m
+              memory: 256Mi
           readinessProbe:
             tcpSocket:
               port: 6379

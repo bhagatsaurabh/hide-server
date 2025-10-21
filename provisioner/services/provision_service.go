@@ -431,12 +431,12 @@ func CreateK8sVolume(clientset *kubernetes.Clientset, bgCtx context.Context, wsU
 	dataVolumeName := fmt.Sprintf("workspace-data-%s", wsUuid)
 	configVolumeName := fmt.Sprintf("workspace-config-%s", wsUuid)
 
-	dataPVSpec := util.GetPersistentVolumeSpec(wsUuid, dataVolumeName, dataStorageQty)
+	dataPVSpec := util.GetPersistentVolumeSpec(wsUuid, dataVolumeName, "data", dataStorageQty)
 	_, err := clientset.CoreV1().PersistentVolumes().Create(bgCtx, dataPVSpec, metav1.CreateOptions{})
 	if err != nil {
 		return errors.New("Could not create 'data' PV")
 	}
-	configPVSpec := util.GetPersistentVolumeSpec(wsUuid, configVolumeName, configStorageQty)
+	configPVSpec := util.GetPersistentVolumeSpec(wsUuid, configVolumeName, "config", configStorageQty)
 	_, err = clientset.CoreV1().PersistentVolumes().Create(bgCtx, configPVSpec, metav1.CreateOptions{})
 	if err != nil {
 		clientset.CoreV1().PersistentVolumes().Delete(bgCtx, dataPVSpec.Name, metav1.DeleteOptions{})
