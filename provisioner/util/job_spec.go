@@ -37,6 +37,10 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 									Name:      "host-volumes",
 									MountPath: "/host-volumes",
 								},
+								{
+									Name:      "dev",
+									MountPath: "/dev",
+								},
 							},
 							Env: []corev1.EnvVar{
 								{Name: "WORKSPACE_UUID", Value: wsUuid},
@@ -69,6 +73,15 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
 									Path: "/data/workspace-volumes",
+									Type: &hostPathType,
+								},
+							},
+						},
+						{
+							Name: "dev",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/dev",
 									Type: &hostPathType,
 								},
 							},
