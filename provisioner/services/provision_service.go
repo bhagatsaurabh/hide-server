@@ -428,6 +428,7 @@ func PerpareK8sVolume(clientset *kubernetes.Clientset, bgCtx context.Context, ws
 	log.Debugf("Running volume preparation job")
 	job, err := clientset.BatchV1().Jobs("default").Create(bgCtx, jobSpec, metav1.CreateOptions{})
 	if err != nil {
+		log.Debugf("Job creation failed: %v", err)
 		return errors.New("Could not create job to prepare volumes")
 	}
 
