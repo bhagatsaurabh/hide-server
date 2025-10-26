@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type APIErr struct {
@@ -13,6 +15,8 @@ type APIErr struct {
 }
 
 func SendAPIErr(w http.ResponseWriter, status int, message string) {
+	log.Debugf("API Err: %d %s", status, message)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 

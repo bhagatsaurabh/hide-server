@@ -9,10 +9,11 @@ import (
 	"hideserver/provisioner/config"
 	"hideserver/provisioner/util"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -102,8 +103,10 @@ type ServiceEvent[T any] struct {
 }
 
 func CreateDevContainer(bgCtx context.Context, req ProvisionRequest, isNew bool, devEnv string, redisClient *redis.Client) (string, string, error) {
+	log.Debugf("Creating container: isNew:%t dedicated:%t, code:%s", isNew, req.Dedicated, req.AccessCode)
 	if !isNew {
 		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "1/6:Restoring your data")
+		log.Debugf("Checking volume existence")
 		volumeExists, err := VolumeExists(bgCtx, req.Uuid, devEnv)
 		if err != nil {
 			return "", "", err
@@ -131,6 +134,7 @@ func CreateDevContainer(bgCtx context.Context, req ProvisionRequest, isNew bool,
 	return privateKey, workspaceUuid, nil
 }
 func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req ProvisionRequest, isNew bool) (string, string, error) {
+	log.Debugf("Creating pod")
 	config, err := config.LoadK8sConfig()
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -143,8 +147,8 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 		wsUuid = uuid.New().String()
 	}
 	if wsUuid == "" {
-		log.Println("Cannot generate UUID")
-		return "", "", errors.New("Cannot generate UUID")
+		log.Errorf("No UUID specified")
+		return "", "", errors.New("No UUID specified")
 	}
 
 	privateKey, publicKey, err := "", "", nil
@@ -152,17 +156,19 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 		privateKey, publicKey, err = util.GenSSHKeyPair(4096)
 	}
 	if err != nil {
-		log.Println("Failed to generate SSH key pair")
+		log.Errorf("Failed to generate SSH key pair")
 		return "", "", err
 	}
 
 	if isNew {
 		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "2/6:Preparing storage")
+		log.Debugf("Preparing volumes")
 		err = PerpareK8sVolume(clientset, bgCtx, wsUuid)
 		if err != nil {
 			return "", "", err
 		}
 		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "3/6:Allocating storage")
+		log.Debugf("Creating volumes")
 		err = CreateK8sVolume(clientset, bgCtx, wsUuid)
 	}
 	if err != nil {
@@ -175,11 +181,13 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 		wsType = "dedicated"
 	}
 	pod := util.GetPodSpec(wsUuid, req.Image, publicKey, wsType)
+	log.Debugf("Deploying pod")
 	_, err = clientset.CoreV1().Pods("default").Create(bgCtx, pod, metav1.CreateOptions{})
 	if err != nil {
 		return "", "", err
 	}
 	service := util.GetServiceSpec(wsUuid)
+	log.Debugf("Deploying service")
 	_, err = clientset.CoreV1().Services("default").Create(bgCtx, service, metav1.CreateOptions{})
 	if err != nil {
 		gracePeriod := int64(0)
@@ -330,6 +338,7 @@ func K8sVolumeExists(bgCtx context.Context, uuid string) (bool, error) {
 }
 
 func DevContainerExists(bgCtx context.Context, wsUuid string, devEnv string) (bool, error) {
+	log.Debugf("Checking container existence")
 	containerName := fmt.Sprintf("workspace-%s", wsUuid)
 	switch devEnv {
 	case "docker":
@@ -378,15 +387,18 @@ func K8sPodExists(bgCtx context.Context, containerName string) (bool, error) {
 		return false, err
 	}
 
-	_, err = clientset.CoreV1().Pods("default").Get(bgCtx, containerName, metav1.GetOptions{})
+	pod, err := clientset.CoreV1().Pods("default").Get(bgCtx, containerName, metav1.GetOptions{})
 
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
+			log.Debugf("Pod does not exist")
 			return false, nil
 		}
+		log.Debugf("Could not check pod existence: %v", err)
 		return false, err
 	}
 
+	log.Debugf("Pod exists %s", pod.Name)
 	return true, nil
 }
 
@@ -413,11 +425,13 @@ func CreateDockerVolume(cli *client.Client, ctx context.Context, volumeName stri
 }
 func PerpareK8sVolume(clientset *kubernetes.Clientset, bgCtx context.Context, wsUuid string) error {
 	jobSpec := util.GetPrepareVolumeJobSpec(wsUuid, "1G", "32M")
+	log.Debugf("Running volume preparation job")
 	job, err := clientset.BatchV1().Jobs("default").Create(bgCtx, jobSpec, metav1.CreateOptions{})
 	if err != nil {
 		return errors.New("Could not create job to prepare volumes")
 	}
 
+	log.Debugf("Waiting for volume preparation job to complete")
 	err = util.WaitForJobCompletion(bgCtx, clientset, job.Name, 1*time.Minute)
 	if err != nil {
 		log.Printf("Prepare volume job failed %v\n", err)
