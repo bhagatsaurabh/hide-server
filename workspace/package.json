@@ -21,8 +21,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm:generate": "npx typeorm-ts-node-commonjs migration:generate -d src/data-source.ts",
-    "typeorm:run": "npx typeorm migration:run -d dist/data-source.js",
-    "typeorm:run:dev": "npx typeorm-ts-node-commonjs migration:run -d src/data-source.ts"
+    "typeorm:run:dev": "npx typeorm-ts-node-commonjs migration:run -d src/data-source.ts",
+    "typeorm:run": "npx typeorm migration:run -d dist/data-source.js"
   },
   "dependencies": {
     "@azure/communication-email": "^1.0.0",

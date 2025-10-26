@@ -4,18 +4,22 @@ import (
 	"context"
 	"fmt"
 	"hideserver/provisioner/server"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
 )
 
 func main() {
+	SetLogger()
+
 	sysCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -59,4 +63,22 @@ func main() {
 	if err := httpSrv.Shutdown(ctx); err != nil {
 		log.Fatalf("Graceful shutdown failed: %+v", err)
 	}
+}
+
+func SetLogger() {
+	level := log.InfoLevel
+	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
+	case "debug":
+		level = log.DebugLevel
+	case "info":
+		level = log.InfoLevel
+	case "warn", "warning":
+		level = log.WarnLevel
+	case "error":
+		level = log.ErrorLevel
+	default:
+		level = log.InfoLevel
+	}
+
+	log.SetLevel(level)
 }

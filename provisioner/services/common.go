@@ -79,3 +79,16 @@ func SendStatus(bgCtx context.Context, redisClient *redis.Client, uid string, se
 	}
 	redisClient.Publish(bgCtx, "socket.send", sMsg)
 }
+
+func SendError(bgCtx context.Context, redisClient *redis.Client, uid string, sessionId string, message string) {
+	msg, cErr := json.Marshal(ServiceEvent[StatusPayload]{
+		Payload: ServiceEventPayload[StatusPayload]{
+			Uid: uid, SessionId: sessionId, Pattern: "provision", Msg: PayloadMessage[StatusPayload]{
+				Action: "error", Payload: StatusPayload{Message: message},
+			}},
+	})
+	if cErr != nil {
+		log.Printf("Warn: %v", cErr)
+	}
+	redisClient.Publish(bgCtx, "socket.send", msg)
+}

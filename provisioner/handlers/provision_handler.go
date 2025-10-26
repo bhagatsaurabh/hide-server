@@ -10,13 +10,14 @@ import (
 	"hideserver/provisioner/services"
 	"hideserver/provisioner/util"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
@@ -47,6 +48,7 @@ type APIErrorResponse struct {
 }
 
 func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Request, redisClient *redis.Client, natsClient *nats.Conn) {
+	log.Debug("Provision started")
 	bgCtx, cancel := context.WithTimeout(sysCtx, 3*time.Minute)
 
 	if r.Method != http.MethodPost {
@@ -60,6 +62,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 		cancel()
 		return
 	}
+	log.Debugf("Req json %s", r.Body)
 	if req.Uuid == "" {
 		services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "1/6:Validating request")
 	}
@@ -70,7 +73,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 	}
 	templates, err := services.GetTemplates(redisClient)
 	if err != nil {
-		log.Printf("Error: %v", err)
+		log.Errorf("Could not fetch templates: %v", err)
 		util.SendAPIErr(w, http.StatusInternalServerError, "Unknown error")
 		cancel()
 		return
@@ -89,6 +92,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 	}
 	if req.Uuid == "" {
 		if eligible, err := services.CheckEligibility(req, userHeader); err != nil {
+			log.Debugf("Could not check eligibility: %v", err)
 			util.SendAPIErr(w, http.StatusBadRequest, "UNKNOWN")
 			cancel()
 			return
@@ -116,15 +120,17 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if devContExists {
+			log.Debugf("Uuid passed and container exists, sending no-wait")
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(WaitResponse{Wait: false})
 		} else {
+			log.Debugf("Uuid passed and container does not exist")
 			services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "Restoring your workspace")
 
 			go func() {
 				defer cancel()
 				if err := provision(bgCtx, req, userHeader, false, devEnv, redisClient, natsClient); err != nil {
-					log.Printf("Provisioning failed: %v", err)
+					log.Errorf("Restoring failed: %v", err)
 				}
 			}()
 			w.WriteHeader(http.StatusAccepted)
@@ -135,8 +141,10 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	if req.Dedicated {
+		log.Debugf("Dedicated workspace request, using access code")
 		err = ConsumeAccessCode(req.AccessCode, userHeader)
 		if err != nil {
+			log.Debugf("Failed to consume access code")
 			util.SendAPIErr(w, http.StatusBadRequest, err.Error())
 			cancel()
 			return
@@ -146,15 +154,16 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 	go func() {
 		defer cancel()
 		if err := provision(bgCtx, req, userHeader, true, devEnv, redisClient, natsClient); err != nil {
-			log.Printf("Provisioning failed: %v", err)
+			log.Errorf("Provisioning failed: %v", err)
 
 			if req.Dedicated {
 				if resetErr := ResetAccessCode(req.AccessCode, userHeader); resetErr != nil {
-					log.Printf("Failed to reset access code: %v", resetErr)
+					log.Errorf("Failed to reset access code: %v", resetErr)
 				}
 			}
 		}
 	}()
+	log.Debugf("Sending wait")
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(WaitResponse{Wait: true})
 }
@@ -163,23 +172,29 @@ var queueLock sync.Mutex
 
 func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader string, isNew bool, devEnv string, redisClient *redis.Client, natsClient *nats.Conn) error {
 	queueLock.Lock()
+	log.Debugf("Acquired queue lock")
 
 	hasCpuCapacity, preemptPodName, err := hasCapacity(bgCtx, devEnv)
+	if err != nil {
+		log.Errorf("Could not check capacity: %v", err)
+		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "UNKNOWN")
+		queueLock.Unlock()
+		return errors.New("UNKNOWN")
+	}
+	log.Debugf("HasCapacity: %t %s", hasCpuCapacity, preemptPodName)
+
 	if !hasCpuCapacity && preemptPodName == "" {
-		msg, cErr := json.Marshal(services.ServiceEvent[services.StatusPayload]{
-			Payload: services.ServiceEventPayload[services.StatusPayload]{
-				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.StatusPayload]{
-					Action: "error", Payload: services.StatusPayload{Message: "NO_CAPACITY"},
-				}},
-		})
-		if cErr != nil {
-			log.Printf("Warn: %v", cErr)
-		}
-		redisClient.Publish(bgCtx, "socket.send", msg)
+		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "NO_CAPACITY")
 		queueLock.Unlock()
 		return errors.New("NO_CAPACITY")
 	} else if preemptPodName != "" {
-		services.KillK8sPod(bgCtx, devEnv, preemptPodName)
+		err = services.KillK8sPod(bgCtx, devEnv, preemptPodName)
+		if err != nil {
+			log.Errorf("Could not preempt spot pod: %v", err)
+			services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "UNKNOWN")
+			queueLock.Unlock()
+			return errors.New("UNKNOWN")
+		}
 	}
 
 	privateKey, workspaceUuid, err := services.CreateDevContainer(bgCtx, req, isNew, devEnv, redisClient)
@@ -188,16 +203,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 		if !isNew {
 			message = "Failed to restore workspace"
 		}
-		msg, cErr := json.Marshal(services.ServiceEvent[services.StatusPayload]{
-			Payload: services.ServiceEventPayload[services.StatusPayload]{
-				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.StatusPayload]{
-					Action: "error", Payload: services.StatusPayload{Message: message},
-				}},
-		})
-		if cErr != nil {
-			log.Printf("Warn: %v", cErr)
-		}
-		redisClient.Publish(bgCtx, "socket.send", msg)
+		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, message)
 		queueLock.Unlock()
 		return err
 	}
@@ -207,17 +213,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	}
 
 	if err != nil {
-		message := "Failed to queue workspace"
-		msg, cErr := json.Marshal(services.ServiceEvent[services.StatusPayload]{
-			Payload: services.ServiceEventPayload[services.StatusPayload]{
-				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.StatusPayload]{
-					Action: "error", Payload: services.StatusPayload{Message: message},
-				}},
-		})
-		if cErr != nil {
-			log.Printf("Warn: %v", cErr)
-		}
-		redisClient.Publish(bgCtx, "socket.send", msg)
+		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "Failed to queue workspace")
 		queueLock.Unlock()
 		return err
 	}
@@ -225,21 +221,12 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	err = waitOnDevContainerReady(bgCtx, req, workspaceUuid, 90*time.Second, redisClient)
 
 	if err != nil {
-		message := "Failed to start workspace"
-		msg, cErr := json.Marshal(services.ServiceEvent[services.StatusPayload]{
-			Payload: services.ServiceEventPayload[services.StatusPayload]{
-				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.StatusPayload]{
-					Action: "error", Payload: services.StatusPayload{Message: message},
-				}},
-		})
-		if cErr != nil {
-			log.Printf("Warn: %v", cErr)
-		}
-		redisClient.Publish(bgCtx, "socket.send", msg)
+		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "Failed to start workspace")
 		return err
 	}
 
 	if isNew {
+		log.Debugf("Writing workspace in database")
 		var workspace services.WorkspaceDTO
 		err = services.CreateWorkspace(req, userHeader, workspaceUuid, &workspace)
 
@@ -258,6 +245,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 		}
 		redisClient.Publish(bgCtx, "socket.send", msg)
 	} else {
+		log.Debugf("Setting affinity")
 		msg, cErr := json.Marshal(NestWrapper[IntServiceEvent[RequestAffinityPayload]]{
 			Pattern: "env.internal",
 			Data: IntServiceEvent[RequestAffinityPayload]{
@@ -282,14 +270,14 @@ func ConsumeAccessCode(code string, userHeader string) error {
 		Code: code,
 	})
 	if err != nil {
-		log.Printf("Error: Failed to marshal consume access code request, %v", err)
+		log.Errorf("Failed to marshal consume access code request, %v", err)
 		return errors.New("UNKNOWN")
 	}
 
 	var wsReq *http.Request
 	wsReq, err = http.NewRequest("POST", "http://workspace/api/access/consume", bytes.NewBuffer(wsJson))
 	if err != nil {
-		log.Printf("Error: Failed to create request, %v", err)
+		log.Errorf("Failed to create consume code request, %v", err)
 		return errors.New("UNKNOWN")
 	}
 	wsReq.Header.Set("Content-Type", "application/json")
@@ -297,7 +285,7 @@ func ConsumeAccessCode(code string, userHeader string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(wsReq)
 	if err != nil {
-		log.Printf("Error: Access code consumption request failed, %v", err)
+		log.Errorf("Access code consumption request failed, %v", err)
 		return errors.New("UNKNOWN")
 	}
 	defer resp.Body.Close()
@@ -305,13 +293,13 @@ func ConsumeAccessCode(code string, userHeader string) error {
 	if resp.StatusCode < 200 && resp.StatusCode > 299 {
 		errResp, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("Error: Failed to read error response, %v", err)
+			log.Errorf("Failed to read error response, %v", err)
 			return errors.New("UNKNOWN")
 		}
 		var errData APIErrorResponse
 		err = json.Unmarshal(errResp, &errData)
 		if err != nil {
-			log.Printf("Error: Failed to unmarshal error response, %v", err)
+			log.Errorf("Failed to unmarshal error response, %v", err)
 			return errors.New("UNKNOWN")
 		}
 		return errors.New(errData.Message)
@@ -391,13 +379,13 @@ func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
 	config, err := config.LoadK8sConfig()
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		log.Println("Error creating Kubernetes client:", err)
+		log.Errorf("Error creating Kubernetes client: %v", err)
 		return false, "", err
 	}
 
 	nodes, err := clientset.CoreV1().Nodes().List(bgCtx, metav1.ListOptions{})
 	if err != nil {
-		return false, "", errors.New("Could not check capacity")
+		return false, "", err
 	}
 
 	node := nodes.Items[0]
@@ -409,14 +397,16 @@ func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
 	}
 	idleThresholdCpu, err := strconv.ParseInt(idleThresholdCpuStr, 10, 64)
 	if err != nil {
-		return false, "", errors.New("Bad config for idle threshold cpu")
+		return false, "", err
 	}
 	totalAvailableCpu := allocatableCpu - idleThresholdCpu
+
+	log.Debugf("allocatableCpu: %d, idleThresholdCpu: %d, totalAvailableCpu: %d", allocatableCpu, idleThresholdCpu, totalAvailableCpu)
 
 	var totalRequestedCpu int64 = 0
 	pods, err := clientset.CoreV1().Pods("default").List(bgCtx, metav1.ListOptions{})
 	if err != nil {
-		return false, "", errors.New("Could not list pods")
+		return false, "", err
 	}
 	for _, pod := range pods.Items {
 		if pod.Status.Phase != v1.PodRunning {
@@ -440,6 +430,8 @@ func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
 	}
 	totalRequestedCpu += wsCpu
 
+	log.Debugf("totalRequestedCpu: %d, wsCpu: %d", totalRequestedCpu, wsCpu)
+
 	if totalRequestedCpu < totalAvailableCpu {
 		return true, "", nil
 	}
@@ -449,7 +441,7 @@ func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
 		metav1.ListOptions{LabelSelector: "wstype=spot"},
 	)
 	if err != nil {
-		return false, "", errors.New("Could not list spot pods")
+		return false, "", err
 	}
 	var oldestPod *v1.Pod
 	var oldestTime time.Time
@@ -466,11 +458,11 @@ func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
 
 	spotHoursStr := os.Getenv("PREEMPT_SPOT_OLDER_THAN_HOURS")
 	if spotHoursStr == "" {
-		spotHoursStr = "350"
+		spotHoursStr = "12"
 	}
 	spotHours, err := strconv.ParseInt(spotHoursStr, 10, 64)
 	if err != nil {
-		return false, "", errors.New("Bad config for spot preempt hours threshold")
+		return false, "", err
 	}
 
 	if oldestPod == nil {
