@@ -48,7 +48,7 @@ func main() {
 	}
 
 	go func() {
-		log.Println("Server is running on port", port)
+		log.Infof("Server is running on port", port)
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
 		}
