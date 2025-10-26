@@ -38,6 +38,8 @@ spec:
               value: "350"
             - name: PREEMPT_SPOT_OLDER_THAN_HOURS
               value: "12"
+            - name: LOG_LEVEL
+              value: "debug"
           readinessProbe:
             httpGet:
               path: /api/health
