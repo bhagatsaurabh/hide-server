@@ -30,7 +30,7 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 					Containers: []corev1.Container{
 						{
 							Name:            "prepare-volume",
-							Image:           "debian:bookworm-slim",
+							Image:           "hideregistry.azurecr.io/hide-server-util-lvm:latest",
 							SecurityContext: &corev1.SecurityContext{Privileged: &priviledged},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -49,7 +49,6 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 							},
 							Command: []string{"/bin/bash", "-c"},
 							Args: []string{`
-											apt-get update && apt-install -y lvm2
 											set -eux
 
 											WORKSPACE_DIR=/host-volumes/workspaces/$WORKSPACE_UUID
@@ -85,6 +84,11 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 									Type: &hostPathType,
 								},
 							},
+						},
+					},
+					ImagePullSecrets: []corev1.LocalObjectReference{
+						{
+							Name: "acr-secret",
 						},
 					},
 				},

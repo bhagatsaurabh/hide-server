@@ -1,0 +1,82 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      utils:
+        description: "Comma-separated list of images to build (lvm). Leave blank to use paths-filter."
+        required: false
+        default: ""
+  push:
+    branches:
+      - main
+    paths:
+      - "images/**"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        name: Filter
+        id: filter
+        with:
+          predicate-quantifier: "every"
+          filters: |
+            lvm:
+              - 'images/lvm/**'
+
+  prepare:
+    needs: changes
+    runs-on: ubuntu-latest
+    outputs:
+      utils: ${{ steps.set-matrix.outputs.utils }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            input="${{ github.event.inputs.utils }}"
+            json=$(jq -nc --arg input "$input" '$input | split(",")')
+            echo "utils=$json" >> $GITHUB_OUTPUT
+          else
+            echo 'utils=${{ needs.changes.outputs.matrix }}' >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: [changes, prepare]
+    # runs-on: ubuntu-24.04-arm # not for private repos 😭
+    runs-on: arm64
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.prepare.outputs.utils) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Service Principal Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: images/${{ matrix.service }}/dockerfile
+          target: production
+          push: true
+          platforms: linux/arm64
+          tags: |
+            ${{ secrets.REGISTRY_LOGIN_SERVER }}/hide-server-util-${{ matrix.service }}:latest
