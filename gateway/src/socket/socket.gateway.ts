@@ -33,6 +33,7 @@ import {
   CACHEKEY_PRESENCE,
   CachedSession,
   CACHEKEY_USER_PROFILE,
+  logger,
 } from 'hide-common';
 import { FirestoreService } from 'hide-firebase';
 import { firstValueFrom, timeout } from 'rxjs';
@@ -357,10 +358,13 @@ export class SocketGateway
 
   async send<T extends keyof OutSocketMessageActionMap>(data: SocketSend<T>) {
     const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(data.uid));
+    logger.debug('Presence: ', presence);
     const socketId = presence?.[data.sessionId]?.socketId;
+    logger.debug('SocketId: ', socketId);
     if (socketId) {
       this.server.to(socketId).emit(data.pattern as any, data.msg);
     }
+    logger.debug('Socket payload sent');
   }
   async broadcast<T extends keyof OutSocketMessageActionMap>(data: SocketBroadcast<T>) {
     const presenceAll = await Promise.all(

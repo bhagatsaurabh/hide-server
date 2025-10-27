@@ -62,7 +62,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 		cancel()
 		return
 	}
-	log.Debugf("Req json %s", r.Body)
+	log.Debugf("Req json %+v\n", req)
 	if req.Uuid == "" {
 		services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "1/6:Validating request")
 	}
@@ -229,21 +229,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 		log.Debugf("Writing workspace in database")
 		var workspace services.WorkspaceDTO
 		err = services.CreateWorkspace(req, userHeader, workspaceUuid, &workspace)
-
-		msg, cErr := json.Marshal(services.ServiceEvent[services.ProvisionDTO]{
-			Payload: services.ServiceEventPayload[services.ProvisionDTO]{
-				Uid: req.Uid, SessionId: req.SessionId, Pattern: "provision", Msg: services.PayloadMessage[services.ProvisionDTO]{
-					Action: "success", Payload: services.ProvisionDTO{
-						Message:    "Pod created successfully",
-						PrivateKey: privateKey,
-						Workspace:  workspace,
-					},
-				}},
-		})
-		if cErr != nil {
-			log.Printf("Warn: %v", cErr)
-		}
-		redisClient.Publish(bgCtx, "socket.send", msg)
+		services.SendSuccess(bgCtx, redisClient, req.Uid, req.SessionId, privateKey, workspace)
 	} else {
 		log.Debugf("Setting affinity")
 		msg, cErr := json.Marshal(NestWrapper[IntServiceEvent[RequestAffinityPayload]]{

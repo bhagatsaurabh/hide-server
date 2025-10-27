@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { EventPattern, Transport } from '@nestjs/microservices';
-import { ServiceEvent, SocketBroadcast, SocketSend } from 'hide-common';
+import { logger, ServiceEvent, SocketBroadcast, SocketSend } from 'hide-common';
 import { SocketGateway } from './socket.gateway';
 
 @Controller()
@@ -9,6 +9,7 @@ export class SocketController {
 
   @EventPattern('socket.send', Transport.REDIS)
   async handleSendSocket(msg: ServiceEvent<SocketSend<any>>) {
+    logger.debug('Sending socket payload: ', msg);
     await this.socketGateway.send(msg.payload);
   }
   @EventPattern('socket.broadcast', Transport.REDIS)

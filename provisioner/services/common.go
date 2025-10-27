@@ -92,3 +92,20 @@ func SendError(bgCtx context.Context, redisClient *redis.Client, uid string, ses
 	}
 	redisClient.Publish(bgCtx, "socket.send", msg)
 }
+
+func SendSuccess(bgCtx context.Context, redisClient *redis.Client, uid string, sessionId string, privateKey string, workspace WorkspaceDTO) {
+	msg, cErr := json.Marshal(ServiceEvent[ProvisionDTO]{
+		Payload: ServiceEventPayload[ProvisionDTO]{
+			Uid: uid, SessionId: sessionId, Pattern: "provision", Msg: PayloadMessage[ProvisionDTO]{
+				Action: "success", Payload: ProvisionDTO{
+					Message:    "Pod created successfully",
+					PrivateKey: privateKey,
+					Workspace:  workspace,
+				},
+			}},
+	})
+	if cErr != nil {
+		log.Printf("Warn: %v", cErr)
+	}
+	redisClient.Publish(bgCtx, "socket.send", msg)
+}
