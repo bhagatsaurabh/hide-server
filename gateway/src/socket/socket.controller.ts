@@ -10,6 +10,7 @@ export class SocketController {
   @EventPattern('socket.send', Transport.REDIS)
   async handleSendSocket(msg: ServiceEvent<SocketSend<any>>) {
     logger.debug('Sending socket payload: ', msg);
+    logger.debug('Msg: ', msg.payload.msg);
     await this.socketGateway.send(msg.payload);
   }
   @EventPattern('socket.broadcast', Transport.REDIS)

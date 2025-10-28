@@ -17,7 +17,7 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 	hostPathType := corev1.HostPathDirectoryOrCreate
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prepare-workspace-volume",
+			Name:      fmt.Sprintf("prepare-volume-%s", wsUuid),
 			Namespace: "default",
 		},
 		Spec: v1.JobSpec{
