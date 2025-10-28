@@ -4,7 +4,8 @@ metadata:
   name: pod-manager
 rules:
   - apiGroups: [""]
-    resources: ["pods", "persistentvolumes", "persistentvolumeclaims"]
+    resources:
+      ["pods", "persistentvolumes", "persistentvolumeclaims", "services"]
     verbs: ["get", "list", "watch", "create", "delete", "patch", "update"]
   - apiGroups: [""]
     resources: ["nodes"]
