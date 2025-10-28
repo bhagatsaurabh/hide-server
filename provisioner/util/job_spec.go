@@ -23,6 +23,9 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 		Spec: v1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
+					HostPID:       true,
+					HostNetwork:   true,
+					HostIPC:       true,
 					RestartPolicy: corev1.RestartPolicyNever,
 					NodeSelector: map[string]string{
 						"workspace-storage": "local",
@@ -41,6 +44,22 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 									Name:      "dev",
 									MountPath: "/dev",
 								},
+								{
+									Name:      "run",
+									MountPath: "/run",
+								},
+								{
+									Name:      "etc",
+									MountPath: "/etc",
+								},
+								{
+									Name:      "sys",
+									MountPath: "/sys",
+								},
+								{
+									Name:      "proc",
+									MountPath: "/proc",
+								},
 							},
 							Env: []corev1.EnvVar{
 								{Name: "WORKSPACE_UUID", Value: wsUuid},
@@ -55,6 +74,8 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 
 											mkdir -p $WORKSPACE_DIR/data
 											mkdir -p $WORKSPACE_DIR/config
+
+											vgs workspace-vg || { echo "workspace-vg not found"; exit 1; }
 
 											lvcreate -L $DATA_VOLUME_SIZE -n ${WORKSPACE_UUID}-data workspace-vg
 											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-data
@@ -81,6 +102,42 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
 									Path: "/dev",
+									Type: &hostPathType,
+								},
+							},
+						},
+						{
+							Name: "run",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/run",
+									Type: &hostPathType,
+								},
+							},
+						},
+						{
+							Name: "etc",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/etc",
+									Type: &hostPathType,
+								},
+							},
+						},
+						{
+							Name: "sys",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/sys",
+									Type: &hostPathType,
+								},
+							},
+						},
+						{
+							Name: "proc",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/proc",
 									Type: &hostPathType,
 								},
 							},

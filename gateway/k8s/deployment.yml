@@ -43,6 +43,8 @@ spec:
               value: "20000"
             - name: SESSION_ACTIVITY_TIMEOUT
               value: "3600000"
+            - name: LOG_LEVEL
+              value: "debug"
             - name: FIREBASE_KEY_BASE64
               valueFrom:
                 secretKeyRef:
