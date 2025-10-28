@@ -123,7 +123,7 @@ func GetPodSpec(wsUuid string, image string, publicKey string, wsType string) *v
 						},
 					},
 					Command: []string{
-						"sh", "-c", "|",
+						"sh", "-c",
 						`
 						echo "Waiting for /workspace to be mounted..."
 						until mountpoint -q /workspace; do
