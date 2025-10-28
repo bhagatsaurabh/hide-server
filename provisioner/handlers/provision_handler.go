@@ -64,7 +64,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 	}
 	log.Debugf("Req json %+v\n", req)
 	if req.Uuid == "" {
-		services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "1/6:Validating request")
+		services.SendStatus(context.Background(), redisClient, req.Uid, req.SessionId, "1/6:Validating request")
 	}
 	if req.Image == "" {
 		util.SendAPIErr(w, http.StatusBadRequest, "Missing field: image")
