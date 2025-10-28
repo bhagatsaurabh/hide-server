@@ -449,6 +449,7 @@ func CreateK8sVolume(clientset *kubernetes.Clientset, bgCtx context.Context, wsU
 	dataPVSpec := util.GetPersistentVolumeSpec(wsUuid, dataVolumeName, "data", dataStorageQty)
 	_, err := clientset.CoreV1().PersistentVolumes().Create(bgCtx, dataPVSpec, metav1.CreateOptions{})
 	if err != nil {
+		log.Debugf("'data' PV creation failed: %v", err)
 		return errors.New("Could not create 'data' PV")
 	}
 	configPVSpec := util.GetPersistentVolumeSpec(wsUuid, configVolumeName, "config", configStorageQty)
@@ -461,6 +462,7 @@ func CreateK8sVolume(clientset *kubernetes.Clientset, bgCtx context.Context, wsU
 	dataPVCSpec := util.GetPersistentVolumeClaimSpec(dataVolumeName, dataStorageQty)
 	_, err = clientset.CoreV1().PersistentVolumeClaims("default").Create(bgCtx, dataPVCSpec, metav1.CreateOptions{})
 	if err != nil {
+		log.Debugf("'data' PVC creation failed: %v", err)
 		clientset.CoreV1().PersistentVolumes().Delete(bgCtx, dataVolumeName, metav1.DeleteOptions{})
 		clientset.CoreV1().PersistentVolumes().Delete(bgCtx, configVolumeName, metav1.DeleteOptions{})
 		return errors.New("Could not create 'data' PVC, cleaning up")
