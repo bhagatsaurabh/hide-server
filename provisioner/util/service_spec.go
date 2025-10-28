@@ -22,11 +22,13 @@ func GetServiceSpec(wsUuid string) *v1.Service {
 					Protocol:   v1.ProtocolTCP,
 					Port:       22,
 					TargetPort: intstr.FromInt(22),
+					Name:       "ssh",
 				},
 				{
 					Protocol:   v1.ProtocolTCP,
 					Port:       80,
 					TargetPort: intstr.FromInt(80),
+					Name:       "api",
 				},
 			},
 			Type: v1.ServiceTypeClusterIP,
