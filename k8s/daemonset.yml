@@ -76,6 +76,10 @@ spec:
                       rmdir "$dir/config" || true
                     fi
                   fi
+
+                  lvremove -y workspace-vg/$uuid-data || true
+                  lvremove -y workspace-vg/$uuid-config || true
+
                   if [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
                     echo "Removing empty dir $dir"
                     rmdir "$dir" || true
