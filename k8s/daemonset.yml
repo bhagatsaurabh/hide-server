@@ -16,7 +16,7 @@ spec:
       hostNetwork: true
       containers:
         - name: hide-lv-mounter
-          image: debian:bookworm-20250929-slim
+          image: "hideregistry.azurecr.io/hide-server-util-lvm:latest"
           securityContext:
             privileged: true
           volumeMounts:
@@ -33,7 +33,6 @@ spec:
             - -c
             - |
               set -euo pipefail
-              apt-get update && apt-get install -y lvm2 util-linux
 
               vgchange -ay workspace-vg || true
 
@@ -42,7 +41,9 @@ spec:
 
                 for lv in $active_lvs; do
                   dev="/dev/workspace-vg/$lv"
-                  target="/host-volumes/$lv"
+                  uuid="${lv%-*}"
+                  subdir="${lv##*-}"
+                  target="/host-volumes/workspaces/$uuid/$subdir"
                   mkdir -p "$target"
                   if ! mountpoint -q "$target"; then
                     echo "Mounting $dev -> $target"
@@ -50,20 +51,38 @@ spec:
                   fi
                 done
 
-                for dir in /host-volumes/*; do
+                for dir in /host-volumes/workspaces/*; do
                   [ -d "$dir" ] || continue
-                  name=$(basename "$dir")
-                  dev="/dev/workspace-vg/$name"
-
+                  uuid=$(basename "$dir")
+                  dev="/dev/workspace-vg/$uuid-data"
                   if [ ! -e "$dev" ]; then
-                    if mountpoint -q "$dir"; then
-                      echo "Unmounting stale $dir"
-                      umount -f "$dir" || true
+                    if mountpoint -q "$dir/data"; then
+                      echo "Unmounting stale $dir/data"
+                      umount -f "$dir/data" || true
                     fi
-                    if [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
-                      echo "Removing empty dir $dir"
-                      rmdir "$dir" || true
+                    if [ -z "$(ls -A "$dir/data" 2>/dev/null)" ]; then
+                      echo "Removing empty dir $dir/data"
+                      rmdir "$dir/data" || true
                     fi
+                  fi
+                  dev="/dev/workspace-vg/$uuid-config"
+                  if [ ! -e "$dev" ]; then
+                    if mountpoint -q "$dir/config"; then
+                      echo "Unmounting stale $dir/config"
+                      umount -f "$dir/config" || true
+                    fi
+                    if [ -z "$(ls -A "$dir/config" 2>/dev/null)" ]; then
+                      echo "Removing empty dir $dir/config"
+                      rmdir "$dir/config" || true
+                    fi
+                  fi
+
+                  lvremove -y workspace-vg/$uuid-data || true
+                  lvremove -y workspace-vg/$uuid-config || true
+
+                  if [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
+                    echo "Removing empty dir $dir"
+                    rmdir "$dir" || true
                   fi
                 done
                 sleep 3600
@@ -89,3 +108,5 @@ spec:
           hostPath:
             path: /data/workspace-volumes
             type: DirectoryOrCreate
+      imagePullSecrets:
+        - name: acr-secret

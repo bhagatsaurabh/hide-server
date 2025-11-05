@@ -1,6 +1,8 @@
 package util
 
 import (
+	"fmt"
+
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,7 +13,7 @@ func GetCleanupJobSpec(wsUuid string) *v1.Job {
 	hostPathType := corev1.HostPathDirectoryOrCreate
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "cleanup-volume",
+			Name:      fmt.Sprintf("cleanup-volume-%s", wsUuid),
 			Namespace: "default",
 		},
 		Spec: v1.JobSpec{
@@ -21,7 +23,7 @@ func GetCleanupJobSpec(wsUuid string) *v1.Job {
 					Containers: []corev1.Container{
 						{
 							Name:            "cleaner",
-							Image:           "debian:bookworm-slim",
+							Image:           "hideregistry.azurecr.io/hide-server-util-lvm:latest",
 							SecurityContext: &corev1.SecurityContext{Privileged: &priviledged},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -34,7 +36,6 @@ func GetCleanupJobSpec(wsUuid string) *v1.Job {
 							},
 							Command: []string{"/bin/bash", "-c"},
 							Args: []string{`
-								apt-get update && apt-get install -y lvm2
 								set -eux
 
 								WORKSPACE_DIR=/host-volumes/workspaces/$WORKSPACE_UUID
@@ -58,6 +59,11 @@ func GetCleanupJobSpec(wsUuid string) *v1.Job {
 									Type: &hostPathType,
 								},
 							},
+						},
+					},
+					ImagePullSecrets: []corev1.LocalObjectReference{
+						{
+							Name: "acr-secret",
 						},
 					},
 				},
