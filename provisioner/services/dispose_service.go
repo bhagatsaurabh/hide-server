@@ -110,6 +110,6 @@ func DisposeK8sPod(bgCtx context.Context, uuid string) error {
 	if err != nil {
 		return err
 	}
-	err = clientset.CoreV1().Services("default").Delete(bgCtx, fmt.Sprintf("workspace-service-%s", uuid), metav1.DeleteOptions{})
+	err = clientset.CoreV1().Services("default").Delete(bgCtx, fmt.Sprintf("workspace-%s", uuid), metav1.DeleteOptions{})
 	return err
 }
