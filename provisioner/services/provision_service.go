@@ -154,6 +154,7 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 	privateKey, publicKey, err := "", "", nil
 	if isNew {
 		privateKey, publicKey, err = util.GenSSHKeyPair(4096)
+		log.Debugf("Generated SSH key pair")
 	}
 	if err != nil {
 		log.Errorf("Failed to generate SSH key pair")
@@ -161,14 +162,19 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 	}
 
 	if isNew {
-		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "2/6:Preparing storage")
+		log.Debugf("Sending status")
+		go SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "2/6:Preparing storage")
 		log.Debugf("Preparing volumes")
 		err = PerpareK8sVolume(clientset, bgCtx, wsUuid)
 		if err != nil {
 			return "", "", err
 		}
 
-		err := clientset.BatchV1().Jobs("default").Delete(bgCtx, fmt.Sprintf("prepare-volume-%s", wsUuid), metav1.DeleteOptions{})
+		propogationPolicy := metav1.DeletePropagationBackground
+		err := clientset.BatchV1().Jobs("default").Delete(
+			bgCtx, fmt.Sprintf("prepare-volume-%s", wsUuid),
+			metav1.DeleteOptions{PropagationPolicy: &propogationPolicy},
+		)
 		if err != nil {
 			log.Debugf("Job deletion failed: %v", err)
 		}

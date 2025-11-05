@@ -9,7 +9,7 @@ import (
 )
 
 func GetServiceSpec(wsUuid string) *v1.Service {
-	name := fmt.Sprintf("workspace-service-%s", wsUuid)
+	name := fmt.Sprintf("workspace-%s", wsUuid)
 	serviceSpec := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
