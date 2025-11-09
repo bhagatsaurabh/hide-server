@@ -72,35 +72,36 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 
 											WORKSPACE_DIR=/host-volumes/workspaces/$WORKSPACE_UUID
 
-											mkdir -p $WORKSPACE_DIR/data
-											mkdir -p $WORKSPACE_DIR/config
+											rm -f /host-volumes/.delete-$WORKSPACE_UUID || true
+											mkdir -p "$WORKSPACE_DIR/data" "$WORKSPACE_DIR/config"
 
-											vgs workspace-vg || { echo "workspace-vg not found"; exit 1; }
+											vgs workspace-vg >/dev/null || { echo "workspace-vg not found"; exit 1; }
 
 											lvcreate -L $DATA_VOLUME_SIZE -n ${WORKSPACE_UUID}-data workspace-vg
+											lvchange -ay /dev/workspace-vg/${WORKSPACE_UUID}-data
 											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-data
-											sudo udevadm settle
-											sync
-											sleep 1
-											mount /dev/workspace-vg/${WORKSPACE_UUID}-data $WORKSPACE_DIR/data
+											udevadm settle && sync && sleep 1
 
+											lvcreate -L $CONFIG_VOLUME_SIZE -n ${WORKSPACE_UUID}-config workspace-vg
+											lvchange -ay /dev/workspace-vg/${WORKSPACE_UUID}-config
+											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-config
+											udevadm settle && sync && sleep 1
+
+											if ! mountpoint -q "$WORKSPACE_DIR/data"; then
+    										mount /dev/workspace-vg/${WORKSPACE_UUID}-data "$WORKSPACE_DIR/data"
+											fi
 											if ! mountpoint -q "$WORKSPACE_DIR/data"; then
                     		echo "data: Not mounted !"
 											else
 												echo "data: Mounted successfully"
                   		fi
 
-											lvcreate -L $CONFIG_VOLUME_SIZE -n ${WORKSPACE_UUID}-config workspace-vg
-											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-config
-											sudo udevadm settle
-											sync
-											sleep 1
-											mount /dev/workspace-vg/${WORKSPACE_UUID}-config $WORKSPACE_DIR/config
-
+											if ! mountpoint -q "$WORKSPACE_DIR/config"; then
+    										mount /dev/workspace-vg/${WORKSPACE_UUID}-config "$WORKSPACE_DIR/config"
+											fi
 											if ! mountpoint -q "$WORKSPACE_DIR/config"; then
                     		echo "config: Not mounted !"
-                  		fi
-											else
+                  		else
 												echo "config: Mounted successfully"
                   		fi
                     `},
