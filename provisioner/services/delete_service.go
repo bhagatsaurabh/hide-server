@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"hideserver/provisioner/config"
 	"hideserver/provisioner/util"
-	"log"
+	"os"
+	"time"
 
+	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -80,5 +82,20 @@ func DeleteK8sPod(bgCtx context.Context, wsUuid string) error {
 	if err != nil {
 		return err
 	}
+	err = util.WaitForJobCompletion(bgCtx, clientset, job.Name, 1*time.Minute)
+	if err != nil {
+		log.Debugf("Cleanup job failed: %v", err)
+	}
+	if _, exists := os.LookupEnv("NO_JOB_DELETE"); !exists {
+		propogationPolicy := metav1.DeletePropagationBackground
+		err = clientset.BatchV1().Jobs("default").Delete(
+			bgCtx, fmt.Sprintf("cleanup-volume-%s", wsUuid),
+			metav1.DeleteOptions{PropagationPolicy: &propogationPolicy},
+		)
+		if err != nil {
+			log.Debugf("Cleanup job deletion failed: %v", err)
+		}
+	}
+
 	return nil
 }
