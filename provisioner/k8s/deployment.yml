@@ -42,6 +42,8 @@ spec:
               value: "debug"
             - name: IN_CLUSTER_K8S_CONFIG
               value: "true"
+            - name: NO_JOB_DELETE
+              value: "true"
           readinessProbe:
             httpGet:
               path: /api/health
