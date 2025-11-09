@@ -14,6 +14,8 @@ spec:
     spec:
       hostPID: true
       hostNetwork: true
+      imagePullSecrets:
+        - name: acr-secret
       containers:
         - name: hide-lv-mounter
           image: "hideregistry.azurecr.io/hide-server-util-lvm:latest"
@@ -101,5 +103,3 @@ spec:
           hostPath:
             path: /data/workspace-volumes
             type: DirectoryOrCreate
-      imagePullSecrets:
-        - name: acr-secret
