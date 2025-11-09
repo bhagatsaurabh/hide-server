@@ -11,6 +11,7 @@ import (
 func GetCleanupJobSpec(wsUuid string) *v1.Job {
 	priviledged := true
 	hostPathType := corev1.HostPathDirectoryOrCreate
+	mountPropagation := corev1.MountPropagationBidirectional
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("cleanup-volume-%s", wsUuid),
@@ -27,8 +28,9 @@ func GetCleanupJobSpec(wsUuid string) *v1.Job {
 							SecurityContext: &corev1.SecurityContext{Privileged: &priviledged},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "host-volumes",
-									MountPath: "/host-volumes",
+									Name:             "host-volumes",
+									MountPath:        "/host-volumes",
+									MountPropagation: &mountPropagation,
 								},
 							},
 							Env: []corev1.EnvVar{

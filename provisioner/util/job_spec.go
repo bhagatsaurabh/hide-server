@@ -15,6 +15,7 @@ import (
 func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorageQty string) *v1.Job {
 	priviledged := true
 	hostPathType := corev1.HostPathDirectoryOrCreate
+	mountPropagation := corev1.MountPropagationBidirectional
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("prepare-volume-%s", wsUuid),
@@ -37,8 +38,9 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 							SecurityContext: &corev1.SecurityContext{Privileged: &priviledged},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "host-volumes",
-									MountPath: "/host-volumes",
+									Name:             "host-volumes",
+									MountPath:        "/host-volumes",
+									MountPropagation: &mountPropagation,
 								},
 								{
 									Name:      "dev",
