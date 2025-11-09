@@ -41,6 +41,10 @@ spec:
 
               while true; do
                 lvs --noheadings -o lv_name "$VG" | awk '{$1=$1}' | while read -r lv; do
+                  if [ -f "/host-volumes/.delete-$uuid" ]; then
+                    continue
+                  fi
+
                   dev="/dev/$VG/$lv"
                   uuid="${lv%-*}"
                   subdir="${lv##*-}"
@@ -54,9 +58,6 @@ spec:
 
                   mkdir -p "$target"
 
-                  if [ -f "/host-volumes/.delete-$uuid" ]; then
-                    continue
-                  fi
                   if ! mountpoint -q "$target"; then
                     echo "Mounting $dev -> $target"
                     mount -o defaults,nofail "$dev" "$target" 2>/dev/null || true
