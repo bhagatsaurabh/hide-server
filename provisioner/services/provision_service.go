@@ -157,7 +157,7 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 	privateKey, publicKey, err := "", "", nil
 	if isNew {
 		log.Debugf("Generating SSH key pair")
-		privateKey, publicKey, err = util.GenSSHKeyPair(4096)
+		privateKey, publicKey, err = util.GenSSHKeyPair()
 		log.Debugf("Generated SSH key pair")
 	}
 	if err != nil {
@@ -233,7 +233,7 @@ func CreateDockerContainer(bgCtx context.Context, redisClient *redis.Client, req
 
 	privateKey, publicKey, err := "", "", nil
 	if isNew {
-		privateKey, publicKey, err = util.GenSSHKeyPair(4096)
+		privateKey, publicKey, err = util.GenSSHKeyPair()
 	}
 	if err != nil {
 		log.Println("Failed to generate SSH key pair")
