@@ -123,6 +123,8 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 			log.Debugf("Uuid passed and container exists, sending no-wait")
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(WaitResponse{Wait: false})
+			cancel()
+			return
 		} else {
 			log.Debugf("Uuid passed and container does not exist")
 			services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "Restoring your workspace")
@@ -135,9 +137,8 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 			}()
 			w.WriteHeader(http.StatusAccepted)
 			json.NewEncoder(w).Encode(WaitResponse{Wait: true})
+			return
 		}
-		cancel()
-		return
 	}
 
 	if req.Dedicated {

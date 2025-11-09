@@ -10,6 +10,7 @@ import (
 	"hideserver/provisioner/util"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -174,13 +175,15 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 			return "", "", err
 		}
 
-		propogationPolicy := metav1.DeletePropagationBackground
-		err := clientset.BatchV1().Jobs("default").Delete(
-			bgCtx, fmt.Sprintf("prepare-volume-%s", wsUuid),
-			metav1.DeleteOptions{PropagationPolicy: &propogationPolicy},
-		)
-		if err != nil {
-			log.Debugf("Job deletion failed: %v", err)
+		if _, exists := os.LookupEnv("NO_JOB_DELETE"); !exists {
+			propogationPolicy := metav1.DeletePropagationBackground
+			err := clientset.BatchV1().Jobs("default").Delete(
+				bgCtx, fmt.Sprintf("prepare-volume-%s", wsUuid),
+				metav1.DeleteOptions{PropagationPolicy: &propogationPolicy},
+			)
+			if err != nil {
+				log.Debugf("Job deletion failed: %v", err)
+			}
 		}
 
 		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "3/6:Allocating storage")

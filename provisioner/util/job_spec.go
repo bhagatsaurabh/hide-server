@@ -81,9 +81,22 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-data
 											mount /dev/workspace-vg/${WORKSPACE_UUID}-data $WORKSPACE_DIR/data
 
+											if ! mountpoint -q "$WORKSPACE_DIR/data"; then
+                    		echo "data: Not mounted !"
+											else
+												echo "data: Mounted successfully"
+                  		fi
+
 											lvcreate -L $CONFIG_VOLUME_SIZE -n ${WORKSPACE_UUID}-config workspace-vg
 											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-config
 											mount /dev/workspace-vg/${WORKSPACE_UUID}-config $WORKSPACE_DIR/config
+
+											if ! mountpoint -q "$WORKSPACE_DIR/config"; then
+                    		echo "config: Not mounted !"
+                  		fi
+											else
+												echo "config: Mounted successfully"
+                  		fi
                     `},
 						},
 					},
