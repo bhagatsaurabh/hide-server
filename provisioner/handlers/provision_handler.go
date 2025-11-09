@@ -342,7 +342,7 @@ func waitOnDevContainerReady(bgCtx context.Context, req services.ProvisionReques
 
 	deadline := time.Now().Add(timeout)
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 3 * time.Second,
 	}
 
 	for time.Now().Before(deadline) {

@@ -1,15 +1,15 @@
 package util
 
 import (
+	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/pem"
 
 	"golang.org/x/crypto/ssh"
 )
 
-func GenSSHKeyPair(bits int) (string, string, error) {
+/* // Deprecated: Slow
+func GenSSHKeyPair_Slow(bits int) (string, string, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return "", "", err
@@ -29,4 +29,25 @@ func GenSSHKeyPair(bits int) (string, string, error) {
 	publicKeyOpenSSH := string(ssh.MarshalAuthorizedKey(publicKey))
 
 	return privateKeyPEM, publicKeyOpenSSH, nil
+} */
+
+func GenSSHKeyPair() (string, string, error) {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", "", err
+	}
+
+	privBytes, err := ssh.MarshalPrivateKey(privateKey, "devuser")
+	if err != nil {
+		return "", "", err
+	}
+	privateKeyPEM := string(pem.EncodeToMemory(privBytes))
+
+	pubKey, err := ssh.NewPublicKey(publicKey)
+	if err != nil {
+		return "", "", err
+	}
+	publicAuthorizedKey := string(ssh.MarshalAuthorizedKey(pubKey))
+
+	return privateKeyPEM, publicAuthorizedKey, nil
 }
