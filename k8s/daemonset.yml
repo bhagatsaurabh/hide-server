@@ -30,6 +30,7 @@ spec:
               mountPath: /proc
             - name: host-volumes
               mountPath: /host-volumes
+              mountPropagation: Bidirectional
           command:
             - /bin/bash
             - -c
