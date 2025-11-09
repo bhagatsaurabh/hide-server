@@ -79,6 +79,9 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 
 											lvcreate -L $DATA_VOLUME_SIZE -n ${WORKSPACE_UUID}-data workspace-vg
 											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-data
+											sudo udevadm settle
+											sync
+											sleep 1
 											mount /dev/workspace-vg/${WORKSPACE_UUID}-data $WORKSPACE_DIR/data
 
 											if ! mountpoint -q "$WORKSPACE_DIR/data"; then
@@ -89,6 +92,9 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 
 											lvcreate -L $CONFIG_VOLUME_SIZE -n ${WORKSPACE_UUID}-config workspace-vg
 											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-config
+											sudo udevadm settle
+											sync
+											sleep 1
 											mount /dev/workspace-vg/${WORKSPACE_UUID}-config $WORKSPACE_DIR/config
 
 											if ! mountpoint -q "$WORKSPACE_DIR/config"; then

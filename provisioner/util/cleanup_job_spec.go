@@ -40,13 +40,28 @@ func GetCleanupJobSpec(wsUuid string) *v1.Job {
 
 								WORKSPACE_DIR=/host-volumes/workspaces/$WORKSPACE_UUID
 
-								umount $WORKSPACE_DIR/data || true
-								umount $WORKSPACE_DIR/config || true
+								touch /host-volumes/.delete-$WORKSPACE_UUID
 
-								lvremove -y workspace-vg/${WORKSPACE_UUID}-data || true
-								lvremove -y workspace-vg/${WORKSPACE_UUID}-config || true
+								umount "$WORKSPACE_DIR/data" 2>/dev/null || umount -l "$WORKSPACE_DIR/data" || true
+								umount "$WORKSPACE_DIR/config" 2>/dev/null || umount -l "$WORKSPACE_DIR/config" || true
+
+								sleep 1
+
+								lvchange -an /dev/workspace-vg/$WORKSPACE_UUID-data || true
+								lvchange -an /dev/workspace-vg/$WORKSPACE_UUID-config || true
+
+								udevadm settle || true
+								sync
+								sleep 1
+
+								lvremove -f /dev/workspace-vg/$WORKSPACE_UUID-data || true
+								lvremove -f /dev/workspace-vg/$WORKSPACE_UUID-config || true
+
+								udevadm settle || true
+								sleep 1
 
 								rm -rf $WORKSPACE_DIR
+								rm -f /host-volumes/.delete-$WORKSPACE_UUID
 								`},
 						},
 					},
