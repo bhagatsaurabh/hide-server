@@ -141,11 +141,14 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 		log.Println("Error creating Kubernetes client:", err)
 		return "", "", err
 	}
+	log.Debugf("Fetched config")
 
+	log.Debugf("Generating uuid")
 	wsUuid := req.Uuid
 	if isNew {
 		wsUuid = uuid.New().String()
 	}
+	log.Debugf("Generated uuid")
 	if wsUuid == "" {
 		log.Errorf("No UUID specified")
 		return "", "", errors.New("No UUID specified")
@@ -153,6 +156,7 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 
 	privateKey, publicKey, err := "", "", nil
 	if isNew {
+		log.Debugf("Generating SSH key pair")
 		privateKey, publicKey, err = util.GenSSHKeyPair(4096)
 		log.Debugf("Generated SSH key pair")
 	}

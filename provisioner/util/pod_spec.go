@@ -41,6 +41,7 @@ func GetPodSpec(wsUuid string, image string, publicKey string, wsType string) *v
 			Name: fmt.Sprintf("workspace-%s", wsUuid),
 			Labels: map[string]string{
 				"wstype": wsType,
+				"app":    fmt.Sprintf("workspace-%s", wsUuid),
 			},
 		},
 		Spec: v1.PodSpec{
