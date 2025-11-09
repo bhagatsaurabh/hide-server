@@ -61,7 +61,7 @@ spec:
                   fi
                 done
 
-                for dir in "$BASE"/*; do
+                for dir in $BASE/*; do
                   [ -d "$dir" ] || continue
                   uuid=$(basename "$dir")
 
@@ -76,7 +76,6 @@ spec:
                       [ -d "$d" ] && rmdir "$d" 2>/dev/null || true
                     fi
                   done
-                  
                   [ -d "$dir" ] && rmdir "$dir" 2>/dev/null || true
                 done
                 sleep 1800
