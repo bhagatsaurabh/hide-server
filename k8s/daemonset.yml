@@ -41,19 +41,24 @@ spec:
               BASE="/host-volumes/workspaces"
 
               while true; do
+                echo 'Running...'
                 lvs --noheadings -o lv_name "$VG" | awk '{$1=$1}' | while read -r lv; do
+                  uuid="${lv%-*}"
+                  subdir="${lv##*-}"
+
+                  echo 'Processing $uuid $subdir'
                   if [ -f "/host-volumes/.delete-$uuid" ]; then
+                    echo 'Delete marker exists, skipping'
                     continue
                   fi
 
                   dev="/dev/$VG/$lv"
-                  uuid="${lv%-*}"
-                  subdir="${lv##*-}"
                   target="$BASE/$uuid/$subdir"
 
                   [ -e "$dev" ] || continue
 
                   if ! lvs --noheadings -o lv_attr "$VG/$lv" | grep -q "^..a"; then
+                    echo 'Activating LV'
                     lvchange -ay "$dev" 2>/dev/null || true
                   fi
 
@@ -82,6 +87,7 @@ spec:
                   done
                   [ -d "$dir" ] && rmdir "$dir" 2>/dev/null || true
                 done
+                echo 'Run finished'
                 sleep 1800
               done
       resources:
