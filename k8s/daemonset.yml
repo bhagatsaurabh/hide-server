@@ -42,7 +42,7 @@ spec:
 
               while true; do
                 echo 'Running...'
-                lvs --noheadings -o lv_name "$VG" | awk '{$1=$1}' | while read -r lv; do
+                lvs --noheadings -o lv_name "$VG" | awk '{$1=$1};1' | while read -r lv; do
                   uuid="${lv%-*}"
                   subdir="${lv##*-}"
 
