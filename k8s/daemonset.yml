@@ -46,7 +46,7 @@ spec:
                   uuid="${lv%-*}"
                   subdir="${lv##*-}"
 
-                  echo 'Processing $uuid $subdir'
+                  echo "Processing $uuid $subdir"
                   if [ -f "/host-volumes/.delete-$uuid" ]; then
                     echo 'Delete marker exists, skipping'
                     continue

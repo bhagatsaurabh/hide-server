@@ -12,6 +12,7 @@ spec:
       labels:
         app: workspace
     spec:
+      serviceAccountName: workspace-sa
       containers:
         - name: workspace
           image: hideregistry.azurecr.io/hide-server-workspace:latest
