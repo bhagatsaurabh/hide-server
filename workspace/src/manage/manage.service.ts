@@ -642,8 +642,7 @@ export class ManageService implements OnModuleInit {
         }
       });
     } catch (error) {
-      void error;
-      console.error('Failed to get allocatable and requested capacity');
+      console.error('Failed to get allocatable and requested capacity', error);
       throw new InternalServerErrorException('UNKNOWN');
     }
 
