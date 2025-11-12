@@ -552,6 +552,7 @@ export class ManageService implements OnModuleInit {
   }
 
   async fulfillAccessRequest({ action, token }: { action: 'approve' | 'reject'; token: string }) {
+    console.log('Fulfill access request:', action);
     let payload: ServicePayload<AccessRequestPayload>;
     try {
       payload = (verify as unknown as JWTVerifyFn<ServicePayload<AccessRequestPayload>>)(
@@ -593,6 +594,7 @@ export class ManageService implements OnModuleInit {
     });
 
     this.rmq.emit<unknown, ServiceMessage<NotifyUser<WorkspaceAccessRequest>>>('notification.send', msg);
+    console.log('Fulfill access request: Completed');
   }
 
   async canProvision() {
