@@ -4,9 +4,9 @@ export type JWTVerifyFn<T> = (
   secret: string,
   options?: any
 ) => T;
-export type ServicePayload = {
+export type ServicePayload<T = unknown> = {
   sub: string;
   aud: string;
   iss: string;
-  role: string;
+  data: T;
 };

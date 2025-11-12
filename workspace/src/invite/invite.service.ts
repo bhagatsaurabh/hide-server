@@ -20,6 +20,7 @@ import {
   CACHEKEY_PRESENCE,
   ServiceEvent,
   SocketSend,
+  ServicePayload,
 } from 'hide-common';
 import { InviteAllDTO, InviteDTO } from 'src/common/dto/invite.dto';
 import { Workspace } from 'src/common/model/workspace.entity';
@@ -69,7 +70,10 @@ export class InviteService {
       validTill: expiryDate.getTime(),
       sshKey,
     };
-    const jwt = (sign as JWTSignFn<InvitationPayload>)(payload, process.env.WORKSPACE_SERVICE_SECRET!);
+    const jwt = (sign as JWTSignFn<ServicePayload<InvitationPayload>>)(
+      { sub: workspaceUUID, aud: 'client', iss: 'workspace-api', data: payload },
+      process.env.WORKSPACE_SERVICE_SECRET!,
+    );
     const msg = createMessage<NotifyUser<WorkspaceInvite>>(inviteeId, '', {
       uid: inviteeId,
       notification: {
@@ -101,22 +105,22 @@ export class InviteService {
       throw err;
     }
 
-    const wrspc = (await this.wsRepository.findOne({ where: { uuid: payload.workspaceUUID } }))!;
+    const wrspc = (await this.wsRepository.findOne({ where: { uuid: payload.data.workspaceUUID } }))!;
     const members = (await this.msRepository.find({ where: { workspaceId: wrspc.id } })).map(
       (membership) => membership.userId,
     );
 
-    const workspace = await this.wsRepository.findOne({ where: { uuid: payload.workspaceUUID } });
+    const workspace = await this.wsRepository.findOne({ where: { uuid: payload.data.workspaceUUID } });
     if (!workspace) {
       throw new NotFoundException('Workspace not found');
     }
     const newMembership = new Membership();
-    newMembership.setData({ workspaceId: workspace.id, userId: payload.inviteeId, role: 'member' });
+    newMembership.setData({ workspaceId: workspace.id, userId: payload.data.inviteeId, role: 'member' });
     await this.msRepository.save(newMembership);
 
-    const msg: ServiceMessage<NotificationRead> = createMessage(payload.inviteeId, '', {
-      uid: payload.inviteeId,
-      notificationId: payload.notificationId,
+    const msg: ServiceMessage<NotificationRead> = createMessage(payload.data.inviteeId, '', {
+      uid: payload.data.inviteeId,
+      notificationId: payload.data.notificationId,
     });
     this.rmq.emit<ServiceMessage<NotificationRead>>('notification.read', msg);
 
@@ -139,7 +143,7 @@ export class InviteService {
       });
     });
 
-    return { sshKey: payload.sshKey };
+    return { sshKey: payload.data.sshKey };
   }
 
   ignoreInvitation(inviteeId: string, { token }: IgnoreDTO) {
@@ -148,9 +152,9 @@ export class InviteService {
       throw err;
     }
 
-    const msg: ServiceMessage<NotificationRead> = createMessage(payload.inviteeId, '', {
-      uid: payload.inviteeId,
-      notificationId: payload.notificationId,
+    const msg: ServiceMessage<NotificationRead> = createMessage(payload.data.inviteeId, '', {
+      uid: payload.data.inviteeId,
+      notificationId: payload.data.notificationId,
     });
     this.rmq.emit<ServiceMessage<NotificationRead>>('notification.read', msg);
   }
@@ -175,11 +179,11 @@ export class InviteService {
   }
   private validateAccept(inviteeId: string, token: string) {
     let err: HttpException | null = null;
-    const payload = (verify as unknown as JWTVerifyFn<InvitationPayload>)(
+    const payload = (verify as unknown as JWTVerifyFn<ServicePayload<InvitationPayload>>)(
       token,
       process.env.WORKSPACE_SERVICE_SECRET!,
     );
-    if (!payload || inviteeId !== payload.inviteeId) {
+    if (!payload || inviteeId !== payload.data.inviteeId) {
       err = new BadRequestException('Invalid invitation token');
     }
 

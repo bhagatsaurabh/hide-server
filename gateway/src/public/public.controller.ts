@@ -5,6 +5,7 @@ import { UsernameAvailabilityDTO } from 'hide-common/dto/user';
 import { UserDeleted, UserRegistered, WebHookDTO } from 'hide-common/dto/webhook';
 import { PublicGuard } from 'src/common/guard/public.guard';
 import { RegisterEmailDTO, VerifyEmailDTO } from 'hide-common';
+import { GuardParam } from 'src/common/decorator/public-guard.decorator';
 
 @Controller('api')
 export class PublicController {
@@ -55,7 +56,8 @@ export class PublicController {
     }
   }
 
-  @Get('access/fulfill')
+  @Get('access-fulfill')
+  @GuardParam({ publicGuardType: 'workspace' })
   @UseGuards(PublicGuard, ThrottlerGuard)
   @Throttle({ default: { ttl: 1000, limit: 1 } })
   async fulfillAccessRequest(@Query('action') action: 'approve' | 'reject', @Query('token') token: string) {

@@ -33,6 +33,7 @@ import {
   NotifyUser,
   ServiceEvent,
   ServiceMessage,
+  ServicePayload,
   SocketSend,
   userConverter,
   UserProfileRequest,
@@ -513,7 +514,10 @@ export class ManageService implements OnModuleInit {
       reason: req.reason,
       uuid: randomUUID(),
     };
-    const token = (sign as JWTSignFn<AccessRequestPayload>)(payload, process.env.WORKSPACE_SERVICE_SECRET!);
+    const token = (sign as JWTSignFn<ServicePayload<AccessRequestPayload>>)(
+      { iss: 'workspace-api', aud: 'client', sub: 'dedicated-workspace', data: payload },
+      process.env.WORKSPACE_SERVICE_SECRET!,
+    );
     await this.emailService.sendAccessRequestEmail(process.env.ADMIN_EMAIL!, payload, token);
 
     let days = parseInt(process.env.ACCESS_CODE_EXPIRY_DAYS ?? '5');
@@ -548,9 +552,9 @@ export class ManageService implements OnModuleInit {
   }
 
   async fulfillAccessRequest({ action, token }: { action: 'approve' | 'reject'; token: string }) {
-    let payload: AccessRequestPayload;
+    let payload: ServicePayload<AccessRequestPayload>;
     try {
-      payload = (verify as unknown as JWTVerifyFn<AccessRequestPayload>)(
+      payload = (verify as unknown as JWTVerifyFn<ServicePayload<AccessRequestPayload>>)(
         token,
         process.env.WORKSPACE_SERVICE_SECRET!,
       );
@@ -562,9 +566,9 @@ export class ManageService implements OnModuleInit {
     let code = '',
       success = false;
     if (action === 'reject') {
-      await this.accessRepository.delete({ uuid: payload.uuid });
+      await this.accessRepository.delete({ uuid: payload.data.uuid });
     } else {
-      const accessCode = await this.accessRepository.findOne({ where: { uuid: payload.uuid } });
+      const accessCode = await this.accessRepository.findOne({ where: { uuid: payload.data.uuid } });
       if (!accessCode) {
         throw new BadRequestException('NOT_FOUND');
       }
@@ -576,14 +580,14 @@ export class ManageService implements OnModuleInit {
     }
 
     const notificationId = randomUUID();
-    const msg = createMessage<NotifyUser<WorkspaceAccessRequest>>(payload.uid, '', {
-      uid: payload.uid,
+    const msg = createMessage<NotifyUser<WorkspaceAccessRequest>>(payload.data.uid, '', {
+      uid: payload.data.uid,
       notification: {
         type: 'workspace-access-code',
         id: notificationId,
         success,
         code,
-        reqId: payload.uuid,
+        reqId: payload.data.uuid,
         createdOn: new Date().toISOString(),
       },
     });

@@ -5,3 +5,4 @@ export * from "./dto";
 export * from "./utils";
 export * from "./utils/converter";
 export * from "./utils/logger";
+export * from "./types/jwt";

@@ -55,6 +55,11 @@ spec:
                 secretKeyRef:
                   name: hide-secrets
                   key: JWT_PUBLIC_KEY
+            - name: WORKSPACE_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hide-secrets
+                  key: WORKSPACE_SERVICE_SECRET
           readinessProbe:
             httpGet:
               path: /api/health
