@@ -564,17 +564,16 @@ export class ManageService implements OnModuleInit {
       throw new BadRequestException('BAD_TOKEN');
     }
 
-    let code = '',
-      success = false;
+    let code = '';
+    let accessCode: AccessCode | null = null;
     if (action === 'reject') {
       await this.accessRepository.delete({ uuid: payload.data.uuid });
     } else {
-      const accessCode = await this.accessRepository.findOne({ where: { uuid: payload.data.uuid } });
+      accessCode = await this.accessRepository.findOne({ where: { uuid: payload.data.uuid } });
       if (!accessCode) {
         throw new BadRequestException('NOT_FOUND');
       }
       code = accessCode.code;
-      success = true;
 
       accessCode.status = AccessStatus.UNUSED;
       await this.accessRepository.save(accessCode);
@@ -586,7 +585,7 @@ export class ManageService implements OnModuleInit {
       notification: {
         type: 'workspace-access-code',
         id: notificationId,
-        success,
+        success: !!accessCode,
         code,
         reqId: payload.data.uuid,
         createdOn: new Date().toISOString(),
@@ -594,6 +593,10 @@ export class ManageService implements OnModuleInit {
     });
 
     this.rmq.emit<unknown, ServiceMessage<NotifyUser<WorkspaceAccessRequest>>>('notification.send', msg);
+    if (accessCode) {
+      accessCode.ntfnId = notificationId;
+      await this.accessRepository.save(accessCode);
+    }
     console.log('Fulfill access request: Completed');
   }
 
@@ -669,7 +672,16 @@ export class ManageService implements OnModuleInit {
     );
   }
 
-  async deleteAccessCode(user: User, uuid: string, ntfnId: string) {
+  async deleteAccessCode(user: User, uuid?: string, code?: string) {
+    const accessCode = await this.accessRepository.findOne({
+      where: [
+        { uid: user.uid, uuid },
+        { uid: user.uid, code },
+      ],
+    });
+    if (!accessCode) return { success: true };
+
+    const ntfnId = accessCode.ntfnId;
     await this.accessRepository.delete({ uid: user.uid, uuid });
 
     const msg: ServiceMessage<NotificationRead> = createMessage(user.uid, '', {
@@ -677,6 +689,8 @@ export class ManageService implements OnModuleInit {
       notificationId: ntfnId,
     });
     this.rmq.emit<ServiceMessage<NotificationRead>>('notification.read', msg);
+
+    return { success: true };
   }
 
   async consumeAccessCode(user: User, code: string) {
@@ -695,8 +709,6 @@ export class ManageService implements OnModuleInit {
     if (!success) {
       throw new ForbiddenException('ACCESS_CODE_IN_USE');
     }
-    /* accessCode.status = AccessStatus.USED;
-    await this.accessRepository.save(accessCode); */
 
     return { success: true };
   }

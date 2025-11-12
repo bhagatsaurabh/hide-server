@@ -32,7 +32,7 @@ import { AccessCode } from './common/model/access-codes.entity';
       database: process.env.POSTGRES_DB,
       entities: [Workspace, Membership, AccessCode],
       autoLoadEntities: true,
-      synchronize: process.env.NODE_ENV === 'development',
+      synchronize: process.env.TYPEORM_SYNC === 'true',
     }),
     ManageModule,
     InviteModule,

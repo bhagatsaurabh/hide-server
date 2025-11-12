@@ -88,6 +88,8 @@ export interface NotifyUser<T extends UserNotificationPayload>
 export interface NotificationRead extends ServiceMessagePayload {
   uid: string;
   notificationId: string;
+  systemRead?: boolean;
+  sessionId?: string;
 }
 export interface MembershipCheck extends ServiceMessagePayload {
   uid: string;

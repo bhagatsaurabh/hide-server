@@ -76,12 +76,8 @@ export class ManageController {
   }
 
   @Delete('access/delete')
-  async deleteAccess(
-    @UserHeader() user: User,
-    @Query('reqId') reqId: string,
-    @Query('ntfnId') ntfnId: string,
-  ) {
-    await this.service.deleteAccessCode(user, reqId, ntfnId);
+  async deleteAccess(@UserHeader() user: User, @Query('reqId') reqId?: string, @Query('code') code?: string) {
+    return await this.service.deleteAccessCode(user, reqId, code);
   }
 
   @Post('downgrade')
