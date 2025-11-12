@@ -61,7 +61,6 @@ export class PublicController {
   @UseGuards(PublicGuard, ThrottlerGuard)
   @Throttle({ default: { ttl: 1000, limit: 1 } })
   async fulfillAccessRequest(@Query('action') action: 'approve' | 'reject', @Query('token') token: string) {
-    console.log('Public request: /workspace/api/access/fulfill');
     return await this.service.fulfillAccessRequest(action, token);
   }
 }
