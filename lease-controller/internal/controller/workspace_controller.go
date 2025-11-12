@@ -27,6 +27,7 @@ type WorkspaceReconciler struct {
 // +kubebuilder:rbac:groups=workspace.hideserver,resources=workspaces/finalizers,verbs=update
 func (r *WorkspaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := logf.FromContext(ctx)
+	logger.Info("Reconciling...")
 
 	var dev workspacev1alpha1.Workspace
 	if err := r.Get(ctx, req.NamespacedName, &dev); err != nil {

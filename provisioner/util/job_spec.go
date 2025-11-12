@@ -77,25 +77,21 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 											rm -f /host-volumes/.delete-$WORKSPACE_UUID || true
 											mkdir -p "$WORKSPACE_DIR/data" "$WORKSPACE_DIR/config"
 
-											vgs workspace-vg 2>/dev/null || { echo "workspace-vg not found"; exit 1; }
+											vgs workspace-vg || { echo "workspace-vg not found"; exit 1; }
 
 											lvcreate -L $DATA_VOLUME_SIZE -n ${WORKSPACE_UUID}-data workspace-vg
 											sleep 1
 											lvchange -ay /dev/workspace-vg/${WORKSPACE_UUID}-data
 											sleep 1
 											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-data
-											udevadm settle || true
-											sync
-											sleep 1
+											sleep 3
 
 											lvcreate -L $CONFIG_VOLUME_SIZE -n ${WORKSPACE_UUID}-config workspace-vg
 											sleep 1
 											lvchange -ay /dev/workspace-vg/${WORKSPACE_UUID}-config
 											sleep 1
 											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-config
-											udevadm settle || true
-											sync
-											sleep 1
+											sleep 3
 
 											echo 'LVs created and formatted successfully'
 

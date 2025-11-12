@@ -27,7 +27,9 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 type ProvisionRequest struct {
@@ -50,6 +52,7 @@ type CreateWorkspaceRequest struct {
 	Description string `json:"description"`
 	Uuid        string `json:"uuid"`
 	Image       string `json:"image"`
+	Dedicated   bool   `json:"dedicated"`
 }
 type ConsumeAccessCodeRequest struct {
 	Code string `json:"code"`
@@ -214,6 +217,15 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 			GracePeriodSeconds: &gracePeriod,
 		})
 		return "", "", err
+	}
+
+	if !req.Dedicated {
+		return privateKey, wsUuid, err
+	}
+
+	crdErr := CreateWorkspaceCRD(bgCtx, config, wsUuid, req.Uid)
+	if crdErr != nil {
+		log.Errorf("Failed to deploy workspace CRD: %v", crdErr)
 	}
 
 	return privateKey, wsUuid, err
@@ -503,6 +515,7 @@ func CreateWorkspace(req ProvisionRequest, userHeader string, workspaceUUID stri
 		Description: req.Description,
 		Uuid:        workspaceUUID,
 		Image:       req.Image,
+		Dedicated:   req.Dedicated,
 	})
 	if err != nil {
 		return errors.New("Failed to marshal workspace request")
@@ -595,5 +608,21 @@ func KillK8sPod(bgCtx context.Context, devEnv string, podName string) error {
 			GracePeriodSeconds: new(int64),
 		},
 	)
+	return err
+}
+
+func CreateWorkspaceCRD(bgCtx context.Context, config *rest.Config, wsUuid string, uid string) error {
+	log.Debugf("Deploying Workspace CRD")
+	dynClientSet, err := dynamic.NewForConfig(config)
+	if err != nil {
+		log.Println("Error creating dynamic kubernetes client:", err)
+		return err
+	}
+
+	workspaceGVR, workspace, err := util.GetWorkspaceCRDSpec(wsUuid, uid)
+	_, err = dynClientSet.Resource(workspaceGVR).Namespace("default").Create(bgCtx, workspace, metav1.CreateOptions{})
+
+	log.Debugf("Successfully deployed Workspace CRD")
+
 	return err
 }
