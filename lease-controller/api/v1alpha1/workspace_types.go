@@ -19,15 +19,15 @@ type WorkspaceStatus struct {
 
 type Workspace struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty,omitzero"`
+	metav1.ObjectMeta `json:"metadata,omitzero"`
 	Spec              WorkspaceSpec   `json:"spec"`
-	Status            WorkspaceStatus `json:"status,omitempty,omitzero"`
+	Status            WorkspaceStatus `json:"status,omitzero"`
 }
 
 // +kubebuilder:object:root=true
 type WorkspaceList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata,omitzero"`
 	Items           []Workspace `json:"items"`
 }
 

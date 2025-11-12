@@ -22,6 +22,7 @@ services:
       WORKSPACE_CPU_REQUEST: "200"
       IDLE_THRESHOLD_CPU: "350"
       PREEMPT_SPOT_OLDER_THAN_HOURS: "12"
+      DEDICATED_LEASE_EXPIRY_DAYS: "2"
     deploy:
       resources:
         limits:
