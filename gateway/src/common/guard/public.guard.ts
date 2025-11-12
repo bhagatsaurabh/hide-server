@@ -38,6 +38,7 @@ export class PublicGuard implements CanActivate {
         return false;
       }
 
+      console.log('Allowed');
       return true;
     } catch (err) {
       console.error('JWT verification failed:', err);
