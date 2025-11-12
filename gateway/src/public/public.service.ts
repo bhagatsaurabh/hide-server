@@ -184,19 +184,20 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
   async fulfillAccessRequest(action: 'approve' | 'reject', token: string) {
     let res: Response;
     try {
+      console.log('Requesting service...');
       res = await fetch('http://workspace/api/access/fulfill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ action, token }),
       });
     } catch (error) {
-      void error;
-      return { error: 'UNKNOWN' };
+      console.log(error);
+      return { success: false, error: 'UNKNOWN' };
     }
 
     if (!res.ok) {
       const err = (await res.json()) as { message: string };
-      return { error: err.message };
+      return { success: false, error: err.message };
     }
 
     return { success: true };
