@@ -10,6 +10,7 @@ export class PublicGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
+    console.log('Running public guard');
     const metadata = this.reflector.get<{ publicGuardType: string }>('guard-metadata', context.getHandler());
 
     const request = context.switchToHttp().getRequest<Request>();
@@ -22,18 +23,21 @@ export class PublicGuard implements CanActivate {
       token = authHeader?.split(' ')?.[1];
     }
 
+    console.log('Extracted token');
     if (!token) {
       throw new UnauthorizedException('Authorization header or token param is missing');
     }
 
     try {
       let payload: ServicePayload;
+      console.log('Verifying token for: ', metadata.publicGuardType);
       if (metadata.publicGuardType === 'workspace') {
         payload = this.verifyWorkspaceToken(token);
       } else {
         payload = this.verifyCommonToken(token);
       }
 
+      console.log('Token verified, checking claims');
       if (!allowedaud.includes(payload.aud) || !allowedIss.includes(payload.iss)) {
         return false;
       }
