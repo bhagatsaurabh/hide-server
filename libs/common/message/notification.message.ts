@@ -3,6 +3,7 @@ import { OutSocketMessagePayload } from "./socket.message";
 export type NotificationPayloadMap = {
   new: UserNotificationPayload;
   pending: UserNotificationPayload[];
+  directive: UserNotificationPayload;
 };
 export type NotificationPayload = {
   [K in keyof NotificationPayloadMap]: {
@@ -15,7 +16,8 @@ export type NotificationType =
   | "workspace-invite"
   | "workspace-membership-removed"
   | "workspace-access-code"
-  | "workspace-downgraded";
+  | "workspace-downgraded"
+  | "notification-delete";
 
 export const persistentNotificationTypes: NotificationType[] = [
   "workspace-invite",

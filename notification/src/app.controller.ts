@@ -29,7 +29,7 @@ export class AppController implements OnModuleInit {
 
   @MessagePattern('notification.read', Transport.RMQ)
   async handleReadNotification(msg: ServiceMessage<NotificationRead>) {
-    await this.appService.handleReadNotification(msg.payload.uid, { id: msg.payload.notificationId }, false);
+    await this.appService.handleReadNotification(msg.payload.uid, msg.payload.notificationId, false, true);
   }
 
   @Get('all')
@@ -40,6 +40,6 @@ export class AppController implements OnModuleInit {
   @Post('read')
   @HttpCode(HttpStatus.NO_CONTENT)
   async readNotification(@UserHeader() user: User, @Body() data: NotificationReadDTO) {
-    await this.appService.handleReadNotification(user.uid, data);
+    await this.appService.handleReadNotification(user.uid, data.id);
   }
 }

@@ -162,6 +162,12 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 					log.Errorf("Failed to reset access code: %v", resetErr)
 				}
 			}
+		} else {
+			if req.Dedicated {
+				if deleteErr := DeleteAccessCode(req.AccessCode, userHeader); deleteErr != nil {
+					log.Errorf("Failed to delete access code post successful provisioning: %v", deleteErr)
+				}
+			}
 		}
 	}()
 	log.Debugf("Sending wait")
@@ -316,6 +322,40 @@ func ResetAccessCode(code string, userHeader string) error {
 	resp, err := client.Do(wsReq)
 	if err != nil {
 		log.Printf("Error: Access code reset request failed, %v", err)
+		return errors.New("UNKNOWN")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 && resp.StatusCode > 299 {
+		errResp, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("Error: Failed to read error response, %v", err)
+			return errors.New("UNKNOWN")
+		}
+		var errData APIErrorResponse
+		err = json.Unmarshal(errResp, &errData)
+		if err != nil {
+			log.Printf("Error: Failed to unmarshal error response, %v", err)
+			return errors.New("UNKNOWN")
+		}
+		return errors.New(errData.Message)
+	} else {
+		return nil
+	}
+}
+
+func DeleteAccessCode(code string, userHeader string) error {
+	wsReq, err := http.NewRequest("DELETE", fmt.Sprintf("http://workspace/api/access/delete?code=%s", code), nil)
+	if err != nil {
+		log.Printf("Error: Failed to create request, %v", err)
+		return errors.New("UNKNOWN")
+	}
+	wsReq.Header.Set("Content-Type", "application/json")
+	wsReq.Header.Set("x-auth-user", userHeader)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(wsReq)
+	if err != nil {
+		log.Printf("Error: Access code delete request failed, %v", err)
 		return errors.New("UNKNOWN")
 	}
 	defer resp.Body.Close()

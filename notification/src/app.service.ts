@@ -14,7 +14,6 @@ import {
 import { FirestoreService } from 'hide-firebase';
 import { RedisService } from 'hide-redis';
 import { notificationConverter } from './utils/converter';
-import { NotificationReadDTO } from './common/dto';
 import { firestore } from 'firebase-admin';
 
 @Injectable()
@@ -81,8 +80,13 @@ export class AppService {
     });
   }
 
-  async handleReadNotification(uid: string, data: NotificationReadDTO, ignorePersistent: boolean = true) {
-    const docRef = this.db.collection('notifications').doc(uid).collection('messages').doc(data.id);
+  async handleReadNotification(
+    uid: string,
+    ntfnId: string,
+    ignorePersistent: boolean = true,
+    systemRead = false,
+  ) {
+    const docRef = this.db.collection('notifications').doc(uid).collection('messages').doc(ntfnId);
     const doc = await docRef.withConverter(notificationConverter).get();
 
     if (!doc.exists) return;
@@ -90,6 +94,26 @@ export class AppService {
     if (ignorePersistent && persistentNotificationTypes.includes(ntfn.type)) return;
 
     await docRef.delete();
+
+    if (systemRead) {
+      const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
+      if (!presence) return;
+
+      Object.keys(presence).forEach((sessionId) => {
+        this.redis.emit<any, ServiceEvent<SocketSend<'notification'>>>('socket.send', {
+          meta: { uid, sessionId },
+          payload: {
+            uid,
+            sessionId,
+            pattern: 'notification',
+            msg: {
+              action: 'directive',
+              payload: { type: 'notification-delete', id: ntfnId, createdOn: '0' },
+            },
+          },
+        });
+      });
+    }
   }
 
   async getAllNotifications(uid: string) {

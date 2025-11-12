@@ -22,6 +22,9 @@ export class AccessCode {
     if (data.uuid) {
       this.uuid = data.uuid;
     }
+    if (data.ntfnId) {
+      this.ntfnId = data.ntfnId;
+    }
   }
 
   @PrimaryGeneratedColumn()
@@ -38,6 +41,9 @@ export class AccessCode {
 
   @Column({ nullable: false })
   status: AccessStatus;
+
+  @Column({ nullable: true })
+  ntfnId: string;
 
   @Column({ name: 'used_at', nullable: true, type: 'timestamptz' })
   usedAt: Date;
