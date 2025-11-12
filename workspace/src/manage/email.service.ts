@@ -33,8 +33,8 @@ export class EmailService implements OnModuleInit {
     <span>Reason: <br/>${req.reason ?? 'NA'}</span>
     <br/>
     <br/>
-    <a href="${process.env.WEBHOOK_URL}/access/fulfill?action=approve&token=${token}"><button>Approve</button></a>&nbsp;
-    <a href="${process.env.WEBHOOK_URL}/access/fulfill?action=reject&token=${token}"><button>Reject</button></a>
+    <a href="${process.env.WEBHOOK_URL}/access-fulfill?action=approve&token=${token}"><button>Approve</button></a>&nbsp;
+    <a href="${process.env.WEBHOOK_URL}/access-fulfill?action=reject&token=${token}"><button>Reject</button></a>
     `;
 
     const mailOptions = {
