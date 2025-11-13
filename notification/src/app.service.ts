@@ -125,6 +125,17 @@ export class AppService {
     }
   }
 
+  async handleReadAllNotifications(uid: string, ntfnIds: string[]) {
+    console.log('Deleting all non-persistent notifications');
+    const batch = this.db.batch();
+    ntfnIds.forEach((ntfnId) => {
+      const docRef = this.db.collection('notifications').doc(uid).collection('messages').doc(ntfnId);
+      batch.delete(docRef);
+    });
+    await batch.commit();
+    console.log('Deleted all non-persistent notifications');
+  }
+
   async getAllNotifications(uid: string) {
     const snap = await this.db
       .collection('notifications')

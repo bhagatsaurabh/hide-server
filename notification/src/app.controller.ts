@@ -43,4 +43,10 @@ export class AppController implements OnModuleInit {
   async readNotification(@UserHeader() user: User, @Body() data: NotificationReadDTO) {
     await this.appService.handleReadNotification(user.uid, data.id);
   }
+
+  @Post('readall')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async readAllNotifications(@UserHeader() user: User, @Body() ids: string[]) {
+    await this.appService.handleReadAllNotifications(user.uid, ids);
+  }
 }
