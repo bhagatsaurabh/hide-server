@@ -89,11 +89,12 @@ export class AppService {
     const docRef = this.db.collection('notifications').doc(uid).collection('messages').doc(ntfnId);
     const doc = await docRef.withConverter(notificationConverter).get();
 
-    if (!doc.exists) return;
-    const ntfn = doc.data()!;
-    if (ignorePersistent && persistentNotificationTypes.includes(ntfn.type)) return;
-
-    await docRef.delete();
+    if (doc.exists) {
+      const ntfn = doc.data()!;
+      if (!ignorePersistent || !persistentNotificationTypes.includes(ntfn.type)) {
+        await docRef.delete();
+      }
+    }
 
     if (systemRead) {
       const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));

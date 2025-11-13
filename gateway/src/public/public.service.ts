@@ -184,7 +184,7 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
   async fulfillAccessRequest(action: 'approve' | 'reject', token: string) {
     let res: Response;
     try {
-      res = await fetch('http://workspace/api/access/fulfill', {
+      res = await fetch('http://workspace/api/access-fulfill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ action, token }),

@@ -55,29 +55,34 @@ export class ManageController {
     return await this.service.checkEligibility(user);
   }
 
-  @Post('access/request')
+  @Post('access-request')
   async createAccessRequest(@UserHeader() user: User, @Body() data: AccessDTO) {
     return await this.service.createAccessRequest(user, data);
   }
 
-  @Post('access/fulfill')
+  @Post('access-fulfill')
   async fulfillAccessRequest(@Body() data: { action: 'approve' | 'reject'; token: string }) {
     return await this.service.fulfillAccessRequest(data);
   }
 
-  @Post('access/consume')
+  @Post('access-consume')
   async consumeAccessCode(@UserHeader() user: User, @Body() data: { code: string }) {
     return await this.service.consumeAccessCode(user, data.code);
   }
 
-  @Post('access/reset')
+  @Post('access-reset')
   async resetAccessCode(@UserHeader() user: User, @Body() data: { code: string }) {
     return await this.service.resetAccessCode(user, data.code);
   }
 
-  @Delete('access/delete')
-  async deleteAccess(@UserHeader() user: User, @Query('reqId') reqId?: string, @Query('code') code?: string) {
-    return await this.service.deleteAccessCode(user, reqId, code);
+  @Delete('access-delete')
+  async deleteAccess(
+    @UserHeader() user: User,
+    @Query('reqId') reqId?: string,
+    @Query('ntfnId') ntfnId?: string,
+    @Query('code') code?: string,
+  ) {
+    return await this.service.deleteAccessCode(user, reqId, ntfnId, code);
   }
 
   @Post('downgrade')

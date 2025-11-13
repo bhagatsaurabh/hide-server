@@ -672,23 +672,30 @@ export class ManageService implements OnModuleInit {
     );
   }
 
-  async deleteAccessCode(user: User, uuid?: string, code?: string) {
+  async deleteAccessCode(user: User, uuid?: string, ntfnId?: string, code?: string) {
     const accessCode = await this.accessRepository.findOne({
       where: [
         { uid: user.uid, uuid },
         { uid: user.uid, code },
+        { uid: user.uid, ntfnId },
       ],
     });
-    if (!accessCode) return { success: true };
+    if (accessCode) {
+      ntfnId = accessCode.ntfnId;
+    }
+    await this.accessRepository.delete([
+      { uid: user.uid, uuid },
+      { uid: user.uid, code },
+      { uid: user.uid, ntfnId },
+    ]);
 
-    const ntfnId = accessCode.ntfnId;
-    await this.accessRepository.delete({ uid: user.uid, uuid });
-
-    const msg: ServiceMessage<NotificationRead> = createMessage(user.uid, '', {
-      uid: user.uid,
-      notificationId: ntfnId,
-    });
-    this.rmq.emit<ServiceMessage<NotificationRead>>('notification.read', msg);
+    if (ntfnId) {
+      const msg: ServiceMessage<NotificationRead> = createMessage(user.uid, '', {
+        uid: user.uid,
+        notificationId: ntfnId,
+      });
+      this.rmq.emit<ServiceMessage<NotificationRead>>('notification.read', msg);
+    }
 
     return { success: true };
   }
