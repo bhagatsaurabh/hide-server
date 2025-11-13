@@ -12,3 +12,13 @@ rules:
   - apiGroups: ["workspace.hideserver"]
     resources: ["workspaces/status"]
     verbs: ["get", "patch", "update"]
+  - apiGroups: [""]
+    resources:
+      ["pods", "persistentvolumes", "persistentvolumeclaims", "services"]
+    verbs: ["get", "list", "watch", "create", "delete", "patch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
