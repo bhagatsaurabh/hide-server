@@ -86,21 +86,28 @@ export class AppService {
     ignorePersistent: boolean = true,
     systemRead = false,
   ) {
+    console.log(uid, ntfnId, ignorePersistent, systemRead);
     const docRef = this.db.collection('notifications').doc(uid).collection('messages').doc(ntfnId);
     const doc = await docRef.withConverter(notificationConverter).get();
 
     if (doc.exists) {
+      console.log('Exists');
       const ntfn = doc.data()!;
+      console.log(ntfn);
       if (!ignorePersistent || !persistentNotificationTypes.includes(ntfn.type)) {
+        console.log('Deleting');
         await docRef.delete();
+        console.log('Deleted');
       }
     }
 
     if (systemRead) {
+      console.log('Is system read');
       const presence = await this.cache.get<CachedPresence>(CACHEKEY_PRESENCE(uid));
       if (!presence) return;
 
       Object.keys(presence).forEach((sessionId) => {
+        console.log('Sending socket message to sessionId: ', sessionId);
         this.redis.emit<any, ServiceEvent<SocketSend<'notification'>>>('socket.send', {
           meta: { uid, sessionId },
           payload: {
@@ -113,6 +120,7 @@ export class AppService {
             },
           },
         });
+        console.log('Done and done');
       });
     }
   }

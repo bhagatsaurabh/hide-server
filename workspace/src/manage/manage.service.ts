@@ -673,6 +673,7 @@ export class ManageService implements OnModuleInit {
   }
 
   async deleteAccessCode(user: User, uuid?: string, ntfnId?: string, code?: string) {
+    console.log(uuid, ntfnId, code);
     const accessCode = await this.accessRepository.findOne({
       where: [
         { uid: user.uid, uuid },
@@ -683,6 +684,7 @@ export class ManageService implements OnModuleInit {
     if (accessCode) {
       ntfnId = accessCode.ntfnId;
     }
+    console.log(ntfnId);
     await this.accessRepository.delete([
       { uid: user.uid, uuid },
       { uid: user.uid, code },
@@ -694,7 +696,8 @@ export class ManageService implements OnModuleInit {
         uid: user.uid,
         notificationId: ntfnId,
       });
-      this.rmq.emit<ServiceMessage<NotificationRead>>('notification.read', msg);
+      this.rmq.emit<unknown, ServiceMessage<NotificationRead>>('notification.read', msg);
+      console.log('Sent rmq event');
     }
 
     return { success: true };
