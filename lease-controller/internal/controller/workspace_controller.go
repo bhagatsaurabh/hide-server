@@ -40,7 +40,7 @@ func (r *WorkspaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	logger.Info(fmt.Sprintf("Now: %s, Expiry: %s", now.Format(time.DateTime), expiry.Format(time.DateTime)))
 
 	if now.After(expiry) {
-		logger.Info("Lease expired, downgrading to spot", dev.Name)
+		logger.Info(fmt.Sprintf("Lease expired, downgrading to spot: %s", dev.Name))
 
 		var pod corev1.Pod
 		if err := r.Get(ctx, types.NamespacedName{Name: dev.Spec.PodName, Namespace: dev.Namespace}, &pod); err == nil {
