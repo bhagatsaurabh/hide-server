@@ -3,7 +3,7 @@ import {
   persistentNtfnTypes,
   UserNotificationPayload,
   WorkspaceAccessRequest,
-} from "message";
+} from "../message";
 import { createHash } from "node:crypto";
 
 export const debounce = <
