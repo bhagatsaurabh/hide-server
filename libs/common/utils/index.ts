@@ -1,3 +1,9 @@
+import {
+  NotificationType,
+  persistentNtfnTypes,
+  UserNotificationPayload,
+  WorkspaceAccessRequest,
+} from "message";
 import { createHash } from "node:crypto";
 
 export const debounce = <
@@ -32,3 +38,16 @@ export class RpcError extends Error {
     super(message);
   }
 }
+
+export const persistentNtfnTypesChecks: Partial<
+  Record<NotificationType, (ntfn: UserNotificationPayload) => boolean>
+> = {
+  "workspace-access-code": (ntfn: WorkspaceAccessRequest) => ntfn.success,
+};
+
+export const isNotificationPersistent = (ntfn: UserNotificationPayload) => {
+  return (
+    persistentNtfnTypes.includes(ntfn.type) &&
+    (persistentNtfnTypesChecks[ntfn.type]?.(ntfn) ?? true)
+  );
+};
