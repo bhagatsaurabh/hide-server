@@ -79,14 +79,14 @@ func GetPrepareVolumeJobSpec(wsUuid string, dataStorageQty string, configStorage
 
 											vgs workspace-vg || { echo "workspace-vg not found"; exit 1; }
 
-											lvcreate -L $DATA_VOLUME_SIZE -n ${WORKSPACE_UUID}-data workspace-vg
+											lvcreate --wipesignatures y -y -L $DATA_VOLUME_SIZE -n ${WORKSPACE_UUID}-data workspace-vg
 											sleep 1
 											lvchange -ay /dev/workspace-vg/${WORKSPACE_UUID}-data
 											sleep 1
 											mkfs.ext4 /dev/workspace-vg/${WORKSPACE_UUID}-data
 											sleep 3
 
-											lvcreate -L $CONFIG_VOLUME_SIZE -n ${WORKSPACE_UUID}-config workspace-vg
+											lvcreate --wipesignatures y -y -L $CONFIG_VOLUME_SIZE -n ${WORKSPACE_UUID}-config workspace-vg
 											sleep 1
 											lvchange -ay /dev/workspace-vg/${WORKSPACE_UUID}-config
 											sleep 1
