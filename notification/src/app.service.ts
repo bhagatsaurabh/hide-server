@@ -4,8 +4,8 @@ import { Cache } from '@nestjs/cache-manager';
 import {
   CachedPresence,
   CACHEKEY_PRESENCE,
+  isNotificationPersistent,
   NotifyUser,
-  persistentNotificationTypes,
   ServiceEvent,
   ServiceMessage,
   SocketSend,
@@ -94,7 +94,7 @@ export class AppService {
       console.log('Exists');
       const ntfn = doc.data()!;
       console.log(ntfn);
-      if (!ignorePersistent || !persistentNotificationTypes.includes(ntfn.type)) {
+      if (!ignorePersistent || !isNotificationPersistent(ntfn)) {
         console.log('Deleting');
         await docRef.delete();
         console.log('Deleted');

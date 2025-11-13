@@ -19,7 +19,7 @@ export type NotificationType =
   | "workspace-downgraded"
   | "notification-delete";
 
-export const persistentNotificationTypes: NotificationType[] = [
+export const persistentNtnfTypes: NotificationType[] = [
   "workspace-invite",
   "workspace-access-code",
 ];
