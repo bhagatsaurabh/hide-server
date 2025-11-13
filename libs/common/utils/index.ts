@@ -1,6 +1,6 @@
 import {
   NotificationType,
-  persistentNtnfTypes,
+  persistentNtfnTypes,
   UserNotificationPayload,
   WorkspaceAccessRequest,
 } from "message";
@@ -39,7 +39,7 @@ export class RpcError extends Error {
   }
 }
 
-export const persistentNtnfTypesChecks: Partial<
+export const persistentNtfnTypesChecks: Partial<
   Record<NotificationType, (ntfn: UserNotificationPayload) => boolean>
 > = {
   "workspace-access-code": (ntfn: WorkspaceAccessRequest) => ntfn.success,
@@ -47,7 +47,7 @@ export const persistentNtnfTypesChecks: Partial<
 
 export const isNotificationPersistent = (ntfn: UserNotificationPayload) => {
   return (
-    persistentNtnfTypes.includes(ntfn.type) &&
-    (persistentNtnfTypesChecks[ntfn.type]?.(ntfn) ?? true)
+    persistentNtfnTypes.includes(ntfn.type) &&
+    (persistentNtfnTypesChecks[ntfn.type]?.(ntfn) ?? true)
   );
 };
