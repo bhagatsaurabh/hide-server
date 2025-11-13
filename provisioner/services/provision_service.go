@@ -626,3 +626,19 @@ func CreateWorkspaceCRD(bgCtx context.Context, config *rest.Config, wsUuid strin
 
 	return err
 }
+
+func DeleteWorkspaceCRD(bgCtx context.Context, config *rest.Config, wsUuid string) error {
+	log.Debugf("Deleting Workspace CRD")
+	dynClientSet, err := dynamic.NewForConfig(config)
+	if err != nil {
+		log.Println("Error creating dynamic kubernetes client:", err)
+		return err
+	}
+
+	workspaceGVR, _, err := util.GetWorkspaceCRDSpec(wsUuid, "")
+	err = dynClientSet.Resource(workspaceGVR).Namespace("default").Delete(bgCtx, fmt.Sprintf("workspace-%s", wsUuid), metav1.DeleteOptions{})
+
+	log.Debugf("Successfully deleted Workspace CRD")
+
+	return err
+}

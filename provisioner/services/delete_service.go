@@ -97,5 +97,12 @@ func DeleteK8sPod(bgCtx context.Context, wsUuid string) error {
 		}
 	}
 
-	return nil
+	log.Debugf("Deleting workspace CRD")
+	err = DeleteWorkspaceCRD(bgCtx, config, wsUuid)
+	if err != nil {
+		log.Debugf("Workspace CRD deletion failed: %v", err)
+	}
+	log.Debugf("Deleted workspace CRD")
+
+	return err
 }
