@@ -268,7 +268,7 @@ func ConsumeAccessCode(code string, userHeader string) error {
 	}
 
 	var wsReq *http.Request
-	wsReq, err = http.NewRequest("POST", "http://workspace/api/access/consume", bytes.NewBuffer(wsJson))
+	wsReq, err = http.NewRequest("POST", "http://workspace/api/access-consume", bytes.NewBuffer(wsJson))
 	if err != nil {
 		log.Errorf("Failed to create consume code request, %v", err)
 		return errors.New("UNKNOWN")
@@ -311,7 +311,7 @@ func ResetAccessCode(code string, userHeader string) error {
 	}
 
 	var wsReq *http.Request
-	wsReq, err = http.NewRequest("POST", "http://workspace/api/access/reset", bytes.NewBuffer(wsJson))
+	wsReq, err = http.NewRequest("POST", "http://workspace/api/access-reset", bytes.NewBuffer(wsJson))
 	if err != nil {
 		log.Printf("Error: Failed to create request, %v", err)
 		return errors.New("UNKNOWN")
@@ -345,7 +345,7 @@ func ResetAccessCode(code string, userHeader string) error {
 }
 
 func DeleteAccessCode(code string, userHeader string) error {
-	wsReq, err := http.NewRequest("DELETE", fmt.Sprintf("http://workspace/api/access/delete?code=%s", code), nil)
+	wsReq, err := http.NewRequest("DELETE", fmt.Sprintf("http://workspace/api/access-delete?code=%s", code), nil)
 	if err != nil {
 		log.Printf("Error: Failed to create request, %v", err)
 		return errors.New("UNKNOWN")
