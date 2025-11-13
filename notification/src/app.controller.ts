@@ -29,6 +29,7 @@ export class AppController implements OnModuleInit {
 
   @MessagePattern('notification.read', Transport.RMQ)
   async handleReadNotification(msg: ServiceMessage<NotificationRead>) {
+    console.log('Received rmq event: ', msg);
     await this.appService.handleReadNotification(msg.payload.uid, msg.payload.notificationId, false, true);
   }
 
