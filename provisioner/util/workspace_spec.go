@@ -35,7 +35,8 @@ func GetWorkspaceCRDSpec(wsUuid string, uid string) (schema.GroupVersionResource
 				"name": fmt.Sprintf("workspace-%s", wsUuid),
 			},
 			"spec": map[string]any{
-				"leaseExpiry": time.Now().Add(time.Duration(dedicatedLeaseExpiryDays) * 24 * time.Hour).Format(time.RFC3339),
+				// "leaseExpiry": time.Now().Add(time.Duration(dedicatedLeaseExpiryDays) * 24 * time.Hour).Format(time.RFC3339),
+				"leaseExpiry": time.Now().Add(time.Duration(dedicatedLeaseExpiryDays) * 2 * time.Minute).Format(time.RFC3339),
 				"podName":     fmt.Sprintf("workspace-%s", wsUuid),
 				"uid":         uid,
 			},

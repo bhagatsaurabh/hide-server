@@ -31,11 +31,13 @@ func (r *WorkspaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	var dev workspacev1alpha1.Workspace
 	if err := r.Get(ctx, req.NamespacedName, &dev); err != nil {
+		logger.Info(fmt.Sprintf("Error: %v", err))
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	now := time.Now()
 	expiry := dev.Spec.LeaseExpiry.Time
+	logger.Info(fmt.Sprintf("Now: %s, Expiry: %s", now.Format(time.DateTime), expiry.Format(time.DateTime)))
 
 	if now.After(expiry) {
 		logger.Info("Lease expired, downgrading to spot", dev.Name)
