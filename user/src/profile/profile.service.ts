@@ -56,7 +56,7 @@ export class ProfileService {
 
       await this.cache.set(CACHEKEY_USER_PROFILE(user.uid), user);
     } else {
-      throw new BadRequestException('User is already registered');
+      throw new BadRequestException('USER_ALREADY_REGISTERED');
     }
   }
 
@@ -102,7 +102,7 @@ export class ProfileService {
       .where('uid', '==', uid)
       .get();
     if (snap.empty || !snap.docs.length) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('USER_NOT_FOUND');
     } else {
       const oldUser = snap.docs[0].data();
 
@@ -120,27 +120,27 @@ export class ProfileService {
 
   private validateCreateUser(data: CreateUserDTO) {
     if (!data.name || !data.username) {
-      return 'Full details not provided';
+      return 'USER_DETAILS_MISSING';
     }
     if (!nameRegex.test(data.name)) {
-      return 'Not a valid name';
+      return 'INVALID_USER_NAME';
     }
     if (!usernameRegex.test(data.username)) {
-      return 'Not a valid username';
+      return 'INVALID_USER_USERNAME';
     }
   }
 
   private validateUpdateUser(uid: string, user: Partial<User>) {
     if (user.name && !nameRegex.test(user.name)) {
-      return 'Not a valid name';
+      return 'INVALID_USER_NAME';
     }
     if (user.username && !usernameRegex.test(user.username)) {
-      return 'Not a valid username';
+      return 'INVALID_USER_USERNAME';
     }
     if (user.email && !emailRegex.test(user.email)) {
-      return 'Not a valid email';
+      return 'INVALID_EMAIL';
     }
-    if (user.uid !== uid) return 'Not a valid uid';
-    if (user.expireAt) return 'Not allowed';
+    if (user.uid !== uid) return 'INVALID_USER_IDENTITY';
+    if (user.expireAt) return 'UPDATE_USER_FORBIDDEN';
   }
 }

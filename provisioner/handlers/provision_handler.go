@@ -52,13 +52,13 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 	bgCtx, cancel := context.WithTimeout(sysCtx, 3*time.Minute)
 
 	if r.Method != http.MethodPost {
-		util.SendAPIErr(w, http.StatusMethodNotAllowed, "Method not allowed")
+		util.SendAPIErr(w, http.StatusMethodNotAllowed, "WORKSPACE_PROVISION_INVALID_REQUEST")
 		cancel()
 		return
 	}
 	var req services.ProvisionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		util.SendAPIErr(w, http.StatusBadRequest, "Invalid request")
+		util.SendAPIErr(w, http.StatusBadRequest, "WORKSPACE_PROVISION_INVALID_REQUEST")
 		cancel()
 		return
 	}
@@ -67,26 +67,26 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 		services.SendStatus(context.Background(), redisClient, req.Uid, req.SessionId, "1/6:Validating request")
 	}
 	if req.Image == "" {
-		util.SendAPIErr(w, http.StatusBadRequest, "Missing field: image")
+		util.SendAPIErr(w, http.StatusBadRequest, "WORKSPACE_PROVISION_INVALID_REQUEST")
 		cancel()
 		return
 	}
 	templates, err := services.GetTemplates(redisClient)
 	if err != nil {
 		log.Errorf("Could not fetch templates: %v", err)
-		util.SendAPIErr(w, http.StatusInternalServerError, "Unknown error")
+		util.SendAPIErr(w, http.StatusInternalServerError, "UNKNOWN")
 		cancel()
 		return
 	}
 	_, exists := templates[strings.TrimSuffix(req.Image, ":dev")]
 	if !exists {
-		util.SendAPIErr(w, http.StatusBadRequest, "Invalid field: image")
+		util.SendAPIErr(w, http.StatusBadRequest, "WORKSPACE_PROVISION_INVALID_REQUEST")
 		cancel()
 		return
 	}
 	userHeader := r.Header.Get("x-auth-user")
 	if userHeader == "" {
-		util.SendAPIErr(w, http.StatusBadRequest, "Missing x-auth-user header")
+		util.SendAPIErr(w, http.StatusBadRequest, "WORKSPACE_PROVISION_INVALID_REQUEST")
 		cancel()
 		return
 	}
@@ -97,7 +97,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 			cancel()
 			return
 		} else if !eligible {
-			util.SendAPIErr(w, http.StatusBadRequest, "WORKSPACE_CREATION_QUOTA_REACHED")
+			util.SendAPIErr(w, http.StatusBadRequest, "WORKSPACE_PROVISION_QUOTA_REACHED")
 			cancel()
 			return
 		}
@@ -108,13 +108,13 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 	if req.Uuid != "" {
 		err := CheckWorkspaceMembership(userHeader, req.Uuid)
 		if err != nil {
-			util.SendAPIErr(w, http.StatusForbidden, "Not a member of the workspace")
+			util.SendAPIErr(w, http.StatusForbidden, "NO_WORKSPACE_MEMBERSHIP")
 			cancel()
 			return
 		}
 		var devContExists bool
 		if devContExists, err = services.DevContainerExists(bgCtx, req.Uuid, devEnv); err != nil {
-			util.SendAPIErr(w, http.StatusBadRequest, "Could not check container existence")
+			util.SendAPIErr(w, http.StatusBadRequest, "UNKNOWN")
 			cancel()
 			return
 		}
@@ -146,7 +146,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 		err = ConsumeAccessCode(req.AccessCode, userHeader)
 		if err != nil {
 			log.Debugf("Failed to consume access code")
-			util.SendAPIErr(w, http.StatusBadRequest, err.Error())
+			util.SendAPIErr(w, http.StatusBadRequest, "ACCESS_CODE_USE_FAILED")
 			cancel()
 			return
 		}
@@ -197,7 +197,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	} else if preemptPodName != "" {
 		err = services.KillK8sPod(bgCtx, devEnv, preemptPodName)
 		if err != nil {
-			log.Errorf("Could not preempt spot pod: %v", err)
+			log.Errorf("Could not preempt spot workspace: %v", err)
 			services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "UNKNOWN")
 			queueLock.Unlock()
 			return errors.New("UNKNOWN")
@@ -205,11 +205,12 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	}
 
 	privateKey, workspaceUuid, err := services.CreateDevContainer(bgCtx, req, isNew, devEnv, redisClient)
+
+	message := "WORKSPACE_PROVISION_FAILED"
+	if !isNew {
+		message = "WORKSPACE_RESTORE_FAILED"
+	}
 	if err != nil {
-		message := "Failed to provision workspace"
-		if !isNew {
-			message = "Failed to restore workspace"
-		}
 		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, message)
 		queueLock.Unlock()
 		return err
@@ -220,7 +221,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	}
 
 	if err != nil {
-		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "Failed to queue workspace")
+		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, message)
 		queueLock.Unlock()
 		return err
 	}
@@ -228,7 +229,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	err = waitOnDevContainerReady(bgCtx, req, workspaceUuid, 90*time.Second, redisClient)
 
 	if err != nil {
-		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "Failed to start workspace")
+		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "WORKSPACE_BOOT_FAILED")
 		return err
 	}
 
