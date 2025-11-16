@@ -325,20 +325,20 @@ export class ManageService implements OnModuleInit {
 
   async deleteWorkspace(uid: string, workspaceUUID: string) {
     if (typeof workspaceUUID === 'undefined' || workspaceUUID === null) {
-      throw new BadRequestException('Missing workspace uuid');
+      throw new BadRequestException('WORKSPACE_DELETE_INVALID_REQUEST');
     }
     const workspace = await this.wsRepository.findOne({
       where: { uuid: workspaceUUID },
     });
     if (!workspace) {
-      throw new NotFoundException('Workspace with specified uuid not found');
+      throw new NotFoundException('WORKSPACE_NOT_FOUND');
     }
     const membership = await this.msRepository.findOne({ where: { workspaceId: workspace.id, userId: uid } });
     if (!membership) {
-      throw new ForbiddenException('User is not a member of the workspace');
+      throw new ForbiddenException('NO_WORKSPACE_MEMBERSHIP');
     }
     if (roleLevels[membership.role] < roleLevels['admin']) {
-      throw new ForbiddenException('User does not have required permissions');
+      throw new ForbiddenException('WORKSPACE_ACTION_NOT_AUTHORIZED');
     }
 
     const members = (await this.msRepository.find({ where: { workspaceId: workspace.id } })).map(
@@ -552,7 +552,6 @@ export class ManageService implements OnModuleInit {
   }
 
   async fulfillAccessRequest({ action, token }: { action: 'approve' | 'reject'; token: string }) {
-    console.log('Fulfill access request:', action);
     let payload: ServicePayload<AccessRequestPayload>;
     try {
       payload = (verify as unknown as JWTVerifyFn<ServicePayload<AccessRequestPayload>>)(
@@ -597,7 +596,6 @@ export class ManageService implements OnModuleInit {
       accessCode.ntfnId = notificationId;
       await this.accessRepository.save(accessCode);
     }
-    console.log('Fulfill access request: Completed');
   }
 
   async canProvision() {
@@ -673,7 +671,6 @@ export class ManageService implements OnModuleInit {
   }
 
   async deleteAccessCode(user: User, uuid?: string, ntfnId?: string, code?: string) {
-    console.log(uuid, ntfnId, code);
     const accessCode = await this.accessRepository.findOne({
       where: [
         { uid: user.uid, uuid },
@@ -684,7 +681,6 @@ export class ManageService implements OnModuleInit {
     if (accessCode) {
       ntfnId = accessCode.ntfnId;
     }
-    console.log(ntfnId);
     await this.accessRepository.delete([
       { uid: user.uid, uuid },
       { uid: user.uid, code },
@@ -697,7 +693,6 @@ export class ManageService implements OnModuleInit {
         notificationId: ntfnId,
       });
       this.rmq.emit<unknown, ServiceMessage<NotificationRead>>('notification.read', msg);
-      console.log('Sent rmq event');
     }
 
     return { success: true };

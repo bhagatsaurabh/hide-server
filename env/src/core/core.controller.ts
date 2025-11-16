@@ -132,7 +132,7 @@ export class CoreController implements OnModuleInit, OnModuleDestroy {
 
     if (msg.payload.reqAction === 'open') {
       if (!uid) {
-        throw new RpcException({ statusCode: 400, message: 'Invalid request, missing uid' });
+        throw new RpcException({ statusCode: 400, message: 'WORKSPACE_OPEN_INVALID_REQUEST' });
       }
 
       try {

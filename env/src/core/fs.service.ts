@@ -84,7 +84,7 @@ export class FSService {
       await this.updateCache(uid, uuid, path, true);
     } catch (error) {
       void error;
-      this.sendError(uid, sessionId, 'ERR_FETCH_DIRECTORY', correlationId);
+      this.sendError(uid, sessionId, 'FS_ERR_FETCH_DIRECTORY', correlationId);
     }
   }
   async closeDir(uid: string, wsUuid: string, path: string) {

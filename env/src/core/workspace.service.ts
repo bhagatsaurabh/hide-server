@@ -62,17 +62,17 @@ export class WorkspaceService {
   }
   async handleEnvOpen(uid: string, user: Partial<User>, msg: EnvOpenRequest): Promise<WorkspaceWaitDTO> {
     if (!msg.sessionId) {
-      throw new RpcError(400, 'Required session id');
+      throw new RpcError(400, 'WORKSPACE_OPEN_INVALID_REQUEST');
     }
     let workspace: { image: string; dedicated: boolean } | null;
     try {
       workspace = await this.isAMember(uid, msg.uuid);
     } catch (error) {
       void error;
-      throw new RpcError(500, 'Could not check membership');
+      throw new RpcError(500, 'UNKNOWN');
     }
     if (!workspace) {
-      throw new RpcError(401, 'Not a workspace member');
+      throw new RpcError(401, 'NO_WORKSPACE_MEMBERSHIP');
     }
 
     let ready = false;
@@ -93,12 +93,12 @@ export class WorkspaceService {
         }),
       });
       if (res.status < 200 || res.status > 299) {
-        throw new Error();
+        throw new Error('UNKNOWN');
       }
       ready = !((await res.json()) as WorkspaceWaitDTO).wait;
     } catch (error) {
       void error;
-      throw new RpcError(401, 'Failed to open workspace');
+      throw new RpcError(500, 'WORKSPACE_OPEN_FAILED');
     }
 
     if (!ready) {
@@ -114,11 +114,11 @@ export class WorkspaceService {
       await firstValueFrom(this.http.get(`http://workspace-${msg.uuid}/ready`, { timeout: 3000 }));
     } catch (error) {
       console.log(error);
-      throw new RpcError(503, 'Workspace is unreachable');
+      throw new RpcError(503, 'WORKSPACE_UNREACHABLE');
     }
 
     const lock = await this.acquireLock(msg.uuid);
-    if (!lock) throw new Error('Could not acquire lock on workspace');
+    if (!lock) throw new Error('UNKNOWN');
 
     try {
       await this.invalidatePreviousSessions(uid, msg.uuid);
@@ -142,14 +142,14 @@ export class WorkspaceService {
           },
         );
         if (res.status < 200 || res.status > 299) {
-          throw new Error();
+          throw new Error('UNKNOWN');
         }
         this.fsService.setWorkspace(msg.uuid);
         await this.cache.set(CACHEKEY_WORKSPACE(msg.uuid), workspace);
       }
     } catch (error) {
       console.log(error);
-      throw new RpcError(500, 'Unknown error');
+      throw new RpcError(500, 'UNKNOWN');
     } finally {
       await lock.release();
     }

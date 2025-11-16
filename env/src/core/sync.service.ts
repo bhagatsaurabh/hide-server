@@ -50,7 +50,7 @@ export class SyncService {
   ) {
     const workspace = await this.cache.get<CachedWorkspace>(CACHEKEY_WORKSPACE(uuid));
     if (!workspace) {
-      this.sendError(uid, sessionId, 'ERR_NO_WORKSPACE', correlationId);
+      this.sendError(uid, sessionId, 'FATAL_ERR_NO_WORKSPACE', correlationId);
       return;
     }
 
@@ -82,7 +82,7 @@ export class SyncService {
         );
         const success = await doc.whenInitialized;
         if (!success) {
-          this.sendError(uid, sessionId, 'ERR_READ_FILE', correlationId);
+          this.sendError(uid, sessionId, 'FS_ERR_READ_FILE', correlationId);
           doc.destroy();
           if (this.docs.get(uuid)?.size === 1) {
             this.docs.delete(uuid);
@@ -98,7 +98,7 @@ export class SyncService {
       this.sendSuccess(uid, sessionId, correlationId, doc.isConflicting, doc.conflictResolver);
     } catch (error) {
       void error;
-      this.sendError(uid, sessionId, 'ERR_FETCH_FILE', correlationId);
+      this.sendError(uid, sessionId, 'FS_ERR_FETCH_FILE', correlationId);
     }
   }
   async closeFile(uid: string, sessionId: string, uuid: string, ino: number) {

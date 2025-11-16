@@ -70,7 +70,7 @@ export class ProxyService {
     } else if (translation.targetProtocol === Transport.NATS) {
       observable = this.nats.send(translation.pattern!, msg).pipe(timeout(3000));
     } else {
-      throw new InternalServerErrorException();
+      throw new InternalServerErrorException('UNKNOWN');
     }
 
     try {
@@ -79,7 +79,7 @@ export class ProxyService {
       if (isRpcPayloadError(err)) {
         throw new HttpException(err.message, err.statusCode);
       }
-      throw new InternalServerErrorException();
+      throw new InternalServerErrorException('UNKNOWN');
     }
   }
 }
