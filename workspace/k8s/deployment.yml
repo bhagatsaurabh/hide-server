@@ -45,7 +45,7 @@ spec:
             - name: WORKSPACE_CREATION_LIMIT_GUEST
               value: "1"
             - name: WORKSPACE_CREATION_LIMIT_NON_GUEST
-              value: "3"
+              value: "2"
             - name: ADMIN_EMAIL
               value: "support.hide@saurabhagat.me"
             - name: WORKSPACE_CPU_REQUEST

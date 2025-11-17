@@ -138,10 +138,10 @@ export class PresenceService {
         return sid;
       });
       await Promise.allSettled(
-        sessionIds.map(
-          (sessionId, idx) =>
-            sessionId && this.cache.del(CACHEKEY_PRESENCE_WORKSPACE(userIds[idx], sessionId, wsUuid)),
-        ),
+        sessionIds.map((sessionId, idx) => {
+          if (!sessionId) return Promise.resolve(true);
+          return this.cache.del(CACHEKEY_PRESENCE_WORKSPACE(userIds[idx], sessionId, wsUuid));
+        }),
       );
       userIds.forEach((uid, idx) => {
         if (sessionIds[idx]) {
