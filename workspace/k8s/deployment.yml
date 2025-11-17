@@ -45,11 +45,11 @@ spec:
             - name: WORKSPACE_CREATION_LIMIT_GUEST
               value: "1"
             - name: WORKSPACE_CREATION_LIMIT_NON_GUEST
-              value: "2"
+              value: "3"
             - name: ADMIN_EMAIL
               value: "support.hide@saurabhagat.me"
             - name: WORKSPACE_CPU_REQUEST
-              value: "200"
+              value: "350"
             - name: "IDLE_THRESHOLD_CPU"
               value: "350"
             - name: "ACCESS_CODE_EXPIRY_DAYS"
