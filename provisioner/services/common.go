@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	log "github.com/sirupsen/logrus"
 )
 
 func UpdateWorkspaceStatus(workspaceUUID string, status string) error {
@@ -77,7 +77,12 @@ func SendStatus(bgCtx context.Context, redisClient *redis.Client, uid string, se
 	if cErr != nil {
 		log.Printf("Warn: %v", cErr)
 	}
-	redisClient.Publish(bgCtx, "socket.send", sMsg)
+	publishRes := redisClient.Publish(bgCtx, "socket.send", sMsg)
+	if pErr := publishRes.Err(); pErr != nil {
+		log.Debugf("Redis publish error: %v", pErr)
+	} else {
+		log.Debugf("Publish OK, %d subscribers received message", publishRes.Val())
+	}
 }
 
 func SendError(bgCtx context.Context, redisClient *redis.Client, uid string, sessionId string, message string) {
@@ -90,7 +95,12 @@ func SendError(bgCtx context.Context, redisClient *redis.Client, uid string, ses
 	if cErr != nil {
 		log.Printf("Warn: %v", cErr)
 	}
-	redisClient.Publish(bgCtx, "socket.send", msg)
+	publishRes := redisClient.Publish(bgCtx, "socket.send", msg)
+	if pErr := publishRes.Err(); pErr != nil {
+		log.Debugf("Redis publish error: %v", pErr)
+	} else {
+		log.Debugf("Publish OK, %d subscribers received message", publishRes.Val())
+	}
 }
 
 func SendSuccess(bgCtx context.Context, redisClient *redis.Client, uid string, sessionId string, privateKey string, workspace WorkspaceDTO) {
@@ -107,5 +117,10 @@ func SendSuccess(bgCtx context.Context, redisClient *redis.Client, uid string, s
 	if cErr != nil {
 		log.Printf("Warn: %v", cErr)
 	}
-	redisClient.Publish(bgCtx, "socket.send", msg)
+	publishRes := redisClient.Publish(bgCtx, "socket.send", msg)
+	if pErr := publishRes.Err(); pErr != nil {
+		log.Debugf("Redis publish error: %v", pErr)
+	} else {
+		log.Debugf("Publish OK, %d subscribers received message", publishRes.Val())
+	}
 }
