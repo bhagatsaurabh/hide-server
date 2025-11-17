@@ -181,7 +181,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	queueLock.Lock()
 	log.Debugf("Acquired queue lock")
 
-	hasCpuCapacity, preemptPodName, err := hasCapacity(bgCtx, devEnv)
+	hasCpuCapacity, preemptPodName, err := hasCapacity(bgCtx, devEnv, req.Dedicated)
 	if err != nil {
 		log.Errorf("Could not check capacity: %v", err)
 		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "UNKNOWN")
@@ -195,6 +195,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 		queueLock.Unlock()
 		return errors.New("NO_CAPACITY")
 	} else if preemptPodName != "" {
+		log.Debugf("Preempting spot workspace: %s", preemptPodName)
 		err = services.KillK8sPod(bgCtx, devEnv, preemptPodName)
 		if err != nil {
 			log.Errorf("Could not preempt spot workspace: %v", err)
@@ -399,7 +400,7 @@ func waitOnDevContainerReady(bgCtx context.Context, req services.ProvisionReques
 	return errors.New("Workspace timed-out during boot")
 }
 
-func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
+func hasCapacity(bgCtx context.Context, devEnv string, dedicated bool) (bool, string, error) {
 	if devEnv == "docker" {
 		return true, "", nil
 	}
@@ -413,6 +414,7 @@ func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
 
 	nodes, err := clientset.CoreV1().Nodes().List(bgCtx, metav1.ListOptions{})
 	if err != nil {
+		log.Errorf("Failed to list nodes: %v", err)
 		return false, "", err
 	}
 
@@ -434,6 +436,7 @@ func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
 	var totalRequestedCpu int64 = 0
 	pods, err := clientset.CoreV1().Pods("default").List(bgCtx, metav1.ListOptions{})
 	if err != nil {
+		log.Errorf("Failed to list pods: %v", err)
 		return false, "", err
 	}
 	for _, pod := range pods.Items {
@@ -468,7 +471,9 @@ func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
 		bgCtx,
 		metav1.ListOptions{LabelSelector: "wstype=spot"},
 	)
+	log.Debugf("Number of spot pods: %d", spotPods.Size())
 	if err != nil {
+		log.Errorf("Failed to list pods with label wstype=spot: %v", err)
 		return false, "", err
 	}
 	var oldestPod *v1.Pod
@@ -478,7 +483,9 @@ func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
 			continue
 		}
 		ct := pod.CreationTimestamp.Time
+		log.Debugf("Listing Pod: %s, %s", pod.Name, ct.String())
 		if oldestPod == nil || ct.Before(oldestTime) {
+			log.Debugf("Found candidate: %s", pod.Name)
 			oldestPod = &pod
 			oldestTime = ct
 		}
@@ -493,7 +500,17 @@ func hasCapacity(bgCtx context.Context, devEnv string) (bool, string, error) {
 		return false, "", err
 	}
 
+	if dedicated {
+		if oldestPod == nil {
+			return false, "", nil
+		} else {
+			log.Debugf("Dedicated request, returning oldest pod to preempt")
+			return false, oldestPod.Name, nil
+		}
+	}
+
 	if oldestPod == nil {
+		log.Debugf("Oldest pod is nil")
 		return false, "", nil
 	}
 
