@@ -19,7 +19,7 @@ services:
       DOCKER_HOST: tcp://host.docker.internal:2375
       DEV_PLATFORM: docker
       DEV_FS_SOURCE: "${DEV_FS_SOURCE}"
-      WORKSPACE_CPU_REQUEST: "200"
+      WORKSPACE_CPU_REQUEST: "350"
       IDLE_THRESHOLD_CPU: "350"
       PREEMPT_SPOT_OLDER_THAN_HOURS: "12"
       DEDICATED_LEASE_EXPIRY_DAYS: "2"

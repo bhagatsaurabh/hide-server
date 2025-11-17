@@ -653,7 +653,7 @@ export class ManageService implements OnModuleInit {
       throw new InternalServerErrorException('UNKNOWN');
     }
 
-    let wsCpu = parseInt(process.env.WORKSPACE_CPU_REQUEST ?? '200');
+    let wsCpu = parseInt(process.env.WORKSPACE_CPU_REQUEST ?? '350');
     if (isNaN(wsCpu)) wsCpu = 200;
 
     let idleThresholdCpu = parseInt(process.env.IDLE_THRESHOLD_CPU ?? '350');
