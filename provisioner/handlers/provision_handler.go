@@ -64,7 +64,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 	}
 	log.Debugf("Req json %+v\n", req)
 	if req.Uuid == "" {
-		services.SendStatus(context.Background(), redisClient, req.Uid, req.SessionId, "1/6:Validating request")
+		go services.SendStatus(context.Background(), redisClient, req.Uid, req.SessionId, "1/6:Validating request")
 	}
 	if req.Image == "" {
 		util.SendAPIErr(w, http.StatusBadRequest, "WORKSPACE_PROVISION_INVALID_REQUEST")
@@ -127,7 +127,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 			return
 		} else {
 			log.Debugf("Uuid passed and container does not exist")
-			services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "Restoring your workspace")
+			go services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "Restoring your workspace")
 
 			go func() {
 				defer cancel()
@@ -184,21 +184,21 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	hasCpuCapacity, preemptPodName, err := hasCapacity(bgCtx, devEnv)
 	if err != nil {
 		log.Errorf("Could not check capacity: %v", err)
-		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "UNKNOWN")
+		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "UNKNOWN")
 		queueLock.Unlock()
 		return errors.New("UNKNOWN")
 	}
 	log.Debugf("HasCapacity: %t %s", hasCpuCapacity, preemptPodName)
 
 	if !hasCpuCapacity && preemptPodName == "" {
-		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "NO_CAPACITY")
+		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "NO_CAPACITY")
 		queueLock.Unlock()
 		return errors.New("NO_CAPACITY")
 	} else if preemptPodName != "" {
 		err = services.KillK8sPod(bgCtx, devEnv, preemptPodName)
 		if err != nil {
 			log.Errorf("Could not preempt spot workspace: %v", err)
-			services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "UNKNOWN")
+			go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "UNKNOWN")
 			queueLock.Unlock()
 			return errors.New("UNKNOWN")
 		}
@@ -211,7 +211,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 		message = "WORKSPACE_RESTORE_FAILED"
 	}
 	if err != nil {
-		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, message)
+		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, message)
 		queueLock.Unlock()
 		return err
 	}
@@ -221,7 +221,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	}
 
 	if err != nil {
-		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, message)
+		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, message)
 		queueLock.Unlock()
 		return err
 	}
@@ -229,7 +229,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	err = waitOnDevContainerReady(bgCtx, req, workspaceUuid, 90*time.Second, redisClient)
 
 	if err != nil {
-		services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "WORKSPACE_BOOT_FAILED")
+		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "WORKSPACE_BOOT_FAILED")
 		return err
 	}
 
@@ -380,7 +380,7 @@ func DeleteAccessCode(code string, userHeader string) error {
 }
 
 func waitOnDevContainerReady(bgCtx context.Context, req services.ProvisionRequest, uuid string, timeout time.Duration, redisClient *redis.Client) error {
-	services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "5/6:Almost there... starting services")
+	go services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "5/6:Almost there... starting services")
 
 	deadline := time.Now().Add(timeout)
 	client := &http.Client{
@@ -390,7 +390,7 @@ func waitOnDevContainerReady(bgCtx context.Context, req services.ProvisionReques
 	for time.Now().Before(deadline) {
 		resp, err := client.Get(fmt.Sprintf("http://workspace-%s/ready", uuid))
 		if err == nil && resp.StatusCode == http.StatusOK {
-			services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "6/6:Workspace ready !")
+			go services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "6/6:Workspace ready !")
 			return nil
 		}
 		time.Sleep(500 * time.Millisecond)
