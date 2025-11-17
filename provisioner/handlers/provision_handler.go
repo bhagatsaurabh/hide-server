@@ -127,7 +127,7 @@ func ProvisionHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Req
 			return
 		} else {
 			log.Debugf("Uuid passed and container does not exist")
-			go services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "Restoring your workspace")
+			go services.SendStatus(context.Background(), redisClient, req.Uid, req.SessionId, "Restoring your workspace")
 
 			go func() {
 				defer cancel()
@@ -184,14 +184,14 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	hasCpuCapacity, preemptPodName, err := hasCapacity(bgCtx, devEnv, req.Dedicated)
 	if err != nil {
 		log.Errorf("Could not check capacity: %v", err)
-		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "UNKNOWN")
+		go services.SendError(context.Background(), redisClient, req.Uid, req.SessionId, "UNKNOWN")
 		queueLock.Unlock()
 		return errors.New("UNKNOWN")
 	}
 	log.Debugf("HasCapacity: %t %s", hasCpuCapacity, preemptPodName)
 
 	if !hasCpuCapacity && preemptPodName == "" {
-		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "NO_CAPACITY")
+		go services.SendError(context.Background(), redisClient, req.Uid, req.SessionId, "NO_CAPACITY")
 		queueLock.Unlock()
 		return errors.New("NO_CAPACITY")
 	} else if preemptPodName != "" {
@@ -199,7 +199,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 		err = services.KillK8sPod(bgCtx, devEnv, preemptPodName)
 		if err != nil {
 			log.Errorf("Could not preempt spot workspace: %v", err)
-			go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "UNKNOWN")
+			go services.SendError(context.Background(), redisClient, req.Uid, req.SessionId, "UNKNOWN")
 			queueLock.Unlock()
 			return errors.New("UNKNOWN")
 		}
@@ -212,7 +212,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 		message = "WORKSPACE_RESTORE_FAILED"
 	}
 	if err != nil {
-		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, message)
+		go services.SendError(context.Background(), redisClient, req.Uid, req.SessionId, message)
 		queueLock.Unlock()
 		return err
 	}
@@ -222,7 +222,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	}
 
 	if err != nil {
-		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, message)
+		go services.SendError(context.Background(), redisClient, req.Uid, req.SessionId, message)
 		queueLock.Unlock()
 		return err
 	}
@@ -230,7 +230,7 @@ func provision(bgCtx context.Context, req services.ProvisionRequest, userHeader 
 	err = waitOnDevContainerReady(bgCtx, req, workspaceUuid, 90*time.Second, redisClient)
 
 	if err != nil {
-		go services.SendError(bgCtx, redisClient, req.Uid, req.SessionId, "WORKSPACE_BOOT_FAILED")
+		go services.SendError(context.Background(), redisClient, req.Uid, req.SessionId, "WORKSPACE_BOOT_FAILED")
 		return err
 	}
 
@@ -381,7 +381,7 @@ func DeleteAccessCode(code string, userHeader string) error {
 }
 
 func waitOnDevContainerReady(bgCtx context.Context, req services.ProvisionRequest, uuid string, timeout time.Duration, redisClient *redis.Client) error {
-	go services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "5/6:Almost there... starting services")
+	go services.SendStatus(context.Background(), redisClient, req.Uid, req.SessionId, "5/6:Almost there... starting services")
 
 	deadline := time.Now().Add(timeout)
 	client := &http.Client{
@@ -391,7 +391,7 @@ func waitOnDevContainerReady(bgCtx context.Context, req services.ProvisionReques
 	for time.Now().Before(deadline) {
 		resp, err := client.Get(fmt.Sprintf("http://workspace-%s/ready", uuid))
 		if err == nil && resp.StatusCode == http.StatusOK {
-			go services.SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "6/6:Workspace ready !")
+			go services.SendStatus(context.Background(), redisClient, req.Uid, req.SessionId, "6/6:Workspace ready !")
 			return nil
 		}
 		time.Sleep(500 * time.Millisecond)
