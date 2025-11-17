@@ -472,7 +472,7 @@ export class ManageService implements OnModuleInit {
   async checkEligibility(user: User) {
     let isGuest = true;
     const authUser = await this.firebaseService.auth.getUser(user.uid);
-    isGuest = !authUser.providerData.length;
+    isGuest = !authUser.providerData.length && !authUser.emailVerified;
 
     let limit = isGuest
       ? parseInt(process.env.WORKSPACE_CREATION_LIMIT_GUEST!)
