@@ -109,7 +109,7 @@ type ServiceEvent[T any] struct {
 func CreateDevContainer(bgCtx context.Context, req ProvisionRequest, isNew bool, devEnv string, redisClient *redis.Client) (string, string, error) {
 	log.Debugf("Creating container: isNew:%t dedicated:%t, code:%s", isNew, req.Dedicated, req.AccessCode)
 	if !isNew {
-		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "1/6:Restoring your data")
+		go SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "1/6:Restoring your data")
 		log.Debugf("Checking volume existence")
 		volumeExists, err := VolumeExists(bgCtx, req.Uuid, devEnv)
 		if err != nil {
@@ -189,7 +189,7 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 			}
 		}
 
-		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "3/6:Allocating storage")
+		go SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "3/6:Allocating storage")
 		log.Debugf("Creating volumes")
 		err = CreateK8sVolume(clientset, bgCtx, wsUuid)
 	}
@@ -197,7 +197,7 @@ func CreateK8sPod(bgCtx context.Context, redisClient *redis.Client, req Provisio
 		return "", "", err
 	}
 
-	SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "4/6:Setting up your environment")
+	go SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "4/6:Setting up your environment")
 	wsType := "spot"
 	if req.Dedicated {
 		wsType = "dedicated"
@@ -256,7 +256,7 @@ func CreateDockerContainer(bgCtx context.Context, redisClient *redis.Client, req
 	}
 
 	if isNew {
-		SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "2/6:Preparing storage")
+		go SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "2/6:Preparing storage")
 
 		err = CreateDockerVolume(cli, bgCtx, fmt.Sprintf("workspace-data-%s", wsUuid))
 		if err != nil {
@@ -268,7 +268,7 @@ func CreateDockerContainer(bgCtx context.Context, redisClient *redis.Client, req
 		return "", "", err
 	}
 
-	SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "3/6:Allocating storage")
+	go SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "3/6:Allocating storage")
 	resp, err := cli.ContainerCreate(
 		bgCtx,
 		util.GetContainerSpec(wsUuid, req.Image, publicKey),
@@ -284,7 +284,7 @@ func CreateDockerContainer(bgCtx context.Context, redisClient *redis.Client, req
 		return "", "", err
 	}
 
-	SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "4/6:Setting up your environment")
+	go SendStatus(bgCtx, redisClient, req.Uid, req.SessionId, "4/6:Setting up your environment")
 	if err := cli.ContainerStart(bgCtx, resp.ID, container.StartOptions{}); err != nil {
 		log.Println("Failed to start container", err)
 		return "", "", err
