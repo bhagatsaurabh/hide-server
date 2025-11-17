@@ -48,6 +48,7 @@ export class WorkspaceService {
     'fs.conflict.resolve',
     'ws.run',
   ];
+  wsActivityTimeout: number;
 
   constructor(
     @Inject('ENV_SERVICE_REDIS') private readonly redis: ClientProxy,
@@ -59,6 +60,9 @@ export class WorkspaceService {
     private readonly http: HttpService,
   ) {
     this.cache = this.cacheService.get();
+
+    const wsActivityTimeout = parseInt(process.env.WORKSPACE_ACTIVITY_TIMEOUT as string);
+    this.wsActivityTimeout = isNaN(wsActivityTimeout) ? 3600000 : wsActivityTimeout;
   }
   async handleEnvOpen(uid: string, user: Partial<User>, msg: EnvOpenRequest): Promise<WorkspaceWaitDTO> {
     if (!msg.sessionId) {
@@ -201,7 +205,11 @@ export class WorkspaceService {
         // Mark for immediate de-provisioning
         workspace.state = 'inactive';
         await this.cache.set(CACHEKEY_WORKSPACE(msg.uuid), workspace);
-        await this.cache.set(CACHEKEY_PRESENCE_WORKSPACE(uid, sessionId, msg.uuid), 0, 200);
+        await this.cache.set(
+          CACHEKEY_PRESENCE_WORKSPACE(uid, sessionId, msg.uuid),
+          0,
+          this.wsActivityTimeout,
+        );
       }
     } finally {
       await lock.release();

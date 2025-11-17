@@ -39,11 +39,9 @@ spec:
             - name: PREEMPT_SPOT_OLDER_THAN_HOURS
               value: "12"
             - name: LOG_LEVEL
-              value: "debug"
+              value: "info"
             - name: IN_CLUSTER_K8S_CONFIG
               value: "true"
-            - name: NO_JOB_DELETE
-              value: "false"
             - name: DEDICATED_LEASE_EXPIRY_DAYS
               value: "2"
           readinessProbe:

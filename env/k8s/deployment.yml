@@ -31,6 +31,8 @@ spec:
               value: "amqp://rabbitmq:5672"
             - name: NATS_URL
               value: "nats://nats:4222"
+            - name: WORKSPACE_ACTIVITY_TIMEOUT
+              value: "3600000"
           readinessProbe:
             httpGet:
               path: /api/health
