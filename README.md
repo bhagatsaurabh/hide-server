@@ -14,8 +14,7 @@
 </a>
 </p>
 <p align="center">
-<img alt="Server status" src="https://img.shields.io/badge/dynamic/json?url=https://api.hide.saurabhagat.me/api/health&query=$.status&style=flat-square&label=Status%0D%0A
-" />
+<img alt="Server status" src="https://img.shields.io/badge/dynamic/json?url=https://api.hide.saurabhagat.me/api/health&query=$.status&style=flat-square&label=Status%0D%0A" />
 <a href="https://github.com/bhagatsaurabh/hide-server/commits/main" style="text-decoration: none;">
 <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/bhagatsaurabh/hide-server?color=lightgrey&label=Last%20Commit&logo=data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAI9SURBVEhLzZZNSFRRGIbHBDHdiQm5CcNIMEOcEWwRkm3E1lI7FQOX0tptIIhgIIKKrlo0tHBThEGFOwVnXGggRi50oag7kYJ%2BHJ%2F3nDuXM%2BM91xFc%2BMLDd36%2F852f%2B82UJWKUyWSaMc%2BhE5qgBqRD%2BA5fIZ1KpXbVGKXIBXAsZ%2BPQA7FBoH%2BQhpH8Qsyvw3yCv%2Bcm0zmImYSbpqF0HcMQfAPt7AEURofzEcxrW4tULrC%2BXal%2FH%2BpNDd0IrJz3Y6Kcr4EiuweVAY3wElbBlRYOnUsmEpw3YDagWvVAv2AY5jnbfOQFymazZblcboCijrTKNBYpv4NRcJ3%2Fhm4cz%2FmcS8lkUn0fwP%2BKiP4OdhvKTYvVEI5ng7JXzL2F0YW2mIYIaQcvwHW%2BBXO2eKEWwetc0gJ6Tv8dJoj%2BFFuK%2FoA7t5gVHZEuOnxNOFdHyWK%2Bu%2FsCXdbX9VT%2BO7iybbq%2BNFd3sEy53TZFapWBj4JyrPClL37K1ozGdLkdoFV9VMCF4quWr1fgzl0PX49HSh%2FdthgvUoZy031bM1J2%2FRi3wA94yvEc2apfHM1jzBtbCzXD3JO4BZRCepnsHaNkR78i1xft%2Fn4cgPKbyUXeZBZIxzQNX2AHNF6LPwFdahu40qt7RvSfVSleYA9uQ9wPiuTrV4pRogxzmbt9RdoKfXCihgjJsc%2B5LrXXdS5pgRXIgrlQeEv5IbyHUpKexmhsC3MXTIsjXzRGHN9djNJ5F%2BgvTC1IelmbsATvcPxTjeeVSJwBR3%2BzVV1X6owAAAAASUVORK5CYII%3D&style=flat-square">
 </a>
