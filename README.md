@@ -1,5 +1,5 @@
 <p align="center">
-<img src="docs/resources/logo-compact.svg" width="800" alt="H-IDE Logo" style="min-width: 192px;max-width:350px;width:100%" />
+<img src="docs/resources/logo.svg" width="300" alt="H-IDE Logo"/>
 </p>
 
 <p align="center">
