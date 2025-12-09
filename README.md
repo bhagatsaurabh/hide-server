@@ -1,5 +1,5 @@
 <p align="center">
-<img src="docs/resources/logo.svg" width="300" alt="H-IDE Logo"/>
+<img src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/logo.svg" width="300" alt="H-IDE Logo"/>
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@ H-IDE server is designed with scalability in mind, all the microservices are cap
 On the high level, there are 4 major abstractions, the H-IDE frontend, the singleton Kubernetes cluster running on an Oracle VM, Azure services and Firebase services.
 
 <p align="center">
-<img alt="H-IDE architecture L0" src="docs/resources/hide-server-architecture-0.svg" width="275" />
+<img alt="H-IDE architecture L0" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/hide-server-architecture-0.svg" width="300" />
 </p>
 
 #### Services
@@ -45,5 +45,132 @@ On the high level, there are 4 major abstractions, the H-IDE frontend, the singl
 There are 7 microservices handling all of the H-IDE functionalities, along with 5 infra-only services, logging setups and other kubernetes controllers/daemons.
 
 <p align="center">
-<img alt="H-IDE architecture L1" src="docs/resources/hide-server-architecture-1.svg" width="475" />
+<img alt="H-IDE architecture L1" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/hide-server-architecture-1.svg" width="786" />
 </p>
+
+## Security Model
+
+- Firebase authentication with custom claims
+- Workspace isolation
+- RBAC for workspaces
+- Service-level JWT authentication
+- Ingress TLS
+
+## Development
+
+### Firebase emulators
+
+Refer the following documentations on how to run firebase emulators locally
+
+[Firebase CLI](https://firebase.google.com/docs/cli#setup_update_cli), [Auth emulator setup](https://firebase.google.com/docs/emulator-suite/connect_auth#admin_sdks), [Firestore emulator setup](https://firebase.google.com/docs/emulator-suite/connect_firestore#admin_sdks), [Storage emulator setup](https://firebase.google.com/docs/emulator-suite/connect_storage#admin_sdks)
+
+#### Caddy
+
+Since H-IDE uses [Typesense](https://github.com/typesense/typesense) as a search engine together with Firestore extension, it is crucial to proxy the local Typesense server on https, current setup uses [Caddy](https://github.com/caddyserver/caddy) to do just that.
+
+Make sure the following variable is set in the current environment to the path where Caddy stores the local root certificate.
+
+*NODE_EXTRA_CA_CERTS*
+
+### Build & Start
+
+Builds and starts the docker-compose stack
+
+```shell
+npm run dev
+```
+
+#### Build & start specific services
+
+```shell
+npm run dev -- <servicename> [<servicename>...]
+```
+
+### Sequence
+
+Since the local firebase emulators (including the extensions emulator for typesense) depends on the availability of the local typesense server, it is recommended to start the the local typesense service first, before running the firebase emulators.
+
+Once all the firebase emulators are up, all H-IDE services can be stopped/started normally.
+
+This is to ensure that Firestore and the Typesense extension for firebase can both work correctly while developing.
+
+## Deployment
+
+Following steps can be referred to reproduce H-IDE backend on a singleton cluster.
+
+- Install [k3s](https://github.com/k3s-io/k3s) with extra SAN (if required)
+```shell
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--tls-san <external-ip>" sh -
+```
+
+- Install [cert-manager](https://github.com/cert-manager/cert-manager)
+```shell
+sudo kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
+```
+
+- Label the node for local storage provisioning
+```shell
+sudo kubectl label node <node-name> workspace-storage=local
+```
+
+- Create traefik-override.yml
+```yml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    ports:
+      web:
+        forwardedHeaders:
+          trustedIPs:
+            - "0.0.0.0/0"
+      websecure:
+        forwardedHeaders:
+          trustedIPs:
+            - "0.0.0.0/0"
+```
+```shell
+sudo kubectl apply -f traefik-override.yml
+```
+
+- Install lvm2
+```shell
+sudo apt install -y lvm2
+```
+
+- Create a physical volume
+```shell
+sudo pvcreate /dev/<device-id>
+```
+
+- Create a logical volume group
+```shell
+sudo vgcreate workspace-vg /dev/<device-id>
+```
+
+- Create a directory to store volumes
+```shell
+sudo mkdir -p /data/workspace-volumes
+```
+
+and done, provisioner service will take it from here for creating/activating/removing logical volumes.
+
+## Feedback
+
+Feel free to send any feedback on personal@saurabhagat.me
+
+## License
+
+[MIT](https://github.com/bhagatsaurabh/hide-server/blob/main/LICENSE) Licensed | 2025-present | Saurabh Bhagat
+
+## Acknowledgement
+
+- [Redlock](https://github.com/mike-marcacci/node-redlock)
+- [Yjs](https://github.com/yjs/yjs)
+- [NATS](https://github.com/nats-io)
+- [Logrus](https://pkg.go.dev/github.com/sirupsen/logrus)
+- [TypeORM](https://github.com/typeorm/typeorm)
+- [Nodemailer](https://github.com/nodemailer/nodemailer)
