@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-The H-IDE server is the powerhouse of the H-IDE platform — a fully containerized online development environment that provisions isolated Linux workspaces, supports real-time collaborative editing, routes SSH sessions, manages workspaces, synchronizes user data, and orchestrates the full lifecycle of ephemeral dev containers.
+The H-IDE server is the powerhouse of the platform — a fully containerized online development environment that provisions isolated Linux workspaces, supports real-time collaborative editing, routes SSH sessions, manages workspaces, synchronizes user data, and orchestrates the full lifecycle of ephemeral dev containers.
 </p>
 
 ## Introduction
@@ -34,8 +34,16 @@ H-IDE server is designed with scalability in mind, all the microservices are cap
 
 #### System Context
 
-On the high level, there are 4 major abstractions, the H-IDE frontend, the singleton Kubernetes cluster, Azure services and Firebase services.
+On the high level, there are 4 major abstractions, the H-IDE frontend, the singleton Kubernetes cluster running on an Oracle VM, Azure services and Firebase services.
 
 <p align="center">
-<img alt="H-IDE architecture L0" src="/docs/resources/hide-server-architecture-0.svg" />
+<img alt="H-IDE architecture L0" src="docs/resources/hide-server-architecture-0.svg" width="275" />
+</p>
+
+#### Services
+
+There are 7 microservices handling all of the H-IDE functionalities, along with 5 infra-only services, logging setups and other kubernetes controllers/daemons.
+
+<p align="center">
+<img alt="H-IDE architecture L1" src="docs/resources/hide-server-architecture-1.svg" width="475" />
 </p>
