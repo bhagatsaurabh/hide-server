@@ -1,0 +1,297 @@
+openapi: 3.1.0
+
+info:
+  title: User Microservice API
+  version: 1.0.0
+  description: |
+    Handles user registration, updates, profile retrieval, and search queries.
+    Supports Firestore storage for avatars and Typesense user searches.
+
+servers:
+  - url: http://localhost:8080
+    description: Local dev
+
+tags:
+  - name: Profile
+  - name: Search
+
+components:
+  securitySchemes: {}
+  parameters:
+    AuthUserHeader:
+      name: x-auth-user
+      in: header
+      required: true
+      description: Base64 encoded JSON user context
+      schema:
+        type: string
+  schemas:
+    User:
+      allOf:
+        - $ref: "../schemas/common/user.yml#/User"
+    PartialUser:
+      allOf:
+        - $ref: "../schemas/common/partial-user.yml#/PartialUser"
+    RegisterRequest:
+      allOf:
+        - $ref: "../schemas/user/register-request.yml#/RegisterRequest"
+    UpdateRequest:
+      allOf:
+        - $ref: "../schemas/user/update-request.yml#/UpdateRequest"
+    SearchResult:
+      allOf:
+        - $ref: "../schemas/user/search-result.yml#/SearchResult"
+    SearchHighlight:
+      allOf:
+        - $ref: "../schemas/user/search-highlight.yml#/SearchHighlight"
+    UserDetailsMissing:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/UserDetailsMissing"
+    InvalidUserName:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/InvalidUserName"
+    InvalidUsername:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/InvalidUsername"
+    UserAlreadyRegistered:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/UserAlreadyRegistered"
+    UnknownError:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/UnknownError"
+    InvalidEmail:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/InvalidEmail"
+    InvalidUserIdentity:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/InvalidUserIdentity"
+    UpdateUserForbidden:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/UpdateUserForbidden"
+    UserNotFound:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/UserNotFound"
+    UserDoesNotExist:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/UserDoesNotExist"
+
+paths:
+  /register:
+    post:
+      summary: Register a new user
+      tags: [Profile]
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "204":
+          description: User registered successfully
+
+        "400":
+          description: Invalid input or already exists
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/UserDetailsMissing"
+                  - $ref: "#/components/schemas/InvalidUserName"
+                  - $ref: "#/components/schemas/InvalidUsername"
+                  - $ref: "#/components/schemas/UserAlreadyRegistered"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /update:
+    patch:
+      summary: Update an existing user
+      tags: [Profile]
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRequest"
+      responses:
+        "204":
+          description: User updated
+        "400":
+          description: Invalid update data
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/InvalidUserName"
+                  - $ref: "#/components/schemas/InvalidUsername"
+                  - $ref: "#/components/schemas/InvalidEmail"
+                  - $ref: "#/components/schemas/InvalidUserIdentity"
+                  - $ref: "#/components/schemas/UpdateUserForbidden"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserNotFound"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /delete:
+    delete:
+      summary: Delete a user
+      tags: [Profile]
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      responses:
+        "202":
+          description: User delete requested
+
+        "404":
+          description: User does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDoesNotExist"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /search:
+    get:
+      summary: Search users via Typesense
+      tags: [Search]
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Search successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResult"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /profile:
+    get:
+      summary: Get user profile by uid
+      tags: [Search]
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+        - name: uid
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartialUser"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserNotFound"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /all:
+    post:
+      summary: Get multiple user profiles
+      tags: [Search]
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        "200":
+          description: User profiles fetched successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PartialUser"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /{uid}:
+    get:
+      summary: Get a user profile by firebase UID
+      tags: [Search]
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartialUser"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserNotFound"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"

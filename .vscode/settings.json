@@ -7,6 +7,7 @@
   "yaml.schemas": {
     "kubernetes://schema/v1%40secret": [
       "file:///d%3A/Softwares/Prosoft/Projects/Polyglot/hide-server/k8s/secret.yml"
-    ]
+    ],
+    "https://www.asyncapi.com/schema-store/all.schema-store.json": "file:///d%3A/Softwares/Prosoft/Projects/Polyglot/hide-server/api/services/user.asyncapi.yml"
   }
 }

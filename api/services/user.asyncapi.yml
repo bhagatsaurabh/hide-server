@@ -1,0 +1,38 @@
+asyncapi: 2.6.0
+
+info:
+  title: User Microservice Messaging
+  version: 1.0.0
+  description: |
+    Async API for retrieving user profiles.
+
+servers:
+  production:
+    url: nats://localhost:8080
+    protocol: nats
+
+channels:
+  user.profile:
+    description: Retrieve a user profile given a uid
+    subscribe:
+      summary: Consumer receives user profile
+      message:
+        $ref: "#/components/messages/UserProfileResponse"
+    publish:
+      summary: Caller requests user profile
+      message:
+        $ref: "#/components/messages/UserProfileRequest"
+
+components:
+  messages:
+    UserProfileRequest:
+      name: UserProfileRequest
+      title: Request user profile
+      payload:
+        $ref: "../schemas/user/user-profile-request.message.yml#/NatsUserProfileRequest"
+
+    UserProfileResponse:
+      name: UserProfileResponse
+      title: Response containing partial user data
+      payload:
+        $ref: "../schemas/user/user-profile-response.message.yml#/NatsUserProfileResponse"

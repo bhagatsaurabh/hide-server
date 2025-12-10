@@ -65,7 +65,7 @@ export class SearchService {
 
     const snap = await this.collection.where('uid', '==', uid).get();
     if (snap.empty) {
-      throw new NotFoundException('User id not found');
+      throw new NotFoundException('USER_NOT_FOUND');
     }
     profile = snap.docs[0].data();
     await this.cache.set(CACHEKEY_USER_PROFILE(uid), profile);

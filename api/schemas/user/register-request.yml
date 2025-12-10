@@ -1,0 +1,14 @@
+RegisterRequest:
+  type: object
+  required: [name, username, picture]
+  properties:
+    name:
+      type: string
+      nullable: true
+    username:
+      type: string
+      nullable: true
+    picture:
+      type: string
+      format: uri
+      nullable: true

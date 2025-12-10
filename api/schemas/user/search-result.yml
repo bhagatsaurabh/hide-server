@@ -1,0 +1,18 @@
+SearchResult:
+  type: object
+  required: [data, page]
+  properties:
+    data:
+      type: array
+      items:
+        type: object
+        properties:
+          doc:
+            $ref: "../common/partial-user.yml#/PartialUser"
+          highlights:
+            type: array
+            items:
+              $ref: "./search-highlight.yml#/SearchHighlight"
+    page:
+      type: integer
+      minimum: 1

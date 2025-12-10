@@ -1,0 +1,17 @@
+NatsUserProfileRequest:
+  type: object
+  properties:
+    meta:
+      type: object
+      properties:
+        uid: { type: string }
+        sessionId: { type: string }
+        requestId: { type: string }
+        timestamp: { type: number }
+        route: { type: string }
+    payload:
+      type: object
+      required: [uid]
+      properties:
+        uid:
+          type: string

@@ -1,0 +1,8 @@
+SearchHighlight:
+  type: object
+  required: [field, snippet]
+  properties:
+    field:
+      type: string
+    snippet:
+      type: string
