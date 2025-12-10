@@ -1,0 +1,12 @@
+VerifyEmailRequest:
+  type: object
+  required: [email, code]
+  properties:
+    email:
+      type: string
+      format: email
+    code:
+      type: string
+      minLength: 5
+      maxLength: 5
+      pattern: "^[A-Za-z0-9]{5}$"

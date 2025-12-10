@@ -1,0 +1,85 @@
+ErrorBase:
+  type: object
+  required: [timestamp, status, message, path]
+  properties:
+    timestamp:
+      type: string
+      format: date-time
+    status:
+      type: integer
+    message:
+      type: string
+    path:
+      type: string
+
+InvalidAuthHeader:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "INVALID_AUTH_HEADER"
+        status:
+          const: 400
+
+InvalidToken:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "INVALID_TOKEN"
+        status:
+          const: 401
+
+InvalidEmail:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "INVALID_EMAIL"
+        status:
+          const: 400
+
+PinExpired:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "PIN_EXPIRED"
+        status:
+          const: 400
+
+EmailVerifyCodeWrong:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "EMAIL_VERIFY_CODE_WRONG"
+        status:
+          const: 400
+
+EmailVerifyCodeMaxAttempts:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "EMAIL_VERIFY_CODE_MAX_ATTEMPTS_REACHED"
+        status:
+          const: 429
+
+EmailRequestCodeMaxAttempts:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "EMAIL_REQUEST_CODE_MAX_ATTEMPTS_REACHED"
+        status:
+          const: 429
+
+UnknownError:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "UNKNOWN"
+        status:
+          const: 500

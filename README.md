@@ -48,6 +48,16 @@ There are 7 microservices handling all of the H-IDE functionalities, along with 
 <img alt="H-IDE architecture L1" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/hide-server-architecture-1.svg" width="786" />
 </p>
 
+##### Auth
+
+The Auth microservice provides token validation, email verification workflow, and Firebase user creation.
+
+[API Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/auth.openapi.yml)
+
+<p align="center">
+<img alt="Auth microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/auth.svg" width="500" />
+</p>
+
 ## Security Model
 
 - Firebase authentication with custom claims
@@ -156,7 +166,7 @@ sudo vgcreate workspace-vg /dev/<device-id>
 sudo mkdir -p /data/workspace-volumes
 ```
 
-and done, provisioner service will take it from here for creating/activating/removing logical volumes.
+...and done, provisioner service will take it from here for creating/activating/removing logical volumes as the workspaces are created or deleted by end users.
 
 ## Feedback
 
@@ -166,7 +176,7 @@ Feel free to send any feedback on personal@saurabhagat.me
 
 [MIT](https://github.com/bhagatsaurabh/hide-server/blob/main/LICENSE) Licensed | 2025-present | Saurabh Bhagat
 
-## Acknowledgement
+## Attributions
 
 - [Redlock](https://github.com/mike-marcacci/node-redlock)
 - [Yjs](https://github.com/yjs/yjs)
