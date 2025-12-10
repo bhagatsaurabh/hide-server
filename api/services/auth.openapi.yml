@@ -1,0 +1,168 @@
+openapi: 3.1.0
+
+info:
+  title: Auth Microservice API
+  version: 1.0.0
+  description: |
+    Authentication microservice providing token validation,
+    email verification workflow, and Firebase user creation.
+
+servers:
+  - url: http://localhost:8080
+    description: Local dev
+
+tags:
+  - name: Validate
+  - name: Email Verification
+
+paths:
+  /validate:
+    post:
+      summary: Validate Firebase auth token and return derived user profile
+      tags: [Validate]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Token valid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateResponse"
+
+        "400":
+          description: Invalid Authorization header
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidAuthHeader"
+
+        "401":
+          description: Invalid Firebase token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidToken"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /register-email:
+    post:
+      summary: Request email verification code
+      tags: [Email Verification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterEmailRequest"
+
+      responses:
+        "200":
+          description: Email accepted and verification code sent
+          content:
+            application/json:
+              schema:
+                type: "null"
+
+        "400":
+          description: Invalid email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidEmail"
+
+        "429":
+          description: Rate limits exceeded
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/EmailVerifyCodeMaxAttempts"
+                  - $ref: "#/components/schemas/EmailRequestCodeMaxAttempts"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /verify-email:
+    post:
+      summary: Verify email with code and create Firebase user
+      tags: [Email Verification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyEmailRequest"
+
+      responses:
+        "200":
+          description: Verification succeeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyEmailResponse"
+
+        "400":
+          description: Code invalid or expired
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/PinExpired"
+                  - $ref: "#/components/schemas/EmailVerifyCodeWrong"
+
+        "429":
+          description: Code attempts exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailVerifyCodeMaxAttempts"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+components:
+  schemas:
+    ValidateResponse:
+      $ref: "../schemas/auth/validate-response.yml#/ValidateResponse"
+    InvalidAuthHeader:
+      $ref: "../schemas/common/errors.yml#/InvalidAuthHeader"
+    InvalidToken:
+      $ref: "../schemas/common/errors.yml#/InvalidToken"
+    UnknownError:
+      $ref: "../schemas/common/errors.yml#/UnknownError"
+    RegisterEmailRequest:
+      $ref: "../schemas/auth/register-email-request.yml#/RegisterEmailRequest"
+    InvalidEmail:
+      $ref: "../schemas/common/errors.yml#/InvalidEmail"
+    EmailVerifyCodeMaxAttempts:
+      $ref: "../schemas/common/errors.yml#/EmailVerifyCodeMaxAttempts"
+    EmailRequestCodeMaxAttempts:
+      $ref: "../schemas/common/errors.yml#/EmailRequestCodeMaxAttempts"
+    VerifyEmailRequest:
+      $ref: "../schemas/auth/verify-email-request.yml#/VerifyEmailRequest"
+    VerifyEmailResponse:
+      $ref: "../schemas/auth/verify-email-response.yml#/VerifyEmailResponse"
+    PinExpired:
+      $ref: "../schemas/common/errors.yml#/PinExpired"
+    EmailVerifyCodeWrong:
+      $ref: "../schemas/common/errors.yml#/EmailVerifyCodeWrong"
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

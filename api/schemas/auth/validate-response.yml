@@ -1,0 +1,16 @@
+ValidateResponse:
+  type: object
+  required: [uid, name, email, picture, issuer]
+  properties:
+    uid:
+      type: string
+    name:
+      type: string
+    email:
+      type: string
+      format: email
+    picture:
+      type: string
+      format: uri
+    issuer:
+      type: string
