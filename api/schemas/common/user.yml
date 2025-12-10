@@ -1,0 +1,25 @@
+User:
+  type: object
+  required: [uid, email]
+  properties:
+    uid:
+      type: string
+    name:
+      type: string
+      nullable: true
+    username:
+      type: string
+      nullable: true
+    email:
+      type: string
+      format: email
+    picture:
+      type: string
+      format: uri
+      nullable: true
+    issuer:
+      type: string
+      nullable: true
+    expireAt:
+      type: number
+      nullable: true

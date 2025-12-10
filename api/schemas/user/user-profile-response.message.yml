@@ -1,0 +1,2 @@
+NatsUserProfileResponse:
+  $ref: "../common/partial-user.yml#/PartialUser"

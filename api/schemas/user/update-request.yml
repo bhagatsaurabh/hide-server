@@ -1,0 +1,19 @@
+UpdateRequest:
+  type: object
+  properties:
+    uid:
+      type: string
+    name:
+      type: string
+    username:
+      type: string
+    email:
+      type: string
+      format: email
+    picture:
+      type: string
+      format: uri
+    issuer:
+      type: string
+    expireAt:
+      type: number

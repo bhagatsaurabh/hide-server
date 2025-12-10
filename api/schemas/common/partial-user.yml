@@ -1,0 +1,4 @@
+PartialUser:
+  allOf:
+    - $ref: "./user.yml#/User"
+  description: Same fields as User, all optional except uid/email from Firestore

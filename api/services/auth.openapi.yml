@@ -138,29 +138,41 @@ paths:
 components:
   schemas:
     ValidateResponse:
-      $ref: "../schemas/auth/validate-response.yml#/ValidateResponse"
+      allOf:
+        - $ref: "../schemas/auth/validate-response.yml#/ValidateResponse"
     InvalidAuthHeader:
-      $ref: "../schemas/common/errors.yml#/InvalidAuthHeader"
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/InvalidAuthHeader"
     InvalidToken:
-      $ref: "../schemas/common/errors.yml#/InvalidToken"
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/InvalidToken"
     UnknownError:
-      $ref: "../schemas/common/errors.yml#/UnknownError"
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/UnknownError"
     RegisterEmailRequest:
-      $ref: "../schemas/auth/register-email-request.yml#/RegisterEmailRequest"
+      allOf:
+        - $ref: "../schemas/auth/register-email-request.yml#/RegisterEmailRequest"
     InvalidEmail:
-      $ref: "../schemas/common/errors.yml#/InvalidEmail"
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/InvalidEmail"
     EmailVerifyCodeMaxAttempts:
-      $ref: "../schemas/common/errors.yml#/EmailVerifyCodeMaxAttempts"
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/EmailVerifyCodeMaxAttempts"
     EmailRequestCodeMaxAttempts:
-      $ref: "../schemas/common/errors.yml#/EmailRequestCodeMaxAttempts"
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/EmailRequestCodeMaxAttempts"
     VerifyEmailRequest:
-      $ref: "../schemas/auth/verify-email-request.yml#/VerifyEmailRequest"
+      allOf:
+        - $ref: "../schemas/auth/verify-email-request.yml#/VerifyEmailRequest"
     VerifyEmailResponse:
-      $ref: "../schemas/auth/verify-email-response.yml#/VerifyEmailResponse"
+      allOf:
+        - $ref: "../schemas/auth/verify-email-response.yml#/VerifyEmailResponse"
     PinExpired:
-      $ref: "../schemas/common/errors.yml#/PinExpired"
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/PinExpired"
     EmailVerifyCodeWrong:
-      $ref: "../schemas/common/errors.yml#/EmailVerifyCodeWrong"
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/EmailVerifyCodeWrong"
   securitySchemes:
     bearerAuth:
       type: http
