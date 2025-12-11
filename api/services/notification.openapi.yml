@@ -1,0 +1,105 @@
+openapi: 3.1.0
+
+info:
+  title: Notification Microservice API
+  version: 1.0.0
+  description: |
+    API for reading and managing user notifications.
+
+servers:
+  - url: http://localhost:8080
+    description: Local dev
+
+tags:
+  - name: Notification
+
+components:
+  parameters:
+    AuthUserHeader:
+      name: x-auth-user
+      in: header
+      required: true
+      description: Base64 encoded JSON user context
+      schema:
+        type: string
+
+  schemas:
+    Notification:
+      allOf:
+        - $ref: "../schemas/common/notification.yml#/Notification"
+    ReadNotificationRequest:
+      allOf:
+        - $ref: "../schemas/notification/read-request.yml#/ReadNotificationRequest"
+    ReadAllRequest:
+      allOf:
+        - $ref: "../schemas/notification/read-all-request.yml#/ReadAllRequest"
+    UnknownError:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/UnknownError"
+
+paths:
+  /all:
+    get:
+      summary: Return all stored notifications for user
+      tags: [Notification]
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /read:
+    post:
+      summary: Mark notification as read (delete)
+      tags: [Notification]
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadNotificationRequest"
+      responses:
+        "204":
+          description: Notification deleted
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /readall:
+    post:
+      summary: Delete multiple notifications
+      tags: [Notification]
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadAllRequest"
+      responses:
+        "204":
+          description: Notifications deleted
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"

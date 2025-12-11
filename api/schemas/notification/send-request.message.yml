@@ -1,0 +1,49 @@
+NotificationSendRequest:
+  type: object
+  properties:
+    meta:
+      type: object
+      properties:
+        uid: { type: string }
+        sessionId: { type: string, nullable: true }
+        requestId: { type: string, nullable: true }
+        timestamp: { type: number, nullable: true }
+        route: { type: string, nullable: true }
+    payload:
+      type: object
+      required: [uid, notification]
+      properties:
+        uid:
+          type: string
+        reqAction:
+          type: string
+          nullable: true
+        notification:
+          type: object
+          required: [type, id, createdOn]
+          properties:
+            correlationId:
+              type: string
+              nullable: true
+            error:
+              type: object
+              nullable: true
+              properties:
+                code:
+                  type: string
+            type:
+              type: string
+              enum:
+                - workspace-invite
+                - workspace-membership-removed
+                - workspace-access-code
+                - workspace-downgraded
+                - notification-delete
+
+            id:
+              type: string
+            createdOn:
+              type: number
+            actedOn:
+              type: number
+              nullable: true

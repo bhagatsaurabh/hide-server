@@ -22,15 +22,14 @@ export class AppController implements OnModuleInit {
     await this.appService.pushNotification(msg);
   }
 
+  @MessagePattern('notification.read', Transport.RMQ)
+  async handleReadNotification(msg: ServiceMessage<NotificationRead>) {
+    await this.appService.handleReadNotification(msg.payload.uid, msg.payload.notificationId, false, true);
+  }
+
   @EventPattern('user.online', Transport.REDIS)
   async handleUserOnline(uid: string) {
     await this.appService.pushAllPendingNotifications(uid);
-  }
-
-  @MessagePattern('notification.read', Transport.RMQ)
-  async handleReadNotification(msg: ServiceMessage<NotificationRead>) {
-    console.log('Received rmq event: ', msg);
-    await this.appService.handleReadNotification(msg.payload.uid, msg.payload.notificationId, false, true);
   }
 
   @Get('all')

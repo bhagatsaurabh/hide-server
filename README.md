@@ -60,6 +60,28 @@ The Auth microservice provides token validation with Firebase Auth, email verifi
 <img alt="Auth microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/auth.svg" width="300" />
 </p>
 
+##### User
+
+Handles user registration, updates, profile retrieval, and search queries.
+
+[API Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/user.openapi.yml)
+[Async Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/user.asyncapi.yml)
+
+<p align="center">
+<img alt="User microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/user.svg" width="300" />
+</p>
+
+##### Notification
+
+For reading managing and forwarding user notifications.
+
+[API Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/notification.openapi.yml)
+[Async Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/notification.asyncapi.yml)
+
+<p align="center">
+<img alt="Notification microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/notification.svg" width="300" />
+</p>
+
 ## Security Model
 
 - Firebase authentication with custom claims

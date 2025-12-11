@@ -1,0 +1,19 @@
+Notification:
+  type: object
+  required: [type, id, createdOn, actedOn]
+  properties:
+    type:
+      type: string
+      enum:
+        - workspace-invite
+        - workspace-membership-removed
+        - workspace-access-code
+        - workspace-downgraded
+        - notification-delete
+    id:
+      type: string
+    createdOn:
+      type: number
+    actedOn:
+      type: number
+      nullable: true

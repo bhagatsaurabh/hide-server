@@ -1,0 +1,57 @@
+asyncapi: 2.6.0
+
+info:
+  title: Notification Microservice Messaging
+  version: 1.0.0
+  description: |
+    Asynchronous messaging API for handling notification creation,
+    deletion, and forwarding.
+
+servers:
+  rmq:
+    protocol: amqp
+    url: amqp://localhost:5672
+  redis:
+    protocol: redis
+    url: redis://localhost:6379
+
+channels:
+  notification.send:
+    description: Incoming request to store and push a new notification
+    subscribe:
+      summary: Handle notification creation
+      message:
+        $ref: "#/components/messages/NotificationSendRequest"
+
+  notification.read:
+    description: Incoming request to delete a notification
+    subscribe:
+      summary: Handle notification deletion
+      message:
+        $ref: "#/components/messages/NotificationReadRequest"
+
+  user.online:
+    description: Triggered when a user comes online
+    subscribe:
+      summary: Fetch and deliver all pending notifications for the user
+      message:
+        $ref: "#/components/messages/UserOnlineEvent"
+
+components:
+  messages:
+    NotificationSendRequest:
+      name: NotificationSendRequest
+      title: Store notification and push to WebSocket clients
+      payload:
+        $ref: "../schemas/notification/send-request.message.yml#/NotificationSendRequest"
+    NotificationReadRequest:
+      name: NotificationReadRequest
+      title: Delete a notification for a user
+      payload:
+        $ref: "../schemas/notification/read-request.message.yml#/NotificationReadRequest"
+    UserOnlineEvent:
+      name: UserOnlineEvent
+      title: User came online
+      payload:
+        type: string
+        description: UID of the user
