@@ -11,7 +11,6 @@ ErrorBase:
       type: string
     path:
       type: string
-
 InvalidAuthHeader:
   allOf:
     - $ref: "#/ErrorBase"
@@ -20,7 +19,6 @@ InvalidAuthHeader:
           const: "INVALID_AUTH_HEADER"
         status:
           const: 400
-
 InvalidToken:
   allOf:
     - $ref: "#/ErrorBase"
@@ -29,7 +27,6 @@ InvalidToken:
           const: "INVALID_TOKEN"
         status:
           const: 401
-
 InvalidEmail:
   allOf:
     - $ref: "#/ErrorBase"
@@ -38,7 +35,6 @@ InvalidEmail:
           const: "INVALID_EMAIL"
         status:
           const: 400
-
 PinExpired:
   allOf:
     - $ref: "#/ErrorBase"
@@ -47,7 +43,6 @@ PinExpired:
           const: "PIN_EXPIRED"
         status:
           const: 400
-
 EmailVerifyCodeWrong:
   allOf:
     - $ref: "#/ErrorBase"
@@ -56,7 +51,6 @@ EmailVerifyCodeWrong:
           const: "EMAIL_VERIFY_CODE_WRONG"
         status:
           const: 400
-
 EmailVerifyCodeMaxAttempts:
   allOf:
     - $ref: "#/ErrorBase"
@@ -65,7 +59,6 @@ EmailVerifyCodeMaxAttempts:
           const: "EMAIL_VERIFY_CODE_MAX_ATTEMPTS_REACHED"
         status:
           const: 429
-
 EmailRequestCodeMaxAttempts:
   allOf:
     - $ref: "#/ErrorBase"
@@ -74,7 +67,6 @@ EmailRequestCodeMaxAttempts:
           const: "EMAIL_REQUEST_CODE_MAX_ATTEMPTS_REACHED"
         status:
           const: 429
-
 UnknownError:
   allOf:
     - $ref: "#/ErrorBase"
@@ -83,56 +75,48 @@ UnknownError:
           const: "UNKNOWN"
         status:
           const: 500
-
 UserDetailsMissing:
   allOf:
     - $ref: "#/ErrorBase"
     - properties:
         message: { const: "USER_DETAILS_MISSING" }
         status: { const: 400 }
-
 InvalidUserName:
   allOf:
     - $ref: "#/ErrorBase"
     - properties:
         message: { const: "INVALID_USER_NAME" }
         status: { const: 400 }
-
 InvalidUsername:
   allOf:
     - $ref: "#/ErrorBase"
     - properties:
         message: { const: "INVALID_USER_USERNAME" }
         status: { const: 400 }
-
 UserAlreadyRegistered:
   allOf:
     - $ref: "#/ErrorBase"
     - properties:
         message: { const: "USER_ALREADY_REGISTERED" }
         status: { const: 400 }
-
 InvalidUserIdentity:
   allOf:
     - $ref: "#/ErrorBase"
     - properties:
         message: { const: "INVALID_USER_IDENTITY" }
         status: { const: 400 }
-
 UpdateUserForbidden:
   allOf:
     - $ref: "#/ErrorBase"
     - properties:
         message: { const: "UPDATE_USER_FORBIDDEN" }
         status: { const: 400 }
-
 UserNotFound:
   allOf:
     - $ref: "#/ErrorBase"
     - properties:
         message: { const: "USER_NOT_FOUND" }
         status: { const: 404 }
-
 UserDoesNotExist:
   allOf:
     - $ref: "#/ErrorBase"
@@ -147,7 +131,6 @@ InvalidWorkspaceName:
           const: "INVALID_WORKSPACE_NAME"
         status:
           const: 400
-
 MissingWorkspaceId:
   allOf:
     - $ref: "#/ErrorBase"
@@ -156,7 +139,6 @@ MissingWorkspaceId:
           const: "MISSING_WORKSPACE_ID"
         status:
           const: 400
-
 MissingWorkspaceUUID:
   allOf:
     - $ref: "#/ErrorBase"
@@ -165,7 +147,6 @@ MissingWorkspaceUUID:
           const: "MISSING_WORKSPACE_UUID"
         status:
           const: 400
-
 NoWorkspaceMembership:
   allOf:
     - $ref: "#/ErrorBase"
@@ -174,7 +155,6 @@ NoWorkspaceMembership:
           const: "NO_WORKSPACE_MEMBERSHIP"
         status:
           const: 403
-
 WorkspaceActionNotAuthorized:
   allOf:
     - $ref: "#/ErrorBase"
@@ -183,7 +163,6 @@ WorkspaceActionNotAuthorized:
           const: "WORKSPACE_ACTION_NOT_AUTHORIZED"
         status:
           const: 401
-
 WorkspaceNotFound:
   allOf:
     - $ref: "#/ErrorBase"
@@ -192,7 +171,6 @@ WorkspaceNotFound:
           const: "WORKSPACE_NOT_FOUND"
         status:
           const: 404
-
 MaxWorkspaceQuotaReached:
   allOf:
     - $ref: "#/ErrorBase"
@@ -201,7 +179,6 @@ MaxWorkspaceQuotaReached:
           const: "MAX_WORKSPACE_QUOTA_REACHED"
         status:
           const: 403
-
 AccessCodeLimit:
   allOf:
     - $ref: "#/ErrorBase"
@@ -210,7 +187,6 @@ AccessCodeLimit:
           const: "ACCESS_CODE_LIMIT"
         status:
           const: 400
-
 NoCapacity:
   allOf:
     - $ref: "#/ErrorBase"
@@ -219,7 +195,6 @@ NoCapacity:
           const: "NO_CAPACITY"
         status:
           const: 403
-
 BadToken:
   allOf:
     - $ref: "#/ErrorBase"
@@ -228,7 +203,6 @@ BadToken:
           const: "BAD_TOKEN"
         status:
           const: 400
-
 NotFound:
   allOf:
     - $ref: "#/ErrorBase"
@@ -237,7 +211,6 @@ NotFound:
           const: "NOT_FOUND"
         status:
           const: 400
-
 AccessCodeInvalid:
   allOf:
     - $ref: "#/ErrorBase"
@@ -246,7 +219,6 @@ AccessCodeInvalid:
           const: "ACCESS_CODE_INVALID"
         status:
           const: 404
-
 AccessCodeAlreadyUsed:
   allOf:
     - $ref: "#/ErrorBase"
@@ -255,7 +227,6 @@ AccessCodeAlreadyUsed:
           const: "ACCESS_CODE_ALREADY_USED"
         status:
           const: 403
-
 AccessCodeInUse:
   allOf:
     - $ref: "#/ErrorBase"
@@ -264,7 +235,6 @@ AccessCodeInUse:
           const: "ACCESS_CODE_IN_USE"
         status:
           const: 403
-
 AccessCodeExpired:
   allOf:
     - $ref: "#/ErrorBase"
@@ -273,7 +243,6 @@ AccessCodeExpired:
           const: "ACCESS_CODE_EXPIRED"
         status:
           const: 400
-
 AccessCodeNotInUse:
   allOf:
     - $ref: "#/ErrorBase"
@@ -282,7 +251,6 @@ AccessCodeNotInUse:
           const: "ACCESS_CODE_NOT_IN_USE"
         status:
           const: 403
-
 WorkspaceDeleteInvalidRequest:
   allOf:
     - $ref: "#/ErrorBase"
@@ -291,7 +259,6 @@ WorkspaceDeleteInvalidRequest:
           const: "WORKSPACE_DELETE_INVALID_REQUEST"
         status:
           const: 400
-
 InvalidInvitationToken:
   allOf:
     - $ref: "#/ErrorBase"
@@ -300,3 +267,35 @@ InvalidInvitationToken:
           const: "INVALID_INVITATION_TOKEN"
         status:
           const: 400
+WorkspaceProvisionInvalidRequest:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "WORKSPACE_PROVISION_INVALID_REQUEST"
+        status:
+          const: 405
+WorkspaceProvisionQuotaReached:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "WORKSPACE_PROVISION_QUOTA_REACHED"
+        status:
+          const: 400
+AccessCodeUseFailed:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "ACCESS_CODE_USE_FAILED"
+        status:
+          const: 400
+WorkspaceDisposeInvalidRequest:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "WORKSPACE_DISPOSE_INVALID_REQUEST"
+        status:
+          const: 405

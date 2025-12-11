@@ -1,0 +1,24 @@
+ProvisionRequest:
+  type: object
+  required: [uid, image, name, uuid, dedicated]
+  properties:
+    uid:
+      type: string
+    sessionId:
+      type: string
+      nullable: true
+    image:
+      type: string
+      description: container image to run
+    name:
+      type: string
+    description:
+      type: string
+      nullable: true
+    uuid:
+      type: string
+    dedicated:
+      type: boolean
+    accessCode:
+      type: string
+      nullable: true

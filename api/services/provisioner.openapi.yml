@@ -1,0 +1,176 @@
+openapi: 3.1.0
+
+info:
+  title: Provisioner Microservice API
+  version: 1.0.0
+  description: |
+    Provisioner service is responsible for creating/restoring and disposing Kubernetes
+    resources for workspaces.
+
+servers:
+  - url: http://localhost:8080
+    description: Local dev
+
+tags:
+  - name: Provision
+
+components:
+  parameters:
+    AuthUserHeader:
+      name: x-auth-user
+      in: header
+      required: true
+      description: Base64 encoded JSON user context
+      schema:
+        type: string
+
+    UuidQuery:
+      name: uuid
+      in: query
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    ProvisionRequest:
+      allOf:
+        - $ref: "../schemas/provisioner/provision-request.yml#/ProvisionRequest"
+    ProvisionResponse:
+      allOf:
+        - $ref: "../schemas/provisioner/provision-response.yml#/ProvisionResponse"
+    WorkspaceProvisionInvalidRequest:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceProvisionInvalidRequest"
+    WorkspaceProvisionQuotaReached:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceProvisionQuotaReached"
+    AccessCodeUseFailed:
+      allOf:
+        - $ref: "#/components/schemas/AccessCodeUseFailed"
+    NoWorkspaceMembership:
+      allOf:
+        - $ref: "#/components/schemas/NoWorkspaceMembership"
+    UnknownError:
+      allOf:
+        - $ref: "#/components/schemas/UnknownError"
+    WorkspaceDisposeInvalidRequest:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceDisposeInvalidRequest"
+    WorkspaceDeleteInvalidRequest:
+      allOf:
+        - $ref: "#/components/schemas/WorkspaceDeleteInvalidRequest"
+
+paths:
+  /provision:
+    post:
+      tags: [Provision]
+      summary: Create or restore workspace Kubernetes resources
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProvisionRequest"
+      responses:
+        "202":
+          description: Accepted for provisioning
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProvisionResponse"
+
+        "405":
+          description: Method not allowed / invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceProvisionInvalidRequest"
+        "400":
+          description: Bad request / quota / access code failures
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/WorkspaceProvisionInvalidRequest"
+                  - $ref: "#/components/schemas/WorkspaceProvisionQuotaReached"
+                  - $ref: "#/components/schemas/AccessCodeUseFailed"
+
+        "403":
+          description: No workspace membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoWorkspaceMembership"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /dispose:
+    post:
+      tags: [Provision]
+      summary: De-provision an already running workspace (cleanup resources)
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+        - $ref: "#/components/parameters/UuidQuery"
+      responses:
+        "200":
+          description: OK
+
+        "405":
+          description: Method not allowed / invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDisposeInvalidRequest"
+
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDisposeInvalidRequest"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /delete:
+    delete:
+      tags: [Provision]
+      summary: Delete a workspace entry (permanent delete)
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+        - $ref: "#/components/parameters/UuidQuery"
+      responses:
+        "202":
+          description: Accepted - delete in progress
+
+        "405":
+          description: Method not allowed / invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDeleteInvalidRequest"
+
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDeleteInvalidRequest"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"

@@ -1,0 +1,7 @@
+ProvisionResponse:
+  type: object
+  required: [wait]
+  properties:
+    wait:
+      type: boolean
+      description: true if caller should wait until provisioning completes
