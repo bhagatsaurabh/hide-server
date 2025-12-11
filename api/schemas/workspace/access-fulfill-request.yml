@@ -1,0 +1,11 @@
+AccessFulfillRequest:
+  type: object
+  required: [action, token]
+  properties:
+    action:
+      type: string
+      enum:
+        - approve
+        - reject
+    token:
+      type: string

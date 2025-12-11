@@ -6,6 +6,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
   OnModuleInit,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Equal, Not, Or, Repository } from 'typeorm';
@@ -127,24 +128,24 @@ export class ManageService implements OnModuleInit {
   }
   private validateCreation(data: Partial<CreateDTO>) {
     if (!data.name || !nameRegex.test(data.name)) {
-      return 'Not a valid workspace name';
+      return 'INVALID_WORKSPACE_NAME';
     }
   }
 
   async updateWorkspace(uid: string, data: Partial<UpdateDTO>) {
     if (typeof data.id === 'undefined' || data.id === null) {
-      throw new BadRequestException('Missing workspace id');
+      throw new BadRequestException('MISSING_WORKSPACE_ID');
     }
     const membership = await this.msRepository.findOne({ where: { workspaceId: data.id, userId: uid } });
     if (!membership) {
-      throw new ForbiddenException('User is not a member of the workspace');
+      throw new ForbiddenException('NO_WORKSPACE_MEMBERSHIP');
     }
     if (roleLevels[membership.role] < roleLevels['admin']) {
-      throw new ForbiddenException('User does not have required permissions');
+      throw new UnauthorizedException('WORKSPACE_ACTION_NOT_AUTHORIZED');
     }
     const workspace = await this.wsRepository.findOne({ where: { id: data.id } });
     if (!workspace) {
-      throw new NotFoundException('Workspace with specified id not found');
+      throw new NotFoundException('WORKSPACE_NOT_FOUND');
     }
 
     if (data.name) {
@@ -180,11 +181,11 @@ export class ManageService implements OnModuleInit {
 
   async updateWorkspaceStatus(uuid: string, status: WorkspaceStatus) {
     if (!uuid) {
-      throw new BadRequestException('Missing workspace uuid');
+      throw new BadRequestException('MISSING_WORKSPACE_UUID');
     }
     const workspace = await this.wsRepository.findOne({ where: { uuid } });
     if (!workspace) {
-      throw new NotFoundException('Workspace with specified uuid not found');
+      throw new NotFoundException('WORKSPACE_NOT_FOUND');
     }
 
     workspace.status = status;
@@ -312,13 +313,13 @@ export class ManageService implements OnModuleInit {
       where: { uuid: workspaceUUID },
     });
     if (!workspace) {
-      throw new NotFoundException('Workspace not found');
+      throw new NotFoundException('WORKSPACE_NOT_FOUND');
     }
     const membership = await this.msRepository.findOne({
       where: { workspaceId: workspace.id, userId: uid },
     });
     if (!membership) {
-      throw new ForbiddenException('User is not a member of the workspace');
+      throw new ForbiddenException('NO_WORKSPACE_MEMBERSHIP');
     }
     return { image: workspace.image, dedicated: workspace.dedicated };
   }

@@ -1,0 +1,9 @@
+EligibilityResponse:
+  type: object
+  required: []
+  properties:
+    allowed:
+      type: boolean
+    reason:
+      type: string
+      nullable: true

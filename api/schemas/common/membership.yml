@@ -1,0 +1,16 @@
+Membership:
+  type: object
+  required: [workspaceId, userId, role, joinedAt]
+  properties:
+    workspaceId:
+      type: integer
+    userId:
+      type: string
+    role:
+      type: string
+      enum:
+        - owner
+        - member
+    joinedAt:
+      type: number
+      description: epoch milliseconds

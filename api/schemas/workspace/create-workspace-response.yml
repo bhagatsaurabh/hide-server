@@ -1,0 +1,44 @@
+CreateWorkspaceResponse:
+  type: object
+  required:
+    [
+      id,
+      uuid,
+      image,
+      name,
+      description,
+      status,
+      dedicated,
+      createdAt,
+      memberships,
+    ]
+  properties:
+    id:
+      type: integer
+    uuid:
+      type: string
+    image:
+      type: string
+      format: uri
+      nullable: true
+    name:
+      type: string
+    description:
+      type: string
+      nullable: true
+    status:
+      type: string
+      enum:
+        - PROVISIONING
+        - READY
+        - DEPROVISIONING
+        - COLD
+        - DELETING
+    dedicated:
+      type: boolean
+    createdAt:
+      type: number
+    memberships:
+      type: array
+      items:
+        $ref: "../common/membership.yml#/Membership"

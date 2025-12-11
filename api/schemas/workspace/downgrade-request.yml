@@ -1,0 +1,8 @@
+DowngradeRequest:
+  type: object
+  required: [uid, uuid]
+  properties:
+    uid:
+      type: string
+    uuid:
+      type: string

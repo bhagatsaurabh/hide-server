@@ -1,0 +1,13 @@
+InviteAllRequest:
+  type: object
+  required: [inviteeIds, workspaceUUID]
+  properties:
+    inviteeIds:
+      type: array
+      items:
+        type: string
+    workspaceUUID:
+      type: string
+    sshKey:
+      type: string
+      nullable: true

@@ -1,0 +1,726 @@
+openapi: 3.1.0
+
+info:
+  title: Workspace Microservice API
+  version: 1.0.0
+  description: |
+    API for managing workspaces, access codes, eligibility checks,
+    membership operations, and invitations.
+
+servers:
+  - url: http://localhost:8080
+    description: Local dev
+
+tags:
+  - name: Manage
+  - name: Invite
+
+components:
+  parameters:
+    AuthUserHeader:
+      name: x-auth-user
+      in: header
+      required: true
+      description: Base64 encoded JSON user context
+      schema:
+        type: string
+
+  schemas:
+    Workspace:
+      allOf:
+        - $ref: "../schemas/common/workspace.yml#/Workspace"
+    Membership:
+      allOf:
+        - $ref: "../schemas/common/membership.yml#/Membership"
+    CreateWorkspaceRequest:
+      allOf:
+        - $ref: "../schemas/workspace/create-workspace-request.yml#/CreateWorkspaceRequest"
+    CreateWorkspaceResponse:
+      allOf:
+        - $ref: "../schemas/workspace/create-workspace-response.yml#/CreateWorkspaceResponse"
+    UpdateWorkspaceRequest:
+      allOf:
+        - $ref: "../schemas/workspace/update-workspace-request.yml#/UpdateWorkspaceRequest"
+    UpdateStatusRequest:
+      allOf:
+        - $ref: "../schemas/workspace/update-status-request.yml#/UpdateStatusRequest"
+    WorkspaceListItem:
+      allOf:
+        - $ref: "../schemas/workspace/workspace-list-item.yml#/WorkspaceListItem"
+    EligibilityResponse:
+      allOf:
+        - $ref: "../schemas/workspace/eligibility-response.yml#/EligibilityResponse"
+    AccessRequest:
+      allOf:
+        - $ref: "../schemas/workspace/access-request.yml#/AccessRequest"
+    AccessFulfillRequest:
+      allOf:
+        - $ref: "../schemas/workspace/access-fulfill-request.yml#/AccessFulfillRequest"
+    AccessConsumeRequest:
+      allOf:
+        - $ref: "../schemas/workspace/access-consume-request.yml#/AccessConsumeRequest"
+    AccessResetRequest:
+      allOf:
+        - $ref: "../schemas/workspace/access-reset-request.yml#/AccessResetRequest"
+    AccessDeleteRequest:
+      allOf:
+        - $ref: "../schemas/workspace/access-delete-request.yml#/AccessDeleteRequest"
+    DowngradeRequest:
+      allOf:
+        - $ref: "../schemas/workspace/downgrade-request.yml#/DowngradeRequest"
+    CheckMembershipResponse:
+      allOf:
+        - $ref: "../schemas/workspace/check-membership-response.yml#/CheckMembershipResponse"
+    InviteRequest:
+      allOf:
+        - $ref: "../schemas/workspace/invite-request.yml#/InviteRequest"
+    InviteAllRequest:
+      allOf:
+        - $ref: "../schemas/workspace/invite-all-request.yml#/InviteAllRequest"
+    AcceptRequest:
+      allOf:
+        - $ref: "../schemas/workspace/accept-request.yml#/AcceptRequest"
+    IgnoreRequest:
+      allOf:
+        - $ref: "../schemas/workspace/ignore-request.yml#/IgnoreRequest"
+    InvalidWorkspaceName:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/InvalidWorkspaceName"
+    UnknownError:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/UnknownError"
+    MissingWorkspaceId:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/MissingWorkspaceId"
+    NoWorkspaceMembership:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/NoWorkspaceMembership"
+    WorkspaceActionNotAuthorized:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/WorkspaceActionNotAuthorized"
+    WorkspaceNotFound:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/WorkspaceNotFound"
+    MissingWorkspaceUUID:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/MissingWorkspaceUUID"
+    MaxWorkspaceQuotaReached:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/MaxWorkspaceQuotaReached"
+    AccessCodeLimit:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/AccessCodeLimit"
+    NoCapacity:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/NoCapacity"
+    BadToken:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/BadToken"
+    NotFound:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/NotFound"
+    AccessCodeInvalid:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/AccessCodeInvalid"
+    AccessCodeAlreadyUsed:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/AccessCodeAlreadyUsed"
+    AccessCodeInUse:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/AccessCodeInUse"
+    AccessCodeExpired:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/AccessCodeExpired"
+    AccessCodeNotInUse:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/AccessCodeNotInUse"
+    WorkspaceDeleteInvalidRequest:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/WorkspaceDeleteInvalidRequest"
+    InvalidInvitationToken:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/InvalidInvitationToken"
+
+paths:
+  /create:
+    post:
+      tags: [Manage]
+      summary: Create a new workspace
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkspaceRequest"
+      responses:
+        "200":
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateWorkspaceResponse"
+        "400":
+          description: Invalid workspace name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidWorkspaceName"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /update:
+    patch:
+      tags: [Manage]
+      summary: Update workspace metadata or membership list
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWorkspaceRequest"
+      responses:
+        "204": { description: Updated }
+        "400":
+          description: Invalid update request
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/MissingWorkspaceId"
+                  - $ref: "#/components/schemas/InvalidWorkspaceName"
+        "403":
+          description: Not a member of the workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoWorkspaceMembership"
+        "401":
+          description: Not sufficient workspace privileges
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceActionNotAuthorized"
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceNotFound"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /update-status:
+    patch:
+      tags: [Manage]
+      summary: Update workspace status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatusRequest"
+      responses:
+        "204": { description: Updated }
+        "400":
+          description: Missing workspace uuid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissingWorkspaceUUID"
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceNotFound"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /all:
+    get:
+      tags: [Manage]
+      summary: List all workspaces for authenticated user
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      responses:
+        "200":
+          description: Workspace list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkspaceListItem"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /check-eligibility:
+    get:
+      tags: [Manage]
+      summary: Check if the user can create a workspace
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      responses:
+        "200":
+          description: Eligible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityResponse"
+        "403":
+          description: Max workpace creation quota reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaxWorkspaceQuotaReached"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /access-request:
+    post:
+      tags: [Manage]
+      summary: Request a dedicated workspace access code
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessRequest"
+      responses:
+        "200": { description: OK }
+        "400":
+          description: Access code request limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessCodeLimit"
+        "403":
+          description: No capacity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoCapacity"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /access-fulfill:
+    post:
+      tags: [Manage]
+      summary: Fulfill (approve/reject) an access request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessFulfillRequest"
+      responses:
+        "200": { description: OK }
+        "400":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/BadToken"
+                  - $ref: "#/components/schemas/NotFound"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /access-consume:
+    post:
+      tags: [Manage]
+      summary: Consume an access code
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessConsumeRequest"
+      responses:
+        "200":
+          description: Access code consumed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+        "404":
+          description: Invalid access code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessCodeInvalid"
+        "403":
+          description: Invalid access code
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AccessCodeAlreadyUsed"
+                  - $ref: "#/components/schemas/AccessCodeInUse"
+        "400":
+          description: Access code expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessCodeExpired"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /access-reset:
+    post:
+      tags: [Manage]
+      summary: Reset an access code back to unused state
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessResetRequest"
+      responses:
+        "200":
+          description: Access code reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+        "404":
+          description: Access code invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessCodeInvalid"
+        "403":
+          description: Access code not in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessCodeNotInUse"
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /access-delete:
+    delete:
+      tags: [Manage]
+      summary: Delete an access code
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+        - name: reqId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: ntfnId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: code
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Access code deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /downgrade:
+    post:
+      tags: [Manage]
+      summary: Downgrade a workspace from dedicated → spot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DowngradeRequest"
+      responses:
+        "200": { description: OK }
+
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /{uuid}/check-membership:
+    get:
+      tags: [Manage]
+      summary: Check membership for a workspace by UUID
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Membership check passed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckMembershipResponse"
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceNotFound"
+        "403":
+          description: Not a member of the workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoWorkspaceMembership"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /{uuid}/delete:
+    delete:
+      tags: [Manage]
+      summary: Delete workspace entry and call provisioner
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200": { description: OK }
+        "400":
+          description: Invalid workspace delete request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDeleteInvalidRequest"
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceNotFound"
+        "403":
+          description: Invalid workspace delete request
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/NoWorkspaceMembership"
+                  - $ref: "#/components/schemas/WorkspaceActionNotAuthorized"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  # Invite Component
+
+  /invite:
+    post:
+      tags: [Invite]
+      summary: Invite user to workspace
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteRequest"
+      responses:
+        "204": { description: Invitation sent }
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceNotFound"
+        "403":
+          description: Invalid workspace invite
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/NoWorkspaceMembership"
+                  - $ref: "#/components/schemas/WorkspaceActionNotAuthorized"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /invite-all:
+    post:
+      tags: [Invite]
+      summary: Invite multiple users to workspace
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteAllRequest"
+      responses:
+        "204": { description: Invitations sent }
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceNotFound"
+        "403":
+          description: Invalid invite-all request
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/NoWorkspaceMembership"
+                  - $ref: "#/components/schemas/WorkspaceActionNotAuthorized"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /accept:
+    post:
+      tags: [Invite]
+      summary: Accept workspace invitation token
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptRequest"
+      responses:
+        "200":
+          description: Workspace invite accepted successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sshKey: { type: string }
+        "400":
+          description: Invalid invitation token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidInvitationToken"
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceNotFound"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /ignore:
+    post:
+      tags: [Invite]
+      summary: Ignore invitation token and delete notification
+      parameters:
+        - $ref: "#/components/parameters/AuthUserHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IgnoreRequest"
+      responses:
+        "204": { description: Ignored }
+        "400":
+          description: Invalid invitation token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidInvitationToken"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"

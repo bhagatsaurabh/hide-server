@@ -1,0 +1,10 @@
+WorkspaceMembershipCheckResponse:
+  type: object
+  required: [image, dedicated]
+  properties:
+    image:
+      type: string
+      format: uri
+      nullable: true
+    dedicated:
+      type: boolean

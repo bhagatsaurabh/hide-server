@@ -1,0 +1,18 @@
+AccessCode:
+  type: object
+  required: [code, workspaceUUID, createdAt, expiresAt, used]
+  properties:
+    code:
+      type: string
+      description: 16 character access code
+    workspaceUUID:
+      type: string
+    createdAt:
+      type: number
+    expiresAt:
+      type: number
+    used:
+      type: boolean
+    usedBy:
+      type: string
+      nullable: true
