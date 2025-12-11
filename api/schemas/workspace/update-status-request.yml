@@ -1,0 +1,14 @@
+UpdateStatusRequest:
+  type: object
+  required: [uuid, status]
+  properties:
+    uuid:
+      type: string
+    status:
+      type: string
+      enum:
+        - PROVISIONING
+        - READY
+        - DEPROVISIONING
+        - COLD
+        - DELETING

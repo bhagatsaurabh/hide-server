@@ -1,0 +1,12 @@
+AccessDeleteRequest:
+  type: object
+  properties:
+    reqId:
+      type: string
+      nullable: true
+    ntfnId:
+      type: string
+      nullable: true
+    code:
+      type: string
+      nullable: true

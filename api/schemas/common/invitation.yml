@@ -1,0 +1,15 @@
+Invitation:
+  type: object
+  required: [inviteeId, workspaceUUID, token, createdAt]
+  properties:
+    inviteeId:
+      type: string
+    workspaceUUID:
+      type: string
+    sshKey:
+      type: string
+      nullable: true
+    token:
+      type: string
+    createdAt:
+      type: number

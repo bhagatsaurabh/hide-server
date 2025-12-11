@@ -82,6 +82,17 @@ For reading managing and forwarding user notifications.
 <img alt="Notification microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/notification.svg" width="300" />
 </p>
 
+##### Workspace
+
+Manages workspaces, access codes, eligibility checks, membership operations, and invitations.
+
+[API Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/workspace.openapi.yml)
+[Async Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/workspace.asyncapi.yml)
+
+<p align="center">
+<img alt="Workspace microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/workspace.svg" width="300" />
+</p>
+
 ## Security Model
 
 - Firebase authentication with custom claims

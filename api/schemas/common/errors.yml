@@ -137,5 +137,166 @@ UserDoesNotExist:
   allOf:
     - $ref: "#/ErrorBase"
     - properties:
-        message: { const: "USER_DOES_NOT_EXIST" }
+        message: { const: "USER_NOT_FOUND" }
         status: { const: 404 }
+InvalidWorkspaceName:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "INVALID_WORKSPACE_NAME"
+        status:
+          const: 400
+
+MissingWorkspaceId:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "MISSING_WORKSPACE_ID"
+        status:
+          const: 400
+
+MissingWorkspaceUUID:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "MISSING_WORKSPACE_UUID"
+        status:
+          const: 400
+
+NoWorkspaceMembership:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "NO_WORKSPACE_MEMBERSHIP"
+        status:
+          const: 403
+
+WorkspaceActionNotAuthorized:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "WORKSPACE_ACTION_NOT_AUTHORIZED"
+        status:
+          const: 401
+
+WorkspaceNotFound:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "WORKSPACE_NOT_FOUND"
+        status:
+          const: 404
+
+MaxWorkspaceQuotaReached:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "MAX_WORKSPACE_QUOTA_REACHED"
+        status:
+          const: 403
+
+AccessCodeLimit:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "ACCESS_CODE_LIMIT"
+        status:
+          const: 400
+
+NoCapacity:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "NO_CAPACITY"
+        status:
+          const: 403
+
+BadToken:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "BAD_TOKEN"
+        status:
+          const: 400
+
+NotFound:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "NOT_FOUND"
+        status:
+          const: 400
+
+AccessCodeInvalid:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "ACCESS_CODE_INVALID"
+        status:
+          const: 404
+
+AccessCodeAlreadyUsed:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "ACCESS_CODE_ALREADY_USED"
+        status:
+          const: 403
+
+AccessCodeInUse:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "ACCESS_CODE_IN_USE"
+        status:
+          const: 403
+
+AccessCodeExpired:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "ACCESS_CODE_EXPIRED"
+        status:
+          const: 400
+
+AccessCodeNotInUse:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "ACCESS_CODE_NOT_IN_USE"
+        status:
+          const: 403
+
+WorkspaceDeleteInvalidRequest:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "WORKSPACE_DELETE_INVALID_REQUEST"
+        status:
+          const: 400
+
+InvalidInvitationToken:
+  allOf:
+    - $ref: "#/ErrorBase"
+    - properties:
+        message:
+          const: "INVALID_INVITATION_TOKEN"
+        status:
+          const: 400

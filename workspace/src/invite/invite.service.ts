@@ -112,7 +112,7 @@ export class InviteService {
 
     const workspace = await this.wsRepository.findOne({ where: { uuid: payload.data.workspaceUUID } });
     if (!workspace) {
-      throw new NotFoundException('Workspace not found');
+      throw new NotFoundException('WORKSPACE_NOT_FOUND');
     }
     const newMembership = new Membership();
     newMembership.setData({ workspaceId: workspace.id, userId: payload.data.inviteeId, role: 'member' });
@@ -162,7 +162,7 @@ export class InviteService {
   private async validateInvite(inviterId: string, workspaceUUID: string) {
     const workspace = await this.wsRepository.findOne({ where: { uuid: workspaceUUID } });
     if (!workspace) {
-      return new BadRequestException('Workspace not found');
+      return new BadRequestException('WORKSPACE_NOT_FOUND');
     }
     const membership = await this.msRepository.findOne({
       where: {
@@ -171,10 +171,10 @@ export class InviteService {
       },
     });
     if (!membership) {
-      return new ForbiddenException('Not a member of the workspace');
+      return new ForbiddenException('NO_WORKSPACE_MEMBERSHIP');
     }
     if (roleLevels[membership.role] < 1) {
-      return new ForbiddenException('Missing required priviledges for sending invitations');
+      return new ForbiddenException('WORKSPACE_ACTION_NOT_AUTHORIZED');
     }
   }
   private validateAccept(inviteeId: string, token: string) {
@@ -184,7 +184,7 @@ export class InviteService {
       process.env.WORKSPACE_SERVICE_SECRET!,
     );
     if (!payload || inviteeId !== payload.data.inviteeId) {
-      err = new BadRequestException('Invalid invitation token');
+      err = new BadRequestException('INVALID_INVITATION_TOKEN');
     }
 
     return { err, payload };

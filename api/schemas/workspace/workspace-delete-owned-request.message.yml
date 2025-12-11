@@ -1,0 +1,20 @@
+WorkspaceDeleteOwnedRequest:
+  type: object
+  properties:
+    meta:
+      type: object
+      properties:
+        uid: { type: string }
+        sessionId: { type: string, nullable: true }
+        requestId: { type: string, nullable: true }
+        timestamp: { type: number, nullable: true }
+        route: { type: string, nullable: true }
+    payload:
+      type: object
+      required: [ownerUid]
+      properties:
+        reqAction:
+          type: string
+          nullable: true
+        ownerUid:
+          type: string

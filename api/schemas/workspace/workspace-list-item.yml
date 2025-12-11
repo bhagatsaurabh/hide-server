@@ -1,0 +1,23 @@
+WorkspaceListItem:
+  type: object
+  required: [name, description, memberships]
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+      nullable: true
+    memberships:
+      type: array
+      items:
+        type: object
+        required: [name, username, picture]
+        properties:
+          name:
+            type: string
+          username:
+            type: string
+          picture:
+            type: string
+            format: uri
+            nullable: true

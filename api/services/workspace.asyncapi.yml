@@ -1,0 +1,56 @@
+asyncapi: 2.6.0
+
+info:
+  title: Workspace Microservice Messaging
+  version: 1.0.0
+  description: |
+    Asynchronous API for workspace membership checks
+    and deletion of workspaces owned by a user.
+
+servers:
+  rmq:
+    protocol: amqp
+    url: amqp://localhost:5672
+    description: RabbitMQ broker
+
+channels:
+  workspace.membership.check:
+    description: Validate whether a user is a member of a workspace UUID
+    subscribe:
+      summary: Handle membership check request
+      message:
+        $ref: "#/components/messages/WorkspaceMembershipCheckRequestMessage"
+    publish:
+      summary: Respond with membership information
+      message:
+        $ref: "#/components/messages/WorkspaceMembershipCheckResponseMessage"
+
+  workspace.delete.owned:
+    description: Delete all workspaces owned by a user
+    subscribe:
+      summary: Handle delete-owned request
+      message:
+        $ref: "#/components/messages/WorkspaceDeleteOwnedRequestMessage"
+
+components:
+  messages:
+    WorkspaceMembershipCheckRequestMessage:
+      name: WorkspaceMembershipCheckRequest
+      title: Request membership check
+      payload:
+        allOf:
+          - $ref: "../schemas/workspace/workspace-membership-check-request.message.yml#/WorkspaceMembershipCheckRequest"
+
+    WorkspaceMembershipCheckResponseMessage:
+      name: WorkspaceMembershipCheckResponse
+      title: Membership check response
+      payload:
+        allOf:
+          - $ref: "../schemas/workspace/workspace-membership-check-response.message.yml#/WorkspaceMembershipCheckResponse"
+
+    WorkspaceDeleteOwnedRequestMessage:
+      name: WorkspaceDeleteOwnedRequest
+      title: Request deletion of owned workspaces
+      payload:
+        allOf:
+          - $ref: "../schemas/workspace/workspace-delete-owned-request.message.yml#/WorkspaceDeleteOwnedRequest"

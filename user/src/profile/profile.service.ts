@@ -67,7 +67,7 @@ export class ProfileService {
       .where('uid', '==', user.uid)
       .get();
     if (snap.empty) {
-      throw new NotFoundException('USER_DOES_NOT_EXIST');
+      throw new NotFoundException('USER_NOT_FOUND');
     }
     const { username } = snap.docs[0].data();
 

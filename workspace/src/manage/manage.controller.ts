@@ -27,11 +27,6 @@ export class ManageController {
     return await this.service.createWorkspace(user, data);
   }
 
-  @Delete(':workspaceUUID/delete')
-  async delete(@Param('workspaceUUID') workspaceUUID: string, @UserHeader() user: User) {
-    await this.service.deleteWorkspace(user.uid, workspaceUUID);
-  }
-
   @Patch('update')
   @HttpCode(HttpStatus.NO_CONTENT)
   async update(@UserHeader() user: User, @Body() data: Partial<UpdateDTO>) {
@@ -94,6 +89,11 @@ export class ManageController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async checkMembership(@Param('workspaceUUID') workspaceUUID: string, @UserHeader() user: User) {
     return await this.service.isUserMemberOf(user.uid, workspaceUUID);
+  }
+
+  @Delete(':workspaceUUID/delete')
+  async delete(@Param('workspaceUUID') workspaceUUID: string, @UserHeader() user: User) {
+    await this.service.deleteWorkspace(user.uid, workspaceUUID);
   }
 
   @MessagePattern('workspace.membership.check', Transport.RMQ)

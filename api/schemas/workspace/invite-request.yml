@@ -1,0 +1,11 @@
+InviteRequest:
+  type: object
+  required: [inviteeId, workspaceUUID]
+  properties:
+    inviteeId:
+      type: string
+    workspaceUUID:
+      type: string
+    sshKey:
+      type: string
+      nullable: true
