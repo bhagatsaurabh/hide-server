@@ -14,13 +14,13 @@ func DisposeHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Reque
 	bgCtx, cancel := context.WithTimeout(sysCtx, 2*time.Minute)
 
 	if r.Method != http.MethodPost {
-		util.SendAPIErr(w, http.StatusMethodNotAllowed, "Method not allowed")
+		util.SendAPIErr(w, http.StatusMethodNotAllowed, "WORKSPACE_DISPOSE_INVALID_REQUEST")
 		cancel()
 		return
 	}
 	uuid := r.URL.Query().Get("uuid")
 	if uuid == "" {
-		util.SendAPIErr(w, http.StatusBadRequest, "Invalid request")
+		util.SendAPIErr(w, http.StatusBadRequest, "WORKSPACE_DISPOSE_INVALID_REQUEST")
 		cancel()
 		return
 	}

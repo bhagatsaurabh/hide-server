@@ -93,6 +93,16 @@ Manages workspaces, access codes, eligibility checks, membership operations, and
 <img alt="Workspace microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/workspace.svg" width="300" />
 </p>
 
+##### Provisioner
+
+Provisioner service is responsible for creating/restoring and disposing Kubernetes resources for user workspaces.
+
+[API Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/provisioner.openapi.yml)
+
+<p align="center">
+<img alt="Provisioner microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/provisioner.svg" width="300" />
+</p>
+
 ## Security Model
 
 - Firebase authentication with custom claims

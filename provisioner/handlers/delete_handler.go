@@ -14,13 +14,13 @@ func DeleteHandler(sysCtx context.Context, w http.ResponseWriter, r *http.Reques
 	bgCtx, cancel := context.WithTimeout(sysCtx, 2*time.Minute)
 
 	if r.Method != http.MethodDelete {
-		util.SendAPIErr(w, http.StatusMethodNotAllowed, "Method not allowed")
+		util.SendAPIErr(w, http.StatusMethodNotAllowed, "WORKSPACE_DELETE_INVALID_REQUEST")
 		cancel()
 		return
 	}
 	uuid := r.URL.Query().Get("uuid")
 	if uuid == "" {
-		util.SendAPIErr(w, http.StatusBadRequest, "Invalid request, missing workspace uuid")
+		util.SendAPIErr(w, http.StatusBadRequest, "WORKSPACE_DELETE_INVALID_REQUEST")
 		cancel()
 		return
 	}
