@@ -1,0 +1,14 @@
+NotificationReadRequest:
+  type: object
+  required: [uid, notificationId, systemRead, sessionId, reqAction]
+  properties:
+    uid:
+      type: string
+    notificationId:
+      type: string
+    systemRead:
+      type: boolean
+    sessionId:
+      type: string
+    reqAction:
+      type: string

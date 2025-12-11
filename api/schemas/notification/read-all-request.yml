@@ -1,0 +1,4 @@
+ReadAllRequest:
+  type: array
+  items:
+    type: string
