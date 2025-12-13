@@ -1,0 +1,9 @@
+VerifyEmailRequest:
+  type: object
+  required: [email, code]
+  properties:
+    email:
+      type: string
+      format: email
+    code:
+      type: string

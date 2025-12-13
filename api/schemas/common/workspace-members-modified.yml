@@ -1,0 +1,23 @@
+WorkspaceMembersModifiedEvent:
+  type: object
+  required: [payload]
+  properties:
+    meta:
+      $ref: "gateway-meta.yml#/GatewayMeta"
+    payload:
+      type: object
+      required: [uuid, added, removed]
+      properties:
+        reqAction:
+          type: string
+          nullable: true
+        uuid:
+          type: string
+        added:
+          type: array
+          items:
+            type: string
+        removed:
+          type: array
+          items:
+            type: string

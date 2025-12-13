@@ -1,0 +1,19 @@
+WorkspaceDeletedEvent:
+  type: object
+  required: [payload]
+  properties:
+    meta:
+      $ref: "gateway-meta.yml#/GatewayMeta"
+    payload:
+      type: object
+      required: [uuid, members]
+      properties:
+        reqAction:
+          type: string
+          nullable: true
+        uuid:
+          type: string
+        members:
+          type: array
+          items:
+            type: string

@@ -1,0 +1,54 @@
+asyncapi: 2.6.0
+
+info:
+  title: Gateway Microservice Messaging
+  version: 1.0.0
+  description: |
+    Async messaging contracts for the Gateway service.
+    Covers workspace cache invalidation events and websocket routing
+    instructions from other microservices.
+
+servers:
+  redis:
+    protocol: redis
+    url: redis://localhost:6379
+    description: Redis pub/sub broker
+
+channels:
+  workspace.members.modified:
+    description: Workspace membership changes (add/remove users)
+    subscribe:
+      summary: Update workspace membership cache
+      message:
+        payload:
+          allOf:
+            - $ref: "../schemas/common/workspace-members-modified.yml#/WorkspaceMembersModifiedEvent"
+
+  workspace.deleted:
+    description: Workspace deleted event
+    subscribe:
+      summary: Invalidate workspace cache and notify members
+      message:
+        payload:
+          allOf:
+            - $ref: "../schemas/common/workspace-deleted.yml#/WorkspaceDeletedEvent"
+
+  socket.send:
+    description: Send websocket message to a specific user/session
+    subscribe:
+      summary: Route message to a single websocket client
+      message:
+        payload:
+          allOf:
+            - $ref: "../schemas/common/socket-send.yml#/SocketSendEvent"
+
+  socket.broadcast:
+    description: Broadcast websocket message to multiple users/sessions
+    subscribe:
+      summary: Route message to multiple websocket clients
+      message:
+        payload:
+          allOf:
+            - $ref: "../schemas/common/socket-broadcast.yml#/SocketBroadcastEvent"
+
+components: {}

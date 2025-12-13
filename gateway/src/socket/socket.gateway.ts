@@ -79,7 +79,7 @@ export class SocketGateway
   constructor(
     @Inject('GATEWAY_SERVICE_REDIS') private redis: ClientProxy,
     @Inject('GATEWAY_SERVICE_NATS') private nats: ClientProxy,
-    @Inject('GATEWAY_SERVICE_RMQ') private rmq: ClientProxy,
+    @Inject('GATEWAY_SERVICE_RMQ') private _rmq: ClientProxy,
     private readonly redisService: RedisService,
     private readonly firestore: FirestoreService,
     private readonly membershipService: MembershipService,

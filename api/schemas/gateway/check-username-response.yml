@@ -1,0 +1,6 @@
+CheckUsernameResponse:
+  type: object
+  required: [available]
+  properties:
+    available:
+      type: boolean

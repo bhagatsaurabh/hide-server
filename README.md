@@ -115,9 +115,11 @@ Env service handles runtime workspace lifecycle, SSH proxying, filesystem operat
 
 ##### Gateway
 
---
+Gateway API provides public endpoints, webhook handling, and a catch-all proxy that does authentication, protocol translation and routes requests to downstream microservices.
 
-[API Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/gateway.asyncapi.yml)
+Handles presence caches, invalidations and websocket routing instructions from other microservices.
+
+[API Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/gateway.openapi.yml)
 [Async Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/gateway.asyncapi.yml)
 
 <p align="center">
