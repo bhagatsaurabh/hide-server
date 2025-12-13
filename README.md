@@ -123,8 +123,12 @@ Handles presence caches, invalidations and websocket routing instructions from o
 [Async Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/gateway.asyncapi.yml)
 
 <p align="center">
-<img alt="Gateway microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/gateway.svg" width="300" />
+<img alt="Gateway microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/gateway.svg" width="550" />
 </p>
+
+###### Workspace Daemon
+
+There's another service/daemon that runs inside the user workspace, refer [H-IDE Env](https://github.com/bhagatsaurabh/hide-env) for more info.
 
 ## Security Model
 
