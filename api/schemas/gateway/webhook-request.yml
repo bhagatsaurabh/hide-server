@@ -1,0 +1,12 @@
+WebhookRequest:
+  type: object
+  required: [type, payload]
+  properties:
+    type:
+      type: string
+      enum:
+        - user.registered
+        - user.deleted
+    payload:
+      type: object
+      additionalProperties: true

@@ -1,0 +1,26 @@
+SocketBroadcastEvent:
+  type: object
+  required: [payload]
+  properties:
+    meta:
+      $ref: "gateway-meta.yml#/GatewayMeta"
+    payload:
+      type: object
+      required: [uids, sessionIds, pattern, message]
+      properties:
+        reqAction:
+          type: string
+          nullable: true
+        uids:
+          type: array
+          items:
+            type: string
+        sessionIds:
+          type: array
+          items:
+            type: string
+        pattern:
+          type: string
+        message:
+          type: object
+          additionalProperties: true

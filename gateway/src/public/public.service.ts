@@ -64,7 +64,7 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
 
   async checkUsernameExistence(username: string) {
     if (!this.validateUsername(username)) {
-      throw new BadRequestException('Not a valid username');
+      throw new BadRequestException('INVALID_USER_USERNAME');
     }
 
     const existsInFilter = await this.cuckooCheck('usernames', username.toLowerCase());
@@ -134,7 +134,7 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
       });
     } catch (error) {
       console.log(error);
-      throw new InternalServerErrorException('Unknown error');
+      throw new InternalServerErrorException('UNKNOWN');
     }
 
     if (response.status < 200 || response.status > 299) {
@@ -153,7 +153,7 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
       });
     } catch (error) {
       console.log(error);
-      throw new InternalServerErrorException('Unknown error');
+      throw new InternalServerErrorException('UNKNOWN');
     }
 
     if (response.status < 200 || response.status > 299) {

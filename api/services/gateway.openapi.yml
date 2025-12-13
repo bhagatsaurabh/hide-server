@@ -1,0 +1,310 @@
+openapi: 3.1.0
+
+info:
+  title: Gateway Microservice API
+  version: 1.0.0
+  description: |
+    Gateway API provides public endpoints, webhook handling,
+    and a catch-all proxy that does authentication, protocol translation and routes requests
+    to downstream microservices.
+
+servers:
+  - url: http://localhost:8080
+    description: Local dev
+
+tags:
+  - name: Public
+  - name: Proxy
+
+components:
+  parameters:
+    AuthHeader:
+      name: Authorization
+      in: header
+      required: true
+      description: Bearer Firebase Auth token
+      schema:
+        type: string
+    ServiceAuthHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Service-level signed JWT
+      schema:
+        type: string
+    UsernameQuery:
+      name: username
+      in: query
+      required: true
+      schema:
+        type: string
+    AccessActionQuery:
+      name: action
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [approve, reject]
+    TokenQuery:
+      name: token
+      in: query
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    CheckUsernameResponse:
+      allOf:
+        - $ref: "../schemas/gateway/check-username-response.yml#/CheckUsernameResponse"
+    RegisterEmailRequest:
+      allOf:
+        - $ref: "../schemas/gateway/register-email-request.yml#/RegisterEmailRequest"
+    VerifyEmailRequest:
+      allOf:
+        - $ref: "../schemas/gateway/verify-email-request.yml#/VerifyEmailRequest"
+    Template:
+      allOf:
+        - $ref: "../schemas/common/template.yml#/Template"
+    WebhookRequest:
+      allOf:
+        - $ref: "../schemas/gateway/webhook-request.yml#/WebhookRequest"
+    AccessFulfillResponse:
+      allOf:
+        - $ref: "../schemas/gateway/access-fulfill-response.yml#/AccessFulfillResponse"
+    UnknownError:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/UnknownError"
+    InvalidUserUsername:
+      allOf:
+        - $ref: "../schemas/common/errors.yml#/InvalidUsername"
+
+paths:
+  # -------------------------
+  # Public (unauthenticated)
+  # -------------------------
+
+  /check-username:
+    get:
+      tags: [Public]
+      summary: Check if a username is available
+      parameters:
+        - $ref: "#/components/parameters/UsernameQuery"
+      responses:
+        "200":
+          description: Check username availability successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckUsernameResponse"
+        "400":
+          description: Invalid check username request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidUserUsername"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /register-email:
+    post:
+      tags: [Public]
+      summary: Proxy email registration to Auth service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterEmailRequest"
+      responses:
+        "200": { description: OK }
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /verify-email:
+    post:
+      tags: [Public]
+      summary: Proxy email verification to Auth service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyEmailRequest"
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /templates:
+    get:
+      tags: [Public]
+      summary: List available workspace templates
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Template"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /webhook:
+    post:
+      tags: [Public]
+      summary: Handle Firebase lifecycle webhooks (service-authenticated)
+      parameters:
+        - $ref: "#/components/parameters/ServiceAuthHeader"
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookRequest"
+      responses:
+        "200": { description: OK }
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  /access-fulfill:
+    get:
+      tags: [Public]
+      summary: Proxy access-code fulfillment to Workspace service
+      parameters:
+        - $ref: "#/components/parameters/AccessActionQuery"
+        - $ref: "#/components/parameters/TokenQuery"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessFulfillResponse"
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+  # -------------------------
+  # Proxy (authenticated)
+  # -------------------------
+
+  /{service}/{path}:
+    x-summary: Catch-all proxy endpoint
+    parameters:
+      - name: service
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: path
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Proxy]
+      summary: Proxy GET requests to downstream services
+      parameters:
+        - $ref: "#/components/parameters/AuthHeader"
+      responses:
+        "200": { description: Proxied response }
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+    post:
+      tags: [Proxy]
+      summary: Proxy POST requests to downstream services
+      parameters:
+        - $ref: "#/components/parameters/AuthHeader"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200": { description: Proxied response }
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+    patch:
+      tags: [Proxy]
+      summary: Proxy PATCH requests to downstream services
+      parameters:
+        - $ref: "#/components/parameters/AuthHeader"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200": { description: Proxied response }
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"
+
+    delete:
+      tags: [Proxy]
+      summary: Proxy DELETE requests to downstream services
+      parameters:
+        - $ref: "#/components/parameters/AuthHeader"
+      responses:
+        "200": { description: Proxied response }
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnknownError"

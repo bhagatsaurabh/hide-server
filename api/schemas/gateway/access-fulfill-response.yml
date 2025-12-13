@@ -1,0 +1,9 @@
+AccessFulfillResponse:
+  type: object
+  required: [success]
+  properties:
+    success:
+      type: boolean
+    error:
+      type: string
+      nullable: true

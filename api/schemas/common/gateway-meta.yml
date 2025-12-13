@@ -1,0 +1,18 @@
+GatewayMeta:
+  type: object
+  properties:
+    requestId:
+      type: string
+      nullable: true
+    timestamp:
+      type: number
+      nullable: true
+    uid:
+      type: string
+      nullable: true
+    sessionId:
+      type: string
+      nullable: true
+    route:
+      type: string
+      nullable: true

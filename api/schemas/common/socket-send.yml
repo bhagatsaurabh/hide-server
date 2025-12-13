@@ -1,0 +1,23 @@
+SocketSendEvent:
+  type: object
+  required: [payload]
+  properties:
+    meta:
+      $ref: "gateway-meta.yml#/GatewayMeta"
+    payload:
+      type: object
+      required: [uid, sessionId, pattern, message]
+      properties:
+        reqAction:
+          type: string
+          nullable: true
+        uid:
+          type: string
+        sessionId:
+          type: string
+        pattern:
+          type: string
+          description: logical routing key (ssh, fs, env, etc.)
+        message:
+          type: object
+          additionalProperties: true
