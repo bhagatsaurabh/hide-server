@@ -100,7 +100,28 @@ Provisioner service is responsible for creating/restoring and disposing Kubernet
 [API Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/provisioner.openapi.yml)
 
 <p align="center">
-<img alt="Provisioner microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/provisioner.svg" width="300" />
+<img alt="Provisioner microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/provisioner.svg" width="450" />
+</p>
+
+##### Env
+
+Env service handles runtime workspace lifecycle, SSH proxying, filesystem operations, and collaborative editing/syncing.
+
+[Async Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/env.asyncapi.yml)
+
+<p align="center">
+<img alt="Env microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/env.svg" width="300" />
+</p>
+
+##### Gateway
+
+--
+
+[API Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/gateway.asyncapi.yml)
+[Async Spec ☍](https://github.com/bhagatsaurabh/hide-server/blob/main/api/services/gateway.asyncapi.yml)
+
+<p align="center">
+<img alt="Gateway microservice" src="https://github.com/bhagatsaurabh/hide-server/blob/main/docs/resources/gateway.svg" width="300" />
 </p>
 
 ## Security Model

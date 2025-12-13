@@ -1,0 +1,19 @@
+EnvInternalRequest:
+  type: object
+  required: [payload]
+  properties:
+    meta:
+      $ref: "env-meta.yml#/EnvMeta"
+    payload:
+      type: object
+      required: [reqAction, uid, sessionId, uuid]
+      properties:
+        reqAction:
+          type: string
+          enum: [affinity]
+        uid:
+          type: string
+        sessionId:
+          type: string
+        uuid:
+          type: string

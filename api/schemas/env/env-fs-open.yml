@@ -1,0 +1,20 @@
+EnvFSOpen:
+  type: object
+  required: [service, action, payload, correlationId]
+  properties:
+    service:
+      type: string
+      const: env
+    action:
+      type: string
+      enum: [fs.open]
+    correlationId:
+      type: string
+    payload:
+      type: object
+      required: [path, uuid]
+      properties:
+        path:
+          type: string
+        uuid:
+          type: string

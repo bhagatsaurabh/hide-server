@@ -1,0 +1,23 @@
+EnvWSRun:
+  type: object
+  required: [service, action, payload, correlationId]
+  properties:
+    service:
+      type: string
+      const: env
+    action:
+      type: string
+      enum: [ws.run]
+    correlationId:
+      type: string
+    payload:
+      type: object
+      required: [command, ctx, uuid]
+      properties:
+        command:
+          type: string
+        ctx:
+          type: object
+          additionalProperties: true
+        uuid:
+          type: string

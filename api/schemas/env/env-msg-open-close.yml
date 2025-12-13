@@ -1,0 +1,17 @@
+EnvMsgOpenClose:
+  type: object
+  required: [payload]
+  properties:
+    meta:
+      $ref: "env-meta.yml#/EnvMeta"
+    payload:
+      type: object
+      required: [reqAction, uuid, sessionId]
+      properties:
+        reqAction:
+          type: string
+          enum: [open, close]
+        uuid:
+          type: string
+        sessionId:
+          type: string

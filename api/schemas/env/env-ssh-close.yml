@@ -1,0 +1,20 @@
+EnvSSHClose:
+  type: object
+  required: [service, action, payload, correlationId]
+  properties:
+    service:
+      type: string
+      const: env
+    action:
+      type: string
+      enum: [ssh.close]
+    correlationId:
+      type: string
+    payload:
+      type: object
+      required: [sshSessionId, uuid]
+      properties:
+        sshSessionId:
+          type: string
+        uuid:
+          type: string

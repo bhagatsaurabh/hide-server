@@ -1,0 +1,22 @@
+EnvSSHData:
+  type: object
+  required: [service, action, payload, correlationId]
+  properties:
+    service:
+      type: string
+      const: env
+    action:
+      type: string
+      enum: [ssh.data]
+    correlationId:
+      type: string
+    payload:
+      type: object
+      required: [sshSessionId, input, uuid]
+      properties:
+        sshSessionId:
+          type: string
+        input:
+          type: string
+        uuid:
+          type: string
