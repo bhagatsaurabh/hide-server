@@ -1,0 +1,8 @@
+EnvMsgRequest:
+  oneOf:
+    - $ref: "env-msg-open-close.yml#/EnvMsgOpenClose"
+    - $ref: "env-ssh-request.yml#/EnvSSHRequest"
+    - $ref: "env-ssh-data.yml#/EnvSSHData"
+    - $ref: "env-ssh-close.yml#/EnvSSHClose"
+    - $ref: "env-fs-operations.yml#/EnvFSOperation"
+    - $ref: "env-ws-run.yml#/EnvWSRun"

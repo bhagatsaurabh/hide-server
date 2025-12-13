@@ -1,0 +1,22 @@
+EnvSSHRequest:
+  type: object
+  required: [service, action, payload, correlationId, uuid]
+  properties:
+    service:
+      type: string
+      const: env
+    action:
+      type: string
+      enum: [ssh.request]
+    correlationId:
+      type: string
+    uuid:
+      type: string
+    payload:
+      type: object
+      required: [privateKey, clientId]
+      properties:
+        privateKey:
+          type: string
+        clientId:
+          type: string

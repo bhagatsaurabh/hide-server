@@ -1,0 +1,7 @@
+EnvFSOperation:
+  oneOf:
+    - $ref: "env-fs-open.yml#/EnvFSOpen"
+    - $ref: "env-fs-open-ack.yml#/EnvFSOpenAck"
+    - $ref: "env-fs-conflict.yml#/EnvFSConflictResolve"
+    - $ref: "env-fs-sync.yml#/EnvFSSync"
+    - $ref: "env-fs-close.yml#/EnvFSClose"

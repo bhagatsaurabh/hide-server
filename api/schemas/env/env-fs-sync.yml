@@ -1,0 +1,23 @@
+EnvFSSync:
+  type: object
+  required: [service, action, payload, correlationId]
+  properties:
+    service:
+      type: string
+      const: env
+    action:
+      type: string
+      enum: [fs.sync]
+    correlationId:
+      type: string
+    payload:
+      type: object
+      required: [ino, buf, uuid]
+      properties:
+        ino:
+          type: integer
+        buf:
+          type: string
+          description: base64 encoded buffer
+        uuid:
+          type: string

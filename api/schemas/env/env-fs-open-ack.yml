@@ -1,0 +1,21 @@
+EnvFSOpenAck:
+  type: object
+  required: [service, action, payload, correlationId]
+  properties:
+    service:
+      type: string
+      const: env
+    action:
+      type: string
+      enum: [fs.open.ack]
+    correlationId:
+      type: string
+    payload:
+      type: object
+      required: [ino, uuid]
+      properties:
+        ino:
+          type: integer
+          description: inode identifier
+        uuid:
+          type: string
