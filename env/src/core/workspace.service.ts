@@ -373,7 +373,11 @@ export class WorkspaceService {
     });
     if (correlationId) {
       if (res.status < 200 || res.status > 299) {
-        console.error('Workspace command returned unsuccessful');
+        console.error(
+          'Workspace command returned unsuccessful',
+          res.status,
+          JSON.stringify({ command: msg.command, data: msg.ctx }),
+        );
         this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
           meta: { uid, sessionId },
           payload: {
