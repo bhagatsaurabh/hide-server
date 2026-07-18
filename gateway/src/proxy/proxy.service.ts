@@ -70,12 +70,14 @@ export class ProxyService {
     } else if (translation.targetProtocol === Transport.NATS) {
       observable = this.nats.send(translation.pattern!, msg).pipe(timeout(3000));
     } else {
+      console.error('Unknown target protocol');
       throw new InternalServerErrorException('UNKNOWN');
     }
 
     try {
       return await firstValueFrom<unknown>(observable);
     } catch (err: unknown) {
+      console.log(err);
       if (isRpcPayloadError(err)) {
         throw new HttpException(err.message, err.statusCode);
       }
