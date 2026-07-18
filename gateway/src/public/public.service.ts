@@ -139,6 +139,7 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
 
     if (response.status < 200 || response.status > 299) {
       const data = (await response.json()) as { message: string };
+      console.error('Auth register email returned unsuccessful');
       throw new HttpException(data.message ?? 'UNKNOWN', response.status);
     }
   }
@@ -158,6 +159,7 @@ export class PublicService implements OnModuleInit, OnModuleDestroy {
 
     if (response.status < 200 || response.status > 299) {
       const data = (await response.json()) as { message: string };
+      console.error('Auth verify email returned unsuccessful');
       throw new HttpException(data.message ?? 'UNKNOWN', response.status);
     }
     return (await response.json()) as { token: string };

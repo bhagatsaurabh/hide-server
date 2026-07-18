@@ -72,7 +72,7 @@ export class WorkspaceService {
     try {
       workspace = await this.isAMember(uid, msg.uuid);
     } catch (error) {
-      void error;
+      console.log(error);
       throw new RpcError(500, 'UNKNOWN');
     }
     if (!workspace) {
@@ -97,6 +97,7 @@ export class WorkspaceService {
         }),
       });
       if (res.status < 200 || res.status > 299) {
+        console.error('Provision service returned unsuccessful');
         throw new Error('UNKNOWN');
       }
       ready = !((await res.json()) as WorkspaceWaitDTO).wait;
@@ -122,7 +123,10 @@ export class WorkspaceService {
     }
 
     const lock = await this.acquireLock(msg.uuid);
-    if (!lock) throw new Error('UNKNOWN');
+    if (!lock) {
+      console.error('Failed to acquire lock');
+      throw new Error('UNKNOWN');
+    }
 
     try {
       await this.invalidatePreviousSessions(uid, msg.uuid);
@@ -146,6 +150,7 @@ export class WorkspaceService {
           },
         );
         if (res.status < 200 || res.status > 299) {
+          console.error('Workspace affine returned unsuccessful');
           throw new Error('UNKNOWN');
         }
         this.fsService.setWorkspace(msg.uuid);
@@ -368,6 +373,7 @@ export class WorkspaceService {
     });
     if (correlationId) {
       if (res.status < 200 || res.status > 299) {
+        console.error('Workspace command returned unsuccessful');
         this.redis.emit<any, ServiceEvent<SocketSend<string>>>('socket.send', {
           meta: { uid, sessionId },
           payload: {
