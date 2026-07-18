@@ -48,7 +48,7 @@ jobs:
   build:
     needs: [changes, prepare]
     # runs-on: ubuntu-24.04-arm # not for private repos 😭
-    runs-on: arm64
+    runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         service: ${{ fromJSON(needs.prepare.outputs.utils) }}
