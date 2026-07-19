@@ -80,12 +80,12 @@ func GetPodSpec(wsUuid string, image string, publicKey string, wsType string) *v
 					},
 					Resources: v1.ResourceRequirements{
 						Requests: v1.ResourceList{
-							v1.ResourceCPU:    resource.MustParse("300m"),
-							v1.ResourceMemory: resource.MustParse("512Mi"),
+							v1.ResourceCPU:    resource.MustParse("400m"),
+							v1.ResourceMemory: resource.MustParse("800Mi"),
 						},
 						Limits: v1.ResourceList{
-							v1.ResourceCPU:    resource.MustParse("300m"),
-							v1.ResourceMemory: resource.MustParse("512Mi"),
+							v1.ResourceCPU:    resource.MustParse("400m"),
+							v1.ResourceMemory: resource.MustParse("800Mi"),
 						},
 					},
 				},

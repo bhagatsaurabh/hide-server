@@ -41,11 +41,11 @@ spec:
             failureThreshold: 3
           resources:
             limits:
-              cpu: 200m
-              memory: 256Mi
+              cpu: 270m
+              memory: 400Mi
             requests:
-              cpu: 200m
-              memory: 256Mi
+              cpu: 270m
+              memory: 400Mi
       volumes:
         - name: typesense-data
           persistentVolumeClaim:

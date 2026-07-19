@@ -92,11 +92,11 @@ spec:
               done
       resources:
         limits:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 150m
+          memory: 400Mi
         requests:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 150m
+          memory: 400Mi
       volumes:
         - name: dev
           hostPath:
