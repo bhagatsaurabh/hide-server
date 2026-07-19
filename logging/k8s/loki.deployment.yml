@@ -45,11 +45,11 @@ spec:
               name: config
           resources:
             limits:
-              cpu: 200m
-              memory: 256Mi
+              cpu: 270m
+              memory: 400Mi
             requests:
-              cpu: 200m
-              memory: 256Mi
+              cpu: 270m
+              memory: 400Mi
           readinessProbe:
             httpGet:
               path: /ready

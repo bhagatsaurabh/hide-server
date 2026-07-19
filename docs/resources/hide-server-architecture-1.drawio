@@ -7,7 +7,7 @@
         <mxCell id="JGhQKTwcQ-ooB_702GK5-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="" vertex="1">
           <mxGeometry height="892.5" width="1170" x="80" y="-362.5" as="geometry" />
         </mxCell>
-        <mxCell id="1D6x8D5pxz8g2-Abbcjr-25" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Graphana&lt;div&gt;Client&lt;/div&gt;" vertex="1">
+        <mxCell id="1D6x8D5pxz8g2-Abbcjr-25" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Grafana&lt;div&gt;Client&lt;/div&gt;" vertex="1">
           <mxGeometry height="40" width="90" x="-169" y="92" as="geometry" />
         </mxCell>
         <mxCell id="1D6x8D5pxz8g2-Abbcjr-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="&lt;div&gt;H-IDE&lt;/div&gt;Client" vertex="1">
@@ -373,7 +373,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="yoxyLXlZibTnAjMMwLHA-1" parent="1" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/other/Grafana.svg;" value="Graphana" vertex="1">
+        <mxCell id="yoxyLXlZibTnAjMMwLHA-1" parent="1" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/other/Grafana.svg;" value="Grafana" vertex="1">
           <mxGeometry height="42.4" width="54.61" x="120" y="-335" as="geometry" />
         </mxCell>
         <mxCell id="yoxyLXlZibTnAjMMwLHA-5" edge="1" parent="1" source="yoxyLXlZibTnAjMMwLHA-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.005;exitY=0.63;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;" target="_BONnTU7mdOCYyNZnLXG-96">

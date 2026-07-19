@@ -33,7 +33,7 @@ spec:
             - name: NATS_URL
               value: "nats://nats:4222"
             - name: WORKSPACE_CPU_REQUEST
-              value: "350"
+              value: "400"
             - name: IDLE_THRESHOLD_CPU
               value: "350"
             - name: PREEMPT_SPOT_OLDER_THAN_HOURS
@@ -54,10 +54,10 @@ spec:
             failureThreshold: 3
           resources:
             limits:
-              cpu: 150m
-              memory: 256Mi
+              cpu: 200m
+              memory: 400Mi
             requests:
-              cpu: 150m
-              memory: 256Mi
+              cpu: 200m
+              memory: 400Mi
       imagePullSecrets:
         - name: acr-secret
