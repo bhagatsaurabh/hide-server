@@ -47,7 +47,7 @@ spec:
             - name: WORKSPACE_CREATION_LIMIT_NON_GUEST
               value: "2"
             - name: ADMIN_EMAIL
-              value: "support.hide@saurabhagat.me"
+              value: "support.hide@saurabhagat.dev"
             - name: WORKSPACE_CPU_REQUEST
               value: "350"
             - name: "IDLE_THRESHOLD_CPU"
@@ -55,7 +55,7 @@ spec:
             - name: "ACCESS_CODE_EXPIRY_DAYS"
               value: "5"
             - name: WEBHOOK_URL
-              value: "https://api.hide.saurabhagat.me/api"
+              value: "https://api.hide.saurabhagat.dev/api"
             - name: FIREBASE_KEY_BASE64
               valueFrom:
                 secretKeyRef:

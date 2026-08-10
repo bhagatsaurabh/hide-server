@@ -6,8 +6,8 @@ metadata:
 data:
   grafana.ini: |
     [server]
-    domain = grafana.hide.saurabhagat.me
-    root_url = https://grafana.hide.saurabhagat.me/
+    domain = grafana.hide.saurabhagat.dev
+    root_url = https://grafana.hide.saurabhagat.dev/
 
     [users]
     default_theme=light

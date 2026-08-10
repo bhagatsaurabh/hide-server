@@ -38,7 +38,7 @@ export class EmailService implements OnModuleInit {
     `;
 
     const mailOptions = {
-      from: '"H-IDE" <DoNotReply@hide.saurabhagat.me>',
+      from: '"H-IDE" <DoNotReply@hide.saurabhagat.dev>',
       to,
       subject: 'H-IDE: Access request received',
       text,

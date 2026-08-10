@@ -32,7 +32,7 @@ services:
       AZURE_COMM_EMAIL_CONNECTION: '${AZURE_COMM_EMAIL_CONNECTION}'
       AZURE_CS_SMTP_SECRET: '${AZURE_CS_SMTP_SECRET}'
       AZURE_COMM_EMAIL_USERNAME: '${AZURE_COMM_EMAIL_USERNAME}'
-      ADMIN_EMAIL: 'support.hide@saurabhagat.me'
+      ADMIN_EMAIL: 'support.hide@saurabhagat.dev'
       WEBHOOK_URL: 'http://localhost:3001/api'
       WORKSPACE_CPU_REQUEST: '350'
       IDLE_THRESHOLD_CPU: '350'
