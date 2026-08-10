@@ -9,7 +9,7 @@ metadata:
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
   rules:
-    - host: api.hide.saurabhagat.me
+    - host: api.hide.saurabhagat.dev
       http:
         paths:
           - path: /
@@ -19,7 +19,7 @@ spec:
                 name: gateway
                 port:
                   number: 80
-    - host: typesense.hide.saurabhagat.me
+    - host: typesense.hide.saurabhagat.dev
       http:
         paths:
           - path: /
@@ -29,7 +29,7 @@ spec:
                 name: typesense
                 port:
                   number: 8108
-    - host: grafana.hide.saurabhagat.me
+    - host: grafana.hide.saurabhagat.dev
       http:
         paths:
           - path: /
@@ -41,7 +41,7 @@ spec:
                   number: 3000
   tls:
     - hosts:
-        - api.hide.saurabhagat.me
-        - typesense.hide.saurabhagat.me
-        - grafana.hide.saurabhagat.me
+        - api.hide.saurabhagat.dev
+        - typesense.hide.saurabhagat.dev
+        - grafana.hide.saurabhagat.dev
       secretName: gateway-tls
