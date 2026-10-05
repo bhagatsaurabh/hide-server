@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards, OnModuleInit } from '@nestjs/common';
 import { PublicService } from './public.service';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { UsernameAvailabilityDTO } from 'hide-common/dto/user';
@@ -8,8 +8,17 @@ import { RegisterEmailDTO, VerifyEmailDTO } from 'hide-common';
 import { GuardParam } from 'src/common/decorator/public-guard.decorator';
 
 @Controller('api')
-export class PublicController {
+export class PublicController implements OnModuleInit {
   constructor(private readonly service: PublicService) {}
+
+  async onModuleInit() {
+    try {
+      await this.service.getTemplates();
+      console.log('Cached templates');
+    } catch (error) {
+      console.log('Caching templates failed:', error);
+    }
+  }
 
   @Get('check-username')
   @UseGuards(ThrottlerGuard)
